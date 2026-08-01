@@ -1,5 +1,3 @@
-import { PDFParse } from 'pdf-parse';
-
 export const MAX_UPLOAD_BYTES = 100 * 1024 * 1024;
 export const MAX_TEXT_CHARS = 60000;
 
@@ -13,6 +11,7 @@ export async function extractText(buffer: Buffer, mimeType: string): Promise<Ext
 
   if (mimeType === 'application/pdf' || buffer.subarray(0, 5).toString('latin1') === '%PDF-') {
     try {
+      const { PDFParse } = await import('pdf-parse');
       const parser = new PDFParse({ data: buffer });
       const parsed = await parser.getText();
       raw = parsed.text || '';
