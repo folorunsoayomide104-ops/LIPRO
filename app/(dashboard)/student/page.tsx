@@ -216,7 +216,7 @@ export default async function StudentDashboard() {
           <div className="mb-4 flex items-center justify-between">
             <div>
               <h2 className="heading text-lg font-bold">Your recent notes</h2>
-              <p className="text-sm text-lipro-600/60 dark:text-lipro-200/50">Notes you've created or saved</p>
+              <p className="text-sm text-lipro-600/60 dark:text-lipro-200/50">Notes you&apos;ve created or saved</p>
             </div>
             <Link href="/notes" className="inline-flex items-center gap-1 text-xs font-semibold text-lipro-600 hover:underline dark:text-lipro-300">Open notes <ArrowRight className="h-3 w-3" /></Link>
           </div>

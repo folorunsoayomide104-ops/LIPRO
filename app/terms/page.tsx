@@ -19,7 +19,7 @@ export default function TermsPage() {
         <h2>5. Content ownership</h2>
         <p>Course materials remain the property of their authors. Your personal notes remain yours. LIPRO Academy holds a limited license to display content for the purpose of providing the service.</p>
         <h2>6. Limitation of liability</h2>
-        <p>LIPRO Academy is provided "as is". We are not liable for academic outcomes resulting from AI-assisted study.</p>
+        <p>LIPRO Academy is provided &quot;as is&quot;. We are not liable for academic outcomes resulting from AI-assisted study.</p>
         <h2>7. Changes</h2>
         <p>These terms may be updated; continued use after changes constitutes acceptance.</p>
       </main>
