@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="LIPRO Academy monogram">
+  <defs>
+    <linearGradient id="liproSilver" x1="10" y1="10" x2="90" y2="90" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.25" stop-color="#e2e8f0"/>
+      <stop offset="0.45" stop-color="#94a3b8"/>
+      <stop offset="0.62" stop-color="#cbd5e1"/>
+      <stop offset="0.8" stop-color="#64748b"/>
+      <stop offset="1" stop-color="#475569"/>
+    </linearGradient>
+    <radialGradient id="liproMatte" cx="0.5" cy="0.35" r="1" gradientUnits="userSpaceOnUse" spreadMethod="pad">
+      <stop offset="0" stop-color="#131316"/>
+      <stop offset="0.55" stop-color="#0b0b0e"/>
+      <stop offset="1" stop-color="#050506"/>
+    </radialGradient>
+  </defs>
+  <rect width="100" height="100" rx="23" fill="url(#liproMatte)"/>
+  <rect x="1.5" y="1.5" width="97" height="97" rx="21.5" fill="none" stroke="#ffffff" stroke-opacity="0.06" stroke-width="1.5"/>
+  <path
+    d="M22 14 A26 26 0 0 1 22 66 L22 88 L78 88"
+    fill="none"
+    stroke="url(#liproSilver)"
+    stroke-width="8"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+</svg>

@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <rect width="100" height="100" rx="23" fill="#0a0a0c"/>
+  <defs>
+    <linearGradient id="liproSilver" x1="10" y1="10" x2="90" y2="90" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.25" stop-color="#e2e8f0"/>
+      <stop offset="0.45" stop-color="#94a3b8"/>
+      <stop offset="0.62" stop-color="#cbd5e1"/>
+      <stop offset="0.8" stop-color="#64748b"/>
+      <stop offset="1" stop-color="#475569"/>
+    </linearGradient>
+  </defs>
+  <path
+    d="M22 14 A26 26 0 0 1 22 66 L22 88 L78 88"
+    fill="none"
+    stroke="url(#liproSilver)"
+    stroke-width="8"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+</svg>

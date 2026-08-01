@@ -1,0 +1,1778 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="LIPRO ACADEMY — Empowering Nigerian university students with AI-powered learning. LIPRO AI, intelligent CBT practice tests, study materials, PDF analysis and academic excellence in one platform.">
+  <title>LIPRO ACADEMY | Your Life In Progress</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- GSAP & Plugins (local copies — works offline, no CDN) -->
+  <script src="vendor/gsap.min.js"></script>
+  <script src="vendor/ScrollTrigger.min.js"></script>
+  <script src="vendor/ScrollToPlugin.min.js"></script>
+
+  <style>
+    /* =========================================================
+       DESIGN TOKENS — Ethereal Glass (OLED Dark)
+       ========================================================= */
+    :root {
+      --bg-deep: #050506;
+      --bg-surface: #0a0a0b;
+      --bg-card: #0d0d0f;
+      --bg-card-raise: #141416;
+      --fg-primary: #f5f5f2;
+      --fg-secondary: #a6a6a0;
+      --fg-muted: #6b6b66;
+      --accent: #c8ff3e;
+      --accent-deep: #9fe01c;
+      --accent-2: #ff4d6d;
+      --accent-3: #4dc9ff;
+      --glass-border: rgba(255, 255, 255, 0.07);
+      --glass-border-strong: rgba(255, 255, 255, 0.14);
+      --glass-bg: rgba(255, 255, 255, 0.03);
+      --glass-bg-strong: rgba(255, 255, 255, 0.06);
+
+      --radius-sm: 12px;
+      --radius-md: 18px;
+      --radius-lg: 26px;
+      --radius-xl: 36px;
+      --radius-2xl: 48px;
+      --radius-full: 9999px;
+
+      --font-display: 'Syne', sans-serif;
+      --font-body: 'Manrope', sans-serif;
+
+      --ease-expo: cubic-bezier(0.19, 1, 0.22, 1);
+      --ease-quart: cubic-bezier(0.16, 1, 0.3, 1);
+      --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+      --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+      --ease-sharp: cubic-bezier(0.4, 0, 0.2, 1);
+
+      --shadow-lg: 0 24px 64px rgba(0, 0, 0, 0.55);
+      --shadow-xl: 0 40px 120px rgba(0, 0, 0, 0.65);
+      --shadow-inner: inset 0 1px 1px rgba(255, 255, 255, 0.08);
+
+      --z-bg: 0;
+      --z-content: 10;
+      --z-nav: 100;
+      --z-modal: 200;
+      --z-preloader: 300;
+      --z-cursor: 400;
+      --z-grain: 500;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
+
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html {
+      background: var(--bg-deep);
+    }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--bg-deep);
+      color: var(--fg-primary);
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+      line-height: 1.5;
+    }
+
+    ::selection {
+      background: var(--accent);
+      color: #050506;
+    }
+
+    a { color: inherit; text-decoration: none; }
+    img { display: block; max-width: 100%; }
+    button { font-family: inherit; }
+
+    body.custom-cursor,
+    body.custom-cursor a,
+    body.custom-cursor button { cursor: none; }
+    @media (hover: none) { body.custom-cursor { cursor: auto; } }
+
+    ::-webkit-scrollbar { width: 9px; }
+    ::-webkit-scrollbar-track { background: var(--bg-deep); }
+    ::-webkit-scrollbar-thumb { background: #2a2a2d; border-radius: 99px; }
+    ::-webkit-scrollbar-thumb:hover { background: #3a3a3e; }
+
+    /* =========================================================
+       GRAIN OVERLAY
+       ========================================================= */
+    .grain {
+      position: fixed; inset: -50%; width: 200%; height: 200%;
+      z-index: var(--z-grain); pointer-events: none; opacity: 0.05;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      animation: grain-shift 8s steps(10) infinite;
+    }
+    @keyframes grain-shift {
+      0%, 100% { transform: translate(0, 0); }
+      10% { transform: translate(-5%, -10%); }
+      30% { transform: translate(7%, -25%); }
+      50% { transform: translate(-15%, 10%); }
+      70% { transform: translate(0%, 15%); }
+      90% { transform: translate(-10%, 10%); }
+    }
+
+    /* =========================================================
+       CUSTOM CURSOR
+       ========================================================= */
+    .cursor {
+      position: fixed; top: 0; left: 0; width: 12px; height: 12px;
+      border-radius: 50%; background: var(--accent); z-index: var(--z-cursor);
+      pointer-events: none; transform: translate(-50%, -50%);
+      mix-blend-mode: difference;
+    }
+    .cursor-ring {
+      position: fixed; top: 0; left: 0; width: 44px; height: 44px;
+      border-radius: 50%; border: 1px solid rgba(255, 255, 255, 0.35);
+      z-index: var(--z-cursor); pointer-events: none; transform: translate(-50%, -50%);
+      transition: width 0.25s var(--ease-quart), height 0.25s var(--ease-quart),
+                  background-color 0.25s var(--ease-quart), border-color 0.25s var(--ease-quart);
+    }
+    .cursor-ring.is-hover {
+      width: 84px; height: 84px;
+      background: rgba(200, 255, 62, 0.08);
+      border-color: rgba(200, 255, 62, 0.4);
+    }
+    .cursor-ring.is-view {
+      width: 92px; height: 92px; background: var(--accent); border-color: transparent;
+    }
+    .cursor-ring.is-view::after {
+      content: 'OPEN'; position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 9px; font-weight: 700; letter-spacing: 0.18em; color: #050506;
+    }
+    @media (hover: none) { .cursor, .cursor-ring { display: none; } }
+
+    /* =========================================================
+       PRELOADER
+       ========================================================= */
+    .preloader {
+      position: fixed; inset: 0; z-index: var(--z-preloader);
+      display: flex; align-items: center; justify-content: center;
+      background: var(--bg-deep); overflow: hidden;
+    }
+    .preloader__inner {
+      display: flex; flex-direction: column; align-items: center; gap: 28px;
+    }
+    .preloader__logo {
+      font-family: var(--font-display); font-weight: 800;
+      font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -0.02em;
+      display: flex; overflow: hidden;
+    }
+    .preloader__logo span { display: inline-block; transform: translateY(110%); }
+    .preloader__counter {
+      font-family: var(--font-display); font-weight: 500;
+      font-size: clamp(3.5rem, 8vw, 7rem); line-height: 1;
+      color: var(--fg-secondary); display: flex; gap: 2px;
+      font-variant-numeric: tabular-nums;
+    }
+    .preloader__counter .num { display: inline-block; }
+    .preloader__bar { width: 240px; height: 2px; background: rgba(255, 255, 255, 0.1); border-radius: 99px; overflow: hidden; }
+    .preloader__bar-fill { width: 0%; height: 100%; background: var(--accent); border-radius: 99px; }
+    .preloader__tag { font-size: 0.7rem; letter-spacing: 0.3em; text-transform: uppercase; color: var(--fg-muted); }
+
+    /* =========================================================
+       NAV — Floating Glass Island
+       ========================================================= */
+    .nav {
+      position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+      z-index: var(--z-nav); width: min(1120px, calc(100vw - 32px));
+    }
+    .nav__bar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 14px 10px 22px; border-radius: var(--radius-full);
+      background: rgba(10, 10, 11, 0.55);
+      -webkit-backdrop-filter: blur(20px) saturate(160%);
+      backdrop-filter: blur(20px) saturate(160%);
+      border: 1px solid var(--glass-border);
+      box-shadow: var(--shadow-lg), var(--shadow-inner);
+    }
+    .nav__logo { font-family: var(--font-display); font-weight: 700; font-size: 1.15rem; letter-spacing: -0.02em; white-space: nowrap; }
+    .nav__logo em { font-style: normal; color: var(--accent); }
+    .nav__links { display: flex; align-items: center; gap: 4px; list-style: none; }
+    .nav__link {
+      padding: 10px 14px; border-radius: var(--radius-full);
+      font-size: 0.82rem; font-weight: 500; color: var(--fg-secondary);
+      position: relative; transition: color 0.3s var(--ease-quart); white-space: nowrap;
+    }
+    .nav__link:hover { color: var(--fg-primary); }
+    .nav__link::after {
+      content: ''; position: absolute; left: 50%; bottom: 6px; width: 0; height: 1.5px;
+      background: var(--accent); transform: translateX(-50%);
+      transition: width 0.35s var(--ease-quart);
+    }
+    .nav__link:hover::after { width: 40%; }
+    .nav__actions { display: flex; align-items: center; gap: 8px; }
+    .nav__btn {
+      padding: 10px 18px; border-radius: var(--radius-full);
+      font-size: 0.82rem; font-weight: 600; border: 1px solid transparent;
+      transition: background 0.3s var(--ease-quart), color 0.3s var(--ease-quart), transform 0.2s var(--ease-quart);
+    }
+    .nav__btn:active { transform: scale(0.96); }
+    .nav__btn--login { border-color: var(--glass-border-strong); color: var(--fg-secondary); background: transparent; }
+    .nav__btn--login:hover { color: var(--fg-primary); background: var(--glass-bg-strong); }
+    .nav__btn--cta { background: var(--accent); color: #0a0a0b; }
+    .nav__btn--cta:hover { background: var(--accent-deep); }
+    .nav__burger {
+      width: 46px; height: 46px; border-radius: 50%;
+      border: 1px solid var(--glass-border-strong); background: var(--glass-bg-strong);
+      display: flex; align-items: center; justify-content: center; position: relative;
+      transition: background 0.3s var(--ease-quart), transform 0.2s var(--ease-quart);
+    }
+    .nav__burger:active { transform: scale(0.94); }
+    .nav__burger span {
+      position: absolute; left: 50%; width: 18px; height: 1.6px; background: var(--fg-primary);
+      transform: translateX(-50%);
+      transition: transform 0.4s var(--ease-drawer), top 0.4s var(--ease-drawer), opacity 0.2s;
+    }
+    .nav__burger span:nth-child(1) { top: 18px; }
+    .nav__burger span:nth-child(2) { top: 24px; }
+    .nav__burger span:nth-child(3) { top: 30px; }
+    .nav.is-open .nav__burger span:nth-child(1) { top: 23px; transform: translateX(-50%) rotate(45deg); }
+    .nav.is-open .nav__burger span:nth-child(2) { opacity: 0; }
+    .nav.is-open .nav__burger span:nth-child(3) { top: 23px; transform: translateX(-50%) rotate(-45deg); }
+
+    @media (max-width: 1180px) {
+      .nav__links { display: none; }
+      .nav__btn--login { display: none; }
+    }
+
+    /* Fullscreen Menu */
+    .menu {
+      position: fixed; inset: 0; z-index: var(--z-modal);
+      background: rgba(5, 5, 6, 0.92);
+      -webkit-backdrop-filter: blur(30px); backdrop-filter: blur(30px);
+      display: flex; flex-direction: column; justify-content: center;
+      padding: 0 8vw; clip-path: inset(0 0 100% 0); pointer-events: none;
+    }
+    .menu.is-open { pointer-events: auto; }
+    .menu__link {
+      font-family: var(--font-display); font-weight: 700;
+      font-size: clamp(2.2rem, 7vw, 4.5rem); line-height: 1.08;
+      color: var(--fg-secondary); display: flex; align-items: baseline; gap: 20px;
+      padding: 8px 0; position: relative; width: fit-content;
+      transition: color 0.35s var(--ease-quart), translate 0.5s var(--ease-quart);
+    }
+    .menu__link .idx { font-family: var(--font-body); font-size: 0.75rem; font-weight: 400; color: var(--accent); letter-spacing: 0.2em; }
+    .menu__link:hover { color: var(--fg-primary); translate: 24px 0; }
+    .menu__link::before {
+      content: ''; position: absolute; left: -4%; bottom: 4px; width: 108%; height: 14%;
+      background: var(--accent); transform: scaleX(0); transform-origin: left;
+      transition: transform 0.5s var(--ease-quart);
+    }
+    .menu__link:hover::before { transform: scaleX(1); }
+    .menu__foot { margin-top: 48px; color: var(--fg-muted); font-size: 0.85rem; letter-spacing: 0.08em; display: flex; gap: 32px; flex-wrap: wrap; }
+    .menu__foot a { color: var(--fg-secondary); }
+
+    /* =========================================================
+       SECTION PRIMITIVES
+       ========================================================= */
+    .section { position: relative; z-index: var(--z-content); }
+    .section--pad { padding: clamp(96px, 14vw, 200px) clamp(20px, 6vw, 96px); }
+    .eyebrow {
+      display: inline-flex; align-items: center; gap: 10px;
+      padding: 7px 16px; border-radius: var(--radius-full);
+      border: 1px solid var(--glass-border-strong); background: var(--glass-bg);
+      font-size: 0.68rem; font-weight: 600; letter-spacing: 0.24em;
+      text-transform: uppercase; color: var(--fg-secondary);
+    }
+    .eyebrow .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: pulse-dot 2.2s ease infinite; }
+    @keyframes pulse-dot {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(200, 255, 62, 0.5); }
+      50% { box-shadow: 0 0 0 6px rgba(200, 255, 62, 0); }
+    }
+    .h-display { font-family: var(--font-display); font-weight: 700; letter-spacing: -0.03em; line-height: 0.98; }
+    .h-display--huge { font-size: clamp(2.6rem, 7vw, 6.5rem); }
+    .h-display--lg { font-size: clamp(2rem, 4.5vw, 3.8rem); }
+    .h-display--md { font-size: clamp(1.6rem, 3.4vw, 2.8rem); }
+    .text-outline { color: transparent; -webkit-text-stroke: 1px rgba(255, 255, 255, 0.25); }
+    .accent-text { color: var(--accent); }
+    .body-copy { color: var(--fg-secondary); font-size: clamp(0.98rem, 1.1vw, 1.12rem); line-height: 1.7; max-width: 56ch; }
+
+    .line-mask { overflow: hidden; display: block; }
+    .line-mask > span { display: inline-block; will-change: transform; }
+
+    /* =========================================================
+       ORB BACKGROUNDS
+       ========================================================= */
+    .orb { position: absolute; border-radius: 50%; filter: blur(90px); opacity: 0.16; z-index: var(--z-bg); pointer-events: none; }
+    .orb--lime { background: radial-gradient(circle, var(--accent), transparent 70%); width: 46vw; height: 46vw; top: -10%; right: -8%; }
+    .orb--rose { background: radial-gradient(circle, var(--accent-2), transparent 70%); width: 40vw; height: 40vw; top: 34%; left: -14%; opacity: 0.1; }
+    .orb--cyan { background: radial-gradient(circle, var(--accent-3), transparent 70%); width: 34vw; height: 34vw; bottom: -12%; right: -6%; opacity: 0.08; }
+    .hero__orbs { position: absolute; inset: 0; overflow: hidden; z-index: var(--z-bg); }
+
+    /* =========================================================
+       HERO
+       ========================================================= */
+    .hero {
+      min-height: 100dvh; display: flex; flex-direction: column; justify-content: center;
+      padding: 160px clamp(20px, 6vw, 96px) 80px; position: relative;
+    }
+    .hero__inner { position: relative; z-index: var(--z-content); }
+    .hero__topline {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: clamp(28px, 4vw, 48px);
+      max-width: 1120px; margin-inline: auto; width: 100%;
+    }
+    .hero__title { max-width: 1120px; margin-inline: auto; width: 100%; }
+    .hero__title .line-mask { display: block; margin-bottom: 6px; }
+    .hero__badge { position: relative; width: clamp(104px, 13vw, 150px); height: clamp(104px, 13vw, 150px); flex-shrink: 0; }
+    .hero__badge text { font-family: var(--font-body); font-size: 10px; letter-spacing: 0.28em; text-transform: uppercase; fill: var(--fg-secondary); }
+    .hero__badge-core {
+      position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-display); font-weight: 800; font-size: 1.5rem; color: var(--accent);
+    }
+    .hero__sub {
+      margin-top: clamp(28px, 4vw, 44px);
+      display: flex; align-items: flex-end; justify-content: space-between; gap: 40px; flex-wrap: wrap;
+      max-width: 1120px; margin-inline: auto; width: 100%;
+    }
+    .hero__copy { max-width: 56ch; }
+    .hero__motto {
+      margin-top: 20px; font-family: var(--font-display); font-weight: 600;
+      font-size: clamp(0.9rem, 1.3vw, 1.05rem); letter-spacing: 0.06em;
+      color: var(--accent); display: flex; align-items: center; gap: 12px;
+    }
+    .hero__motto::before { content: ''; width: 34px; height: 1.5px; background: var(--accent); }
+    .hero__cta-group { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+    .hero__scroll { font-size: 0.72rem; letter-spacing: 0.28em; text-transform: uppercase; color: var(--fg-muted); display: flex; align-items: center; gap: 14px; }
+    .hero__scroll .line { width: 64px; height: 1px; background: linear-gradient(90deg, var(--accent), transparent); position: relative; overflow: hidden; }
+    .hero__scroll .line::after { content: ''; position: absolute; inset: 0; background: var(--fg-secondary); animation: scroll-dash 2s var(--ease-quart) infinite; }
+    @keyframes scroll-dash {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+
+    /* Buttons */
+    .btn {
+      position: relative; display: inline-flex; align-items: center; gap: 12px;
+      padding: 16px 20px 16px 28px; border-radius: var(--radius-full);
+      font-family: var(--font-body); font-weight: 600; font-size: 0.95rem;
+      border: none; background: transparent; color: var(--fg-primary);
+      overflow: hidden; transition: transform 0.18s var(--ease-quart); will-change: transform;
+    }
+    .btn:active { transform: scale(0.96); }
+    .btn--primary { background: var(--accent); color: #0a0a0b; }
+    .btn--primary:hover { color: #0a0a0b; }
+    .btn--ghost { border: 1px solid var(--glass-border-strong); background: var(--glass-bg); }
+    .btn__icon {
+      width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      font-size: 0.85rem; background: rgba(0, 0, 0, 0.14); transition: transform 0.35s var(--ease-quart);
+    }
+    .btn--ghost .btn__icon { background: rgba(255, 255, 255, 0.1); }
+    .btn:hover .btn__icon { transform: translate(3px, -3px) scale(1.08); }
+    .btn__sheen {
+      position: absolute; top: 0; left: -60%; width: 40%; height: 100%;
+      background: linear-gradient(105deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+      transform: skewX(-20deg); transition: left 0.7s var(--ease-quart);
+    }
+    .btn:hover .btn__sheen { left: 120%; }
+
+    /* =========================================================
+       MARQUEE — Trusted Universities
+       ========================================================= */
+    .marquee { overflow: hidden; padding: 28px 0; border-top: 1px solid var(--glass-border); border-bottom: 1px solid var(--glass-border); position: relative; }
+    .marquee__track { display: flex; gap: 0; width: max-content; will-change: transform; }
+    .marquee__group { display: flex; align-items: center; flex-shrink: 0; }
+    .marquee__item {
+      font-family: var(--font-display); font-weight: 700;
+      font-size: clamp(1.4rem, 3.2vw, 2.2rem); letter-spacing: -0.01em;
+      padding: 0 28px; white-space: nowrap; display: flex; align-items: center; gap: 56px;
+    }
+    .marquee__item .star { color: var(--accent); font-size: 0.7em; }
+    .marquee__item--outline { color: transparent; -webkit-text-stroke: 1.2px rgba(255, 255, 255, 0.3); }
+    .marquee__item small { font-family: var(--font-body); font-weight: 500; font-size: 0.42em; letter-spacing: 0.18em; color: var(--fg-secondary); -webkit-text-stroke: 0; text-transform: uppercase; }
+
+    /* =========================================================
+       FEATURES — Horizontal Scroll
+       ========================================================= */
+    .features { overflow: hidden; }
+    .features__head { padding: clamp(96px, 12vw, 180px) clamp(20px, 6vw, 96px) 48px; max-width: 1120px; margin-inline: auto; width: 100%; }
+    .features__panel { height: 100dvh; display: flex; flex-direction: column; justify-content: center; overflow: hidden; position: relative; }
+    .features__track {
+      display: flex; align-items: center; gap: clamp(24px, 3vw, 40px);
+      padding: 0 clamp(20px, 6vw, 96px); width: max-content; will-change: transform;
+    }
+    .feature-card {
+      position: relative; width: clamp(300px, 34vw, 440px); aspect-ratio: 4 / 5;
+      border-radius: var(--radius-xl); overflow: hidden; flex-shrink: 0;
+      border: 1px solid var(--glass-border); background: var(--bg-card);
+      display: flex; flex-direction: column; justify-content: flex-end; padding: 40px;
+      transition: transform 0.6s var(--ease-quart);
+    }
+    .feature-card:hover { transform: translateY(-8px); }
+    .feature-card__bg { position: absolute; inset: 0; z-index: 0; opacity: 0.5; transition: transform 0.8s var(--ease-quart), opacity 0.6s var(--ease-quart); }
+    .feature-card:hover .feature-card__bg { transform: scale(1.06); opacity: 0.75; }
+    .feature-card--1 .feature-card__bg { background: radial-gradient(circle at 30% 20%, rgba(200, 255, 62, 0.35), transparent 60%), linear-gradient(160deg, #1a1a1c, #08080a); }
+    .feature-card--2 .feature-card__bg { background: radial-gradient(circle at 70% 30%, rgba(255, 77, 109, 0.3), transparent 60%), linear-gradient(200deg, #1c1013, #08080a); }
+    .feature-card--3 .feature-card__bg { background: radial-gradient(circle at 40% 70%, rgba(77, 201, 255, 0.28), transparent 60%), linear-gradient(140deg, #10181c, #08080a); }
+    .feature-card--4 .feature-card__bg { background: radial-gradient(circle at 60% 40%, rgba(255, 214, 77, 0.25), transparent 60%), linear-gradient(190deg, #1a170c, #08080a); }
+    .feature-card--5 .feature-card__bg { background: radial-gradient(circle at 50% 25%, rgba(186, 85, 255, 0.28), transparent 60%), linear-gradient(160deg, #160f1c, #08080a); }
+    .feature-card--6 .feature-card__bg { background: radial-gradient(circle at 65% 60%, rgba(255, 120, 60, 0.28), transparent 60%), linear-gradient(210deg, #1a100c, #08080a); }
+    .feature-card__inner { position: relative; z-index: 1; }
+    .feature-card__idx { font-family: var(--font-display); font-size: 0.8rem; color: var(--accent); letter-spacing: 0.2em; margin-bottom: 16px; }
+    .feature-card__title { font-family: var(--font-display); font-weight: 700; font-size: clamp(1.7rem, 2.8vw, 2.4rem); letter-spacing: -0.02em; line-height: 1.05; }
+    .feature-card__desc { margin-top: 14px; color: var(--fg-secondary); font-size: 0.95rem; line-height: 1.6; max-width: 32ch; }
+    .feature-card__chips { margin-top: 22px; display: flex; flex-wrap: wrap; gap: 8px; }
+    .feature-chip {
+      display: inline-block; padding: 8px 13px; border-radius: var(--radius-full);
+      border: 1px solid var(--glass-border); background: rgba(255, 255, 255, 0.04);
+      font-size: 0.74rem; font-weight: 500; color: var(--fg-secondary);
+    }
+    .features__progress {
+      position: absolute; bottom: 44px; left: clamp(20px, 6vw, 96px); z-index: 2;
+      display: flex; align-items: center; gap: 18px;
+      font-family: var(--font-display); font-weight: 500; font-size: 0.9rem;
+      color: var(--fg-secondary); font-variant-numeric: tabular-nums;
+    }
+    .features__progress-bar { width: clamp(120px, 18vw, 200px); height: 2px; background: rgba(255, 255, 255, 0.12); border-radius: 99px; overflow: hidden; }
+    .features__progress-fill { width: 0%; height: 100%; background: var(--accent); }
+
+    /* =========================================================
+       HOW IT WORKS
+       ========================================================= */
+    .process { max-width: 1120px; margin-inline: auto; width: 100%; }
+    .process__list { margin-top: 64px; border-top: 1px solid var(--glass-border); }
+    .process__item {
+      display: grid; grid-template-columns: 1fr; gap: 8px; padding: 30px 0;
+      border-bottom: 1px solid var(--glass-border); position: relative;
+    }
+    @media (min-width: 900px) {
+      .process__item { grid-template-columns: 100px 1fr 1.4fr; align-items: center; gap: 28px; }
+    }
+    .process__num { font-family: var(--font-display); font-weight: 600; color: var(--accent); font-size: 1rem; }
+    .process__title { font-family: var(--font-display); font-weight: 700; font-size: clamp(1.3rem, 2.4vw, 1.9rem); letter-spacing: -0.02em; line-height: 1.1; }
+    .process__desc { color: var(--fg-muted); font-size: 0.95rem; line-height: 1.6; max-width: 48ch; }
+    .process__fill { position: absolute; bottom: -1px; left: 0; width: 100%; height: 1px; background: var(--accent); transform: scaleX(0); transform-origin: left; }
+
+    /* =========================================================
+       WHY CHOOSE — Bento Grid
+       ========================================================= */
+    .why { max-width: 1120px; margin-inline: auto; width: 100%; }
+    .why__grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 18px; margin-top: 64px; }
+    .why__card {
+      grid-column: span 12; border-radius: var(--radius-lg);
+      border: 1px solid var(--glass-border); background: var(--glass-bg);
+      padding: 34px 30px; transition: border-color 0.4s var(--ease-quart), transform 0.5s var(--ease-quart), background 0.4s;
+      position: relative; overflow: hidden;
+    }
+    .why__card:hover { border-color: var(--glass-border-strong); transform: translateY(-6px); background: var(--glass-bg-strong); }
+    @media (min-width: 900px) {
+      .why__card { grid-column: span 4; min-height: 240px; }
+      .why__card--a { grid-column: span 6; }
+      .why__card--b { grid-column: span 6; }
+      .why__card--f { grid-column: span 8; }
+    }
+    .why__icon {
+      width: 46px; height: 46px; border-radius: var(--radius-md);
+      background: rgba(200, 255, 62, 0.08); border: 1px solid rgba(200, 255, 62, 0.2);
+      display: flex; align-items: center; justify-content: center; color: var(--accent);
+      margin-bottom: 22px; transition: transform 0.5s var(--ease-spring);
+    }
+    .why__card:hover .why__icon { transform: rotate(-8deg) scale(1.06); }
+    .why__icon svg { width: 22px; height: 22px; }
+    .why__title { font-family: var(--font-display); font-weight: 700; font-size: clamp(1.15rem, 1.8vw, 1.4rem); letter-spacing: -0.01em; }
+    .why__desc { margin-top: 10px; color: var(--fg-muted); font-size: 0.9rem; line-height: 1.6; max-width: 44ch; }
+
+    /* =========================================================
+       PRICING
+       ========================================================= */
+    .pricing { max-width: 1120px; margin-inline: auto; width: 100%; }
+    .pricing__grid { display: grid; grid-template-columns: 1fr; gap: 20px; margin-top: 64px; }
+    @media (min-width: 900px) {
+      .pricing__grid { grid-template-columns: repeat(3, 1fr); align-items: stretch; }
+    }
+    .pricing__card {
+      position: relative; border-radius: var(--radius-xl);
+      border: 1px solid var(--glass-border); background: var(--glass-bg);
+      padding: 44px 34px; display: flex; flex-direction: column;
+      transition: transform 0.6s var(--ease-quart), border-color 0.4s, background 0.4s;
+    }
+    .pricing__card:hover { transform: translateY(-8px); border-color: var(--glass-border-strong); }
+    .pricing__card--featured {
+      background: linear-gradient(170deg, rgba(200, 255, 62, 0.07), rgba(255, 255, 255, 0.02));
+      border-color: rgba(200, 255, 62, 0.35);
+    }
+    @media (min-width: 900px) {
+      .pricing__card--featured { transform: scale(1.04); }
+      .pricing__card--featured:hover { transform: scale(1.04) translateY(-8px); }
+    }
+    .pricing__badge {
+      position: absolute; top: -14px; left: 50%; transform: translateX(-50%);
+      background: var(--accent); color: #0a0a0b; font-size: 0.68rem; font-weight: 700;
+      letter-spacing: 0.16em; text-transform: uppercase; padding: 7px 18px; border-radius: var(--radius-full);
+      white-space: nowrap;
+    }
+    .pricing__name { font-family: var(--font-display); font-weight: 700; font-size: 1.4rem; }
+    .pricing__tagline { color: var(--fg-muted); font-size: 0.88rem; margin-top: 8px; }
+    .pricing__price { margin-top: 30px; display: flex; align-items: baseline; gap: 6px; }
+    .pricing__amount { font-family: var(--font-display); font-weight: 700; font-size: clamp(2.4rem, 4vw, 3.2rem); letter-spacing: -0.03em; line-height: 1; }
+    .pricing__amount .naira { color: var(--accent); }
+    .pricing__period { color: var(--fg-muted); font-size: 0.9rem; }
+    .pricing__list { margin-top: 30px; list-style: none; display: flex; flex-direction: column; gap: 13px; flex: 1; }
+    .pricing__list li { display: flex; gap: 12px; align-items: flex-start; color: var(--fg-secondary); font-size: 0.9rem; line-height: 1.5; }
+    .pricing__list .check { color: var(--accent); font-weight: 700; line-height: 1.3; flex-shrink: 0; }
+    .pricing__cta { margin-top: 34px; width: 100%; justify-content: center; }
+    .pricing__note { margin-top: 34px; text-align: center; color: var(--fg-muted); font-size: 0.85rem; }
+
+    /* =========================================================
+       TESTIMONIALS
+       ========================================================= */
+    .testi { max-width: 1120px; margin-inline: auto; width: 100%; }
+    .testi__grid { display: grid; grid-template-columns: 1fr; gap: 20px; margin-top: 64px; }
+    @media (min-width: 900px) { .testi__grid { grid-template-columns: repeat(3, 1fr); } }
+    .testi__card {
+      border-radius: var(--radius-lg); border: 1px solid var(--glass-border);
+      background: var(--glass-bg); padding: 34px 30px;
+      display: flex; flex-direction: column; gap: 22px;
+      transition: transform 0.5s var(--ease-quart), border-color 0.4s;
+    }
+    .testi__card:hover { transform: translateY(-6px); border-color: var(--glass-border-strong); }
+    .testi__stars { color: var(--accent); font-size: 0.85rem; letter-spacing: 4px; }
+    .testi__quote { color: var(--fg-secondary); font-size: 0.96rem; line-height: 1.7; flex: 1; }
+    .testi__quote::before { content: '\201C'; color: var(--accent); font-family: var(--font-display); font-size: 1.6em; line-height: 0; display: inline-block; margin-right: 6px; }
+    .testi__author { display: flex; align-items: center; gap: 14px; }
+    .testi__avatar {
+      width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-display); font-weight: 700; font-size: 0.9rem; color: #0a0a0b;
+      background: linear-gradient(135deg, var(--accent), var(--accent-deep));
+    }
+    .testi__name { font-weight: 600; font-size: 0.92rem; }
+    .testi__uni { color: var(--fg-muted); font-size: 0.8rem; margin-top: 2px; }
+
+    /* =========================================================
+       FAQ — Accordion
+       ========================================================= */
+    .faq { max-width: 820px; margin-inline: auto; width: 100%; }
+    .faq__item { border-bottom: 1px solid var(--glass-border); }
+    .faq__q {
+      width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 24px;
+      background: none; border: none; color: var(--fg-primary); text-align: left;
+      padding: 30px 0; cursor: pointer;
+    }
+    .faq__q-text { font-family: var(--font-display); font-weight: 600; font-size: clamp(1.05rem, 1.8vw, 1.3rem); letter-spacing: -0.01em; }
+    .faq__q-icon {
+      width: 38px; height: 38px; flex-shrink: 0; border-radius: 50%;
+      border: 1px solid var(--glass-border-strong); display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem; color: var(--fg-secondary); position: relative;
+      transition: transform 0.45s var(--ease-drawer), background 0.3s, color 0.3s;
+    }
+    .faq__q-icon::before, .faq__q-icon::after {
+      content: ''; position: absolute; background: currentColor; border-radius: 2px;
+      transition: transform 0.45s var(--ease-drawer);
+    }
+    .faq__q-icon::before { width: 14px; height: 1.6px; }
+    .faq__q-icon::after { width: 1.6px; height: 14px; }
+    .faq__item.open .faq__q-icon { background: var(--accent); color: #0a0a0b; transform: rotate(180deg); }
+    .faq__item.open .faq__q-icon::after { transform: scaleY(0); }
+    .faq__a { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.5s var(--ease-quart); }
+    .faq__item.open .faq__a { grid-template-rows: 1fr; }
+    .faq__a-inner { overflow: hidden; }
+    .faq__a-text { color: var(--fg-secondary); font-size: 0.95rem; line-height: 1.75; padding-bottom: 30px; max-width: 62ch; }
+
+    /* =========================================================
+       CONTACT
+       ========================================================= */
+    .contact { max-width: 1120px; margin-inline: auto; width: 100%; display: grid; grid-template-columns: 1fr; gap: 56px; }
+    @media (min-width: 960px) { .contact { grid-template-columns: 1fr 1.1fr; gap: 72px; align-items: start; } }
+    .contact__lead { }
+    .contact__socials { margin-top: 40px; display: flex; flex-direction: column; gap: 14px; }
+    .social-link {
+      display: flex; align-items: center; gap: 18px; padding: 18px 22px;
+      border-radius: var(--radius-md); border: 1px solid var(--glass-border);
+      background: var(--glass-bg); transition: border-color 0.35s var(--ease-quart), transform 0.4s var(--ease-quart), background 0.35s;
+    }
+    .social-link:hover { border-color: var(--glass-border-strong); transform: translateX(6px); background: var(--glass-bg-strong); }
+    .social-link__icon { width: 42px; height: 42px; border-radius: 50%; background: rgba(200, 255, 62, 0.08); border: 1px solid rgba(200, 255, 62, 0.2); display: flex; align-items: center; justify-content: center; color: var(--accent); flex-shrink: 0; }
+    .social-link__icon svg { width: 19px; height: 19px; }
+    .social-link__label { font-size: 0.72rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--fg-muted); }
+    .social-link__handle { font-weight: 600; font-size: 0.98rem; margin-top: 3px; }
+    .contact__form-wrap {
+      border-radius: var(--radius-xl); border: 1px solid var(--glass-border);
+      background: var(--glass-bg); padding: 40px 32px; position: relative;
+    }
+    .field { margin-bottom: 18px; }
+    .field label { display: block; font-size: 0.7rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--fg-muted); margin-bottom: 8px; }
+    .field input, .field textarea {
+      width: 100%; background: rgba(5, 5, 6, 0.4); border: 1px solid var(--glass-border);
+      border-radius: var(--radius-md); padding: 15px 18px; color: var(--fg-primary);
+      font-family: var(--font-body); font-size: 0.95rem; outline: none;
+      transition: border-color 0.3s var(--ease-quart), background 0.3s;
+    }
+    .field input::placeholder, .field textarea::placeholder { color: rgba(166, 166, 160, 0.55); }
+    .field input:focus, .field textarea:focus { border-color: rgba(200, 255, 62, 0.5); background: rgba(5, 5, 6, 0.6); }
+    .field textarea { min-height: 140px; resize: vertical; }
+    .form-status {
+      display: none; margin-top: 18px; padding: 14px 18px; border-radius: var(--radius-md);
+      border: 1px solid rgba(200, 255, 62, 0.35); background: rgba(200, 255, 62, 0.07);
+      color: var(--accent); font-size: 0.9rem; font-weight: 500;
+    }
+
+    /* =========================================================
+       FOOTER
+       ========================================================= */
+    .footer { padding: clamp(64px, 8vw, 120px) clamp(20px, 6vw, 96px) 40px; position: relative; border-top: 1px solid var(--glass-border); }
+    .footer__grid { max-width: 1120px; margin-inline: auto; width: 100%; display: grid; grid-template-columns: 1fr; gap: 48px; }
+    @media (min-width: 900px) { .footer__grid { grid-template-columns: 1.3fr 1fr 1fr 1fr 1fr; } }
+    .footer__brand .logo { font-family: var(--font-display); font-weight: 700; font-size: 1.5rem; letter-spacing: -0.02em; }
+    .footer__brand .logo em { font-style: normal; color: var(--accent); }
+    .footer__brand p { margin-top: 18px; color: var(--fg-muted); font-size: 0.92rem; line-height: 1.7; max-width: 28ch; }
+    .footer__brand .motto { margin-top: 14px; color: var(--accent); font-size: 0.85rem; letter-spacing: 0.06em; font-family: var(--font-display); font-weight: 600; }
+    .footer__col h4 { font-size: 0.72rem; letter-spacing: 0.24em; text-transform: uppercase; color: var(--fg-muted); margin-bottom: 20px; }
+    .footer__col ul { list-style: none; display: flex; flex-direction: column; gap: 12px; }
+    .footer__col a { color: var(--fg-secondary); font-size: 0.92rem; transition: color 0.3s var(--ease-quart), padding-left 0.35s var(--ease-quart); }
+    .footer__col a:hover { color: var(--accent); padding-left: 8px; }
+    .footer__bottom {
+      margin-top: 80px; padding-top: 32px; border-top: 1px solid var(--glass-border);
+      max-width: 1120px; margin-inline: auto; width: 100%;
+      display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;
+      color: var(--fg-muted); font-size: 0.82rem;
+    }
+    .footer__back { display: inline-flex; align-items: center; gap: 10px; color: var(--fg-secondary); font-size: 0.82rem; letter-spacing: 0.14em; text-transform: uppercase; }
+    .footer__back .up { width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--glass-border-strong); display: flex; align-items: center; justify-content: center; transition: background 0.3s, transform 0.4s var(--ease-spring); }
+    .footer__back:hover .up { background: var(--accent); color: #050506; transform: translateY(-4px); }
+  </style>
+</head>
+
+<body>
+
+  <!-- GRAIN -->
+  <div class="grain" aria-hidden="true"></div>
+
+  <!-- CURSOR -->
+  <div class="cursor" aria-hidden="true"></div>
+  <div class="cursor-ring" aria-hidden="true"></div>
+
+  <!-- PRELOADER -->
+  <div class="preloader" id="preloader">
+    <div class="preloader__inner">
+      <div class="preloader__logo">
+        <span>LIPRO</span><span>&nbsp;</span><span>ACADEMY</span>
+      </div>
+      <div class="preloader__counter">
+        <span class="num">0</span><span>%</span>
+      </div>
+      <div class="preloader__bar">
+        <div class="preloader__bar-fill" id="preloaderFill"></div>
+      </div>
+      <div class="preloader__tag">Your Life In Progress</div>
+    </div>
+  </div>
+
+  <!-- NAV -->
+  <header class="nav" id="nav">
+    <div class="nav__bar">
+      <a class="nav__logo" href="#home" data-cursor="hover">LIPRO<em>/ACADEMY</em></a>
+      <ul class="nav__links">
+        <li><a class="nav__link" href="#home" data-cursor="hover">Home</a></li>
+        <li><a class="nav__link" href="#features" data-cursor="hover">Features</a></li>
+        <li><a class="nav__link" href="#universities" data-cursor="hover">Universities</a></li>
+        <li><a class="nav__link" href="#pricing" data-cursor="hover">Pricing</a></li>
+        <li><a class="nav__link" href="#testimonials" data-cursor="hover">Testimonials</a></li>
+        <li><a class="nav__link" href="#faq" data-cursor="hover">FAQ</a></li>
+        <li><a class="nav__link" href="#contact" data-cursor="hover">Contact</a></li>
+      </ul>
+      <div class="nav__actions">
+        <a href="/login" class="nav__btn nav__btn--login" data-cursor="hover">Login</a>
+        <a href="/register" class="nav__btn nav__btn--cta" data-cursor="hover">Get Started</a>
+        <button class="nav__burger" id="burger" aria-label="Toggle menu" data-cursor="hover">
+          <span></span><span></span><span></span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- FULLSCREEN MENU -->
+  <div class="menu" id="menu">
+    <nav class="menu__links" id="menuLinks">
+      <a class="menu__link" href="#home"><span class="idx">01</span>Home</a>
+      <a class="menu__link" href="#features"><span class="idx">02</span>Features</a>
+      <a class="menu__link" href="#universities"><span class="idx">03</span>Universities</a>
+      <a class="menu__link" href="#pricing"><span class="idx">04</span>Pricing</a>
+      <a class="menu__link" href="#testimonials"><span class="idx">05</span>Testimonials</a>
+      <a class="menu__link" href="#faq"><span class="idx">06</span>FAQ</a>
+      <a class="menu__link" href="#contact"><span class="idx">07</span>Contact</a>
+    </nav>
+    <div class="menu__foot">
+      <a href="/login" data-cursor="hover">Login</a>
+      <a href="/register" data-cursor="hover">Create Account</a>
+      <a href="https://wa.me/2349160216396" target="_blank" rel="noopener">WhatsApp Support</a>
+      <a href="https://www.tiktok.com/@lipro512" target="_blank" rel="noopener">@lipro512</a>
+      <a href="https://linktr.ee/lipro512" target="_blank" rel="noopener">linktr.ee/lipro512</a>
+    </div>
+  </div>
+
+  <!-- HERO -->
+  <section class="hero section" id="home">
+    <div class="hero__orbs" aria-hidden="true">
+      <div class="orb orb--lime"></div>
+      <div class="orb orb--rose"></div>
+      <div class="orb orb--cyan"></div>
+    </div>
+
+    <div class="hero__inner">
+      <div class="hero__topline">
+        <span class="eyebrow"><span class="dot"></span>Empowering Nigerian University Students</span>
+        <div class="hero__badge">
+          <svg viewBox="0 0 120 120" class="hero__badge-svg">
+            <defs>
+              <path id="circ" d="M 60,60 m -46,0 a 46,46 0 1,1 92,0 a 46,46 0 1,1 -92,0"/>
+            </defs>
+            <text><textPath href="#circ">YOUR LIFE IN PROGRESS &bull; YOUR LIFE IN PROGRESS &bull;</textPath></text>
+          </svg>
+          <div class="hero__badge-core">LP</div>
+        </div>
+      </div>
+
+      <h1 class="h-display h-display--huge hero__title">
+        <span class="line-mask"><span>THE FUTURE OF</span></span>
+        <span class="line-mask"><span class="text-outline">UNIVERSITY LEARNING</span></span>
+        <span class="line-mask"><span>STARTS <span class="accent-text">HERE.</span></span></span>
+      </h1>
+
+      <div class="hero__sub">
+        <div class="hero__copy">
+          <p class="body-copy">
+            Master your courses with LIPRO AI, take intelligent CBT practice tests, organize your
+            study materials, analyze PDFs, and achieve academic excellence—all in one premium platform.
+          </p>
+          <div class="hero__motto">Your Life In Progress.</div>
+        </div>
+        <div class="hero__cta-group">
+          <a href="/register" class="btn btn--primary" data-cursor="hover">
+            <span class="btn__sheen"></span>
+            Get Started Free
+            <span class="btn__icon">&rarr;</span>
+          </a>
+          <a href="#features" class="btn btn--ghost" data-cursor="hover">
+            Explore Features
+            <span class="btn__icon">&#9671;</span>
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <div class="hero__scroll" style="position:absolute; bottom:32px; left:50%; transform:translateX(-50%); z-index:var(--z-content);">
+      <span>Scroll</span><span class="line"></span>
+    </div>
+  </section>
+
+  <!-- TRUSTED UNIVERSITIES -->
+  <section class="section section--pad" id="universities" style="padding-top:clamp(72px,10vw,140px); padding-bottom:clamp(72px,10vw,140px);">
+    <div style="max-width:1120px; margin-inline:auto; width:100%; text-align:center; margin-bottom:56px;">
+      <span class="eyebrow" data-reveal><span class="dot"></span>Trusted Universities</span>
+      <h2 class="h-display h-display--lg" data-reveal style="margin-top:24px;">
+        Backed by campuses <span class="accent-text">across Nigeria</span>.
+      </h2>
+      <p class="body-copy" data-reveal style="margin:20px auto 0; text-align:center;">
+        LIPRO ACADEMY was built for Nigerian university students, with content matched to your
+        school, faculty and department. More universities are being added all the time.
+      </p>
+    </div>
+
+    <div class="marquee" aria-hidden="true">
+      <div class="marquee__track" id="marqueeTrack">
+        <div class="marquee__group">
+          <span class="marquee__item">Osun State University <small>UNIOSUN</small> <span class="star">&#9670;</span></span>
+          <span class="marquee__item marquee__item--outline">University of Lagos <small>UNILAG</small> <span class="star">&#9670;</span></span>
+          <span class="marquee__item">University of Ibadan <small>UI</small> <span class="star">&#9670;</span></span>
+          <span class="marquee__item marquee__item--outline">Obafemi Awolowo University <small>OAU</small> <span class="star">&#9670;</span></span>
+          <span class="marquee__item">FUT Akure <small>FUTA</small> <span class="star">&#9670;</span></span>
+          <span class="marquee__item marquee__item--outline">Lagos State University <small>LASU</small> <span class="star">&#9670;</span></span>
+          <span class="marquee__item">University of Ilorin <small>UNILORIN</small> <span class="star">&#9670;</span></span>
+        </div>
+        <div class="marquee__group">
+          <span class="marquee__item">Osun State University <small>UNIOSUN</small> <span class="star">&#9670;</span></span>
+          <span class="marquee__item marquee__item--outline">University of Lagos <small>UNILAG</small> <span class="star">&#9670;</span></span>
+          <span class="marquee__item">University of Ibadan <small>UI</small> <span class="star">&#9670;</span></span>
+          <span class="marquee__item marquee__item--outline">Obafemi Awolowo University <small>OAU</small> <span class="star">&#9670;</span></span>
+          <span class="marquee__item">FUT Akure <small>FUTA</small> <span class="star">&#9670;</span></span>
+          <span class="marquee__item marquee__item--outline">Lagos State University <small>LASU</small> <span class="star">&#9670;</span></span>
+          <span class="marquee__item">University of Ilorin <small>UNILORIN</small> <span class="star">&#9670;</span></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURES (horizontal scroll) -->
+  <section class="features section" id="features">
+    <div class="features__head">
+      <span class="eyebrow" data-reveal><span class="dot"></span>Features</span>
+      <h2 class="h-display h-display--lg" data-reveal style="margin-top:24px;">
+        Everything you need to excel, <span class="text-outline">in one platform</span>.
+      </h2>
+    </div>
+
+    <div class="features__panel" id="featuresPanel">
+      <div class="features__track" id="featuresTrack">
+        <div class="feature-card feature-card--1">
+          <div class="feature-card__bg"></div>
+          <div class="feature-card__inner">
+            <div class="feature-card__idx">/ 01</div>
+            <div class="feature-card__title">LIPRO AI</div>
+            <p class="feature-card__desc">Ask anything about your course and get a clear answer right away — plus quizzes, questions and research on demand.</p>
+            <div class="feature-card__chips">
+              <span class="feature-chip">AI Chat Assistant</span>
+              <span class="feature-chip">AI Quiz Generation</span>
+              <span class="feature-chip">AI Question Generation</span>
+              <span class="feature-chip">Deep Research</span>
+            </div>
+          </div>
+        </div>
+        <div class="feature-card feature-card--2">
+          <div class="feature-card__bg"></div>
+          <div class="feature-card__inner">
+            <div class="feature-card__idx">/ 02</div>
+            <div class="feature-card__title">PDF Intelligence</div>
+            <p class="feature-card__desc">Upload any course PDF and turn it into structured notes, flashcards and revision guides.</p>
+            <div class="feature-card__chips">
+              <span class="feature-chip">PDF Analysis</span>
+              <span class="feature-chip">Revision Guides</span>
+              <span class="feature-chip">Flashcards</span>
+              <span class="feature-chip">Course PDFs</span>
+            </div>
+          </div>
+        </div>
+        <div class="feature-card feature-card--3">
+          <div class="feature-card__bg"></div>
+          <div class="feature-card__inner">
+            <div class="feature-card__idx">/ 03</div>
+            <div class="feature-card__title">CBT Engine</div>
+            <p class="feature-card__desc">Practice under real exam conditions and see your score the moment you finish.</p>
+            <div class="feature-card__chips">
+              <span class="feature-chip">Practice Mode</span>
+              <span class="feature-chip">Exam Mode</span>
+              <span class="feature-chip">Mixed Question Types</span>
+              <span class="feature-chip">Instant Results</span>
+            </div>
+          </div>
+        </div>
+        <div class="feature-card feature-card--4">
+          <div class="feature-card__bg"></div>
+          <div class="feature-card__inner">
+            <div class="feature-card__idx">/ 04</div>
+            <div class="feature-card__title">Study Planner</div>
+            <p class="feature-card__desc">A schedule built around your goals — with your exam dates always in view.</p>
+            <div class="feature-card__chips">
+              <span class="feature-chip">Daily Planner</span>
+              <span class="feature-chip">Weekly Planner</span>
+              <span class="feature-chip">Study Goals</span>
+              <span class="feature-chip">Exam Countdown</span>
+            </div>
+          </div>
+        </div>
+        <div class="feature-card feature-card--5">
+          <div class="feature-card__bg"></div>
+          <div class="feature-card__inner">
+            <div class="feature-card__idx">/ 05</div>
+            <div class="feature-card__title">Analytics</div>
+            <p class="feature-card__desc">See your progress, your study time and the topics that need the most attention.</p>
+            <div class="feature-card__chips">
+              <span class="feature-chip">Performance Tracking</span>
+              <span class="feature-chip">Study Time</span>
+              <span class="feature-chip">Progress Reports</span>
+              <span class="feature-chip">Weak Topic Detection</span>
+            </div>
+          </div>
+        </div>
+        <div class="feature-card feature-card--6">
+          <div class="feature-card__bg"></div>
+          <div class="feature-card__inner">
+            <div class="feature-card__idx">/ 06</div>
+            <div class="feature-card__title">Community &amp; Wallet</div>
+            <p class="feature-card__desc">Leaderboards, rankings and achievements keep you motivated, while your wallet keeps your plan in check.</p>
+            <div class="feature-card__chips">
+              <span class="feature-chip">Leaderboards</span>
+              <span class="feature-chip">Dept / Faculty / Uni Rankings</span>
+              <span class="feature-chip">Achievements</span>
+              <span class="feature-chip">Wallet &amp; Payment History</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="features__progress" id="featuresProgress">
+        <span id="progressStart">01</span>
+        <div class="features__progress-bar">
+          <div class="features__progress-fill" id="progressFill"></div>
+        </div>
+        <span id="progressEnd">06</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section class="section section--pad" id="how">
+    <div class="process">
+      <span class="eyebrow" data-reveal><span class="dot"></span>How It Works</span>
+      <h2 class="h-display h-display--lg" data-reveal style="margin-top:24px;">
+        From sign-up to <span class="accent-text">straight A&rsquo;s</span> in eight steps.
+      </h2>
+
+      <div class="process__list" id="processList">
+        <div class="process__item">
+          <span class="process__num">01</span>
+          <h3 class="process__title">Create your account</h3>
+          <p class="process__desc">Sign up free in seconds — no card required.</p>
+          <span class="process__fill"></span>
+        </div>
+        <div class="process__item">
+          <span class="process__num">02</span>
+          <h3 class="process__title">Select your University</h3>
+          <p class="process__desc">Pick from supported Nigerian universities.</p>
+          <span class="process__fill"></span>
+        </div>
+        <div class="process__item">
+          <span class="process__num">03</span>
+          <h3 class="process__title">Choose your Faculty and Department</h3>
+          <p class="process__desc">We tailor your content and questions to your exact programme.</p>
+          <span class="process__fill"></span>
+        </div>
+        <div class="process__item">
+          <span class="process__num">04</span>
+          <h3 class="process__title">Access your registered courses</h3>
+          <p class="process__desc">Notes, outlines, PDFs and videos — organized in one place.</p>
+          <span class="process__fill"></span>
+        </div>
+        <div class="process__item">
+          <span class="process__num">05</span>
+          <h3 class="process__title">Study with LIPRO AI</h3>
+          <p class="process__desc">Chat, generate quizzes and deep-dive into any topic.</p>
+          <span class="process__fill"></span>
+        </div>
+        <div class="process__item">
+          <span class="process__num">06</span>
+          <h3 class="process__title">Practice using the CBT Engine</h3>
+          <p class="process__desc">Sharpen up with practice and exam modes that feel real.</p>
+          <span class="process__fill"></span>
+        </div>
+        <div class="process__item">
+          <span class="process__num">07</span>
+          <h3 class="process__title">Track your academic performance</h3>
+          <p class="process__desc">Analytics show your progress, weak topics and study time.</p>
+          <span class="process__fill"></span>
+        </div>
+        <div class="process__item">
+          <span class="process__num">08</span>
+          <h3 class="process__title">Improve your grades</h3>
+          <p class="process__desc">That&rsquo;s the whole point. Your life in progress.</p>
+          <span class="process__fill"></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- WHY CHOOSE -->
+  <section class="section section--pad" id="why">
+    <div class="why">
+      <div style="display:flex; align-items:flex-end; justify-content:space-between; flex-wrap:wrap; gap:24px;">
+        <div>
+          <span class="eyebrow" data-reveal><span class="dot"></span>Why Choose LIPRO ACADEMY</span>
+          <h2 class="h-display h-display--lg" data-reveal style="margin-top:24px;">
+            Built for Nigerian campuses <span class="accent-text">and the students on them</span>.
+          </h2>
+        </div>
+        <p class="body-copy" data-reveal>
+          Every feature exists for one reason: to help you understand more, practice smarter,
+          and walk into every exam confident.
+        </p>
+      </div>
+
+      <div class="why__grid">
+        <div class="why__card why__card--a" data-reveal-stagger>
+          <div class="why__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></svg>
+          </div>
+          <h3 class="why__title">AI-Powered Learning</h3>
+          <p class="why__desc">LIPRO AI understands your courses and helps you master them — chat, quizzes and deep research on demand.</p>
+        </div>
+        <div class="why__card why__card--b" data-reveal-stagger>
+          <div class="why__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>
+          </div>
+          <h3 class="why__title">Smart CBT Practice</h3>
+          <p class="why__desc">Intelligent practice and exam modes with instant results — so every minute you practice counts.</p>
+        </div>
+        <div class="why__card" data-reveal-stagger>
+          <div class="why__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18"/><path d="M9 15l2 2 4-4"/></svg>
+          </div>
+          <h3 class="why__title">Personalized Study Plans</h3>
+          <p class="why__desc">Daily and weekly planners built around your goals, with your exams always in view.</p>
+        </div>
+        <div class="why__card" data-reveal-stagger>
+          <div class="why__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 16h4"/></svg>
+          </div>
+          <h3 class="why__title">PDF Intelligence</h3>
+          <p class="why__desc">Upload any PDF and instantly get notes, summaries, flashcards and revision guides.</p>
+        </div>
+        <div class="why__card" data-reveal-stagger>
+          <div class="why__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M8 15v-4M13 15V8M18 15v-7"/></svg>
+          </div>
+          <h3 class="why__title">Performance Analytics</h3>
+          <p class="why__desc">Track study time, progress reports and weak topics — see exactly where to improve.</p>
+        </div>
+        <div class="why__card why__card--f" data-reveal-stagger>
+          <div class="why__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 3h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+          </div>
+          <h3 class="why__title">Organized Course Materials</h3>
+          <p class="why__desc">Courses, notes, PDFs, outlines and videos — everything for every semester, tidy and searchable.</p>
+        </div>
+        <div class="why__card" data-reveal-stagger>
+          <div class="why__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/><path d="M22 9v5"/></svg>
+          </div>
+          <h3 class="why__title">University-Specific Content</h3>
+          <p class="why__desc">Tailored to your university, faculty and department — because your syllabus is unique.</p>
+        </div>
+        <div class="why__card" data-reveal-stagger>
+          <div class="why__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 4.5-3.4 7.5-8 9-4.6-1.5-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>
+          </div>
+          <h3 class="why__title">Secure Platform</h3>
+          <p class="why__desc">Your data, your study progress and your payments are protected at every step.</p>
+        </div>
+        <div class="why__card" data-reveal-stagger>
+          <div class="why__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="3"/><path d="M11 18h2"/></svg>
+          </div>
+          <h3 class="why__title">Mobile-Friendly Experience</h3>
+          <p class="why__desc">Study anywhere — on campus, on the road, or in your room at 2 a.m. before the exam.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PRICING -->
+  <section class="section section--pad" id="pricing">
+    <div class="pricing">
+      <div style="text-align:center;">
+        <span class="eyebrow" data-reveal><span class="dot"></span>Pricing</span>
+        <h2 class="h-display h-display--lg" data-reveal style="margin-top:24px;">
+          Plans that fit a <span class="accent-text">student budget</span>.
+        </h2>
+        <p class="body-copy" data-reveal style="margin:20px auto 0; text-align:center;">
+          Start free, upgrade when you&rsquo;re ready. Cancel anytime.
+        </p>
+      </div>
+
+      <div class="pricing__grid">
+        <div class="pricing__card" data-reveal-stagger>
+          <div class="pricing__name">Free</div>
+          <div class="pricing__tagline">The essentials, to get you started</div>
+          <div class="pricing__price">
+            <span class="pricing__amount"><span class="naira">&#8358;</span>0</span>
+            <span class="pricing__period">/ forever</span>
+          </div>
+          <ul class="pricing__list">
+            <li><span class="check">&#10003;</span>10 Practice Questions per Topic</li>
+            <li><span class="check">&#10003;</span>20 Exam Questions per Course</li>
+            <li><span class="check">&#10003;</span>Limited PDF Analysis</li>
+            <li><span class="check">&#10003;</span>Limited Notes</li>
+          </ul>
+          <a href="/register" class="btn btn--ghost pricing__cta" data-cursor="hover">
+            Get Started Free
+            <span class="btn__icon">&rarr;</span>
+          </a>
+        </div>
+
+        <div class="pricing__card pricing__card--featured" data-reveal-stagger>
+          <span class="pricing__badge">Most Popular</span>
+          <div class="pricing__name">Premium</div>
+          <div class="pricing__tagline">For students who want to stand out</div>
+          <div class="pricing__price">
+            <span class="pricing__amount"><span class="naira">&#8358;</span>1,700</span>
+            <span class="pricing__period">/ month</span>
+          </div>
+          <ul class="pricing__list">
+            <li><span class="check">&#10003;</span>Unlimited CBT</li>
+            <li><span class="check">&#10003;</span>Unlimited Notes</li>
+            <li><span class="check">&#10003;</span>Advanced LIPRO AI</li>
+            <li><span class="check">&#10003;</span>Unlimited Flashcards</li>
+            <li><span class="check">&#10003;</span>Revision Guides</li>
+            <li><span class="check">&#10003;</span>Study Planner</li>
+            <li><span class="check">&#10003;</span>Analytics Dashboard</li>
+            <li><span class="check">&#10003;</span>Priority Support</li>
+          </ul>
+          <a href="/subscription" class="btn btn--primary pricing__cta" data-cursor="hover">
+            <span class="btn__sheen"></span>
+            Choose Premium
+            <span class="btn__icon">&rarr;</span>
+          </a>
+        </div>
+
+        <div class="pricing__card" data-reveal-stagger>
+          <div class="pricing__name">Ultimate</div>
+          <div class="pricing__tagline">Everything in Premium, plus the full power of LIPRO AI</div>
+          <div class="pricing__price">
+            <span class="pricing__amount"><span class="naira">&#8358;</span>3,000</span>
+            <span class="pricing__period">/ month</span>
+          </div>
+          <ul class="pricing__list">
+            <li><span class="check">&#10003;</span>Everything in Premium, plus:</li>
+            <li><span class="check">&#10003;</span>Unlimited AI Usage</li>
+            <li><span class="check">&#10003;</span>Unlimited PDF Intelligence</li>
+            <li><span class="check">&#10003;</span>Deep Research</li>
+            <li><span class="check">&#10003;</span>Unlimited Study Material Generation</li>
+            <li><span class="check">&#10003;</span>Priority AI Processing</li>
+            <li><span class="check">&#10003;</span>Early Access to New Features</li>
+          </ul>
+          <a href="/subscription" class="btn btn--ghost pricing__cta" data-cursor="hover">
+            Go Ultimate
+            <span class="btn__icon">&rarr;</span>
+          </a>
+        </div>
+      </div>
+
+      <p class="pricing__note" data-reveal>Prices in Nigerian Naira. Cancel your subscription anytime.</p>
+    </div>
+  </section>
+
+  <!-- TESTIMONIALS -->
+  <section class="section section--pad" id="testimonials">
+    <div class="testi">
+      <div style="display:flex; align-items:flex-end; justify-content:space-between; flex-wrap:wrap; gap:24px;">
+        <div>
+          <span class="eyebrow" data-reveal><span class="dot"></span>Testimonials</span>
+          <h2 class="h-display h-display--lg" data-reveal style="margin-top:24px;">
+            Students are <span class="accent-text">saying it themselves</span>.
+          </h2>
+        </div>
+        <p class="body-copy" data-reveal>
+          From UNILAG to UNIOSUN, students across Nigeria are using LIPRO ACADEMY to improve their grades.
+        </p>
+      </div>
+
+      <div class="testi__grid">
+        <div class="testi__card" data-reveal-stagger>
+          <div class="testi__stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+          <p class="testi__quote">The CBT Engine changed how I prepare. I practiced in exam mode for two weeks and walked into my paper calm. It felt exactly like the real thing.</p>
+          <div class="testi__author">
+            <span class="testi__avatar">AO</span>
+            <div>
+              <div class="testi__name">Adaeze O.</div>
+              <div class="testi__uni">University of Lagos (UNILAG)</div>
+            </div>
+          </div>
+        </div>
+        <div class="testi__card" data-reveal-stagger>
+          <div class="testi__stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+          <p class="testi__quote">I upload all my course PDFs and LIPRO AI turns them into flashcards and revision guides. My study time got so much more productive.</p>
+          <div class="testi__author">
+            <span class="testi__avatar">TK</span>
+            <div>
+              <div class="testi__name">Tunde K.</div>
+              <div class="testi__uni">Obafemi Awolowo University (OAU)</div>
+            </div>
+          </div>
+        </div>
+        <div class="testi__card" data-reveal-stagger>
+          <div class="testi__stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+          <p class="testi__quote">The study planner keeps me honest. Daily goals, exam countdown, weak topic alerts — it&rsquo;s like having a personal academic coach.</p>
+          <div class="testi__author">
+            <span class="testi__avatar">MS</span>
+            <div>
+              <div class="testi__name">Maryam S.</div>
+              <div class="testi__uni">University of Ibadan (UI)</div>
+            </div>
+          </div>
+        </div>
+        <div class="testi__card" data-reveal-stagger>
+          <div class="testi__stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+          <p class="testi__quote">My department is fully supported and the questions are actually tailored to my courses. I finally stopped guessing what to study.</p>
+          <div class="testi__author">
+            <span class="testi__avatar">CB</span>
+            <div>
+              <div class="testi__name">Chinedu B.</div>
+              <div class="testi__uni">Osun State University (UNIOSUN)</div>
+            </div>
+          </div>
+        </div>
+        <div class="testi__card" data-reveal-stagger>
+          <div class="testi__stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+          <p class="testi__quote">The analytics showed me I was weak in exactly the topics that appeared in the exam. Scary — but I fixed them before test day. Worth every naira.</p>
+          <div class="testi__author">
+            <span class="testi__avatar">FI</span>
+            <div>
+              <div class="testi__name">Folake I.</div>
+              <div class="testi__uni">Federal University of Technology Akure (FUTA)</div>
+            </div>
+          </div>
+        </div>
+        <div class="testi__card" data-reveal-stagger>
+          <div class="testi__stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+          <p class="testi__quote">LIPRO AI explains things better than my lecture notes sometimes. Combined with the past-question style CBT, I improved a full grade.</p>
+          <div class="testi__author">
+            <span class="testi__avatar">DJ</span>
+            <div>
+              <div class="testi__name">Daniel J.</div>
+              <div class="testi__uni">Lagos State University (LASU)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="section section--pad" id="faq">
+    <div class="faq">
+      <div style="text-align:center;">
+        <span class="eyebrow" data-reveal><span class="dot"></span>FAQ</span>
+        <h2 class="h-display h-display--lg" data-reveal style="margin-top:24px;">
+          Frequently asked <span class="accent-text">questions</span>.
+        </h2>
+      </div>
+
+      <div class="process__list" id="faqList" style="margin-top:56px;">
+        <div class="faq__item" data-reveal-stagger>
+          <button class="faq__q" data-cursor="hover">
+            <span class="faq__q-text">What is LIPRO AI?</span>
+            <span class="faq__q-icon"></span>
+          </button>
+          <div class="faq__a">
+            <div class="faq__a-inner">
+              <p class="faq__a-text">LIPRO AI is your intelligent academic assistant. It answers questions about your courses, generates quizzes and practice questions, analyzes your PDFs, and even performs deep research — all tailored to your university, faculty and department.</p>
+            </div>
+          </div>
+        </div>
+        <div class="faq__item" data-reveal-stagger>
+          <button class="faq__q" data-cursor="hover">
+            <span class="faq__q-text">How does the CBT Engine work?</span>
+            <span class="faq__q-icon"></span>
+          </button>
+          <div class="faq__a">
+            <div class="faq__a-inner">
+              <p class="faq__a-text">The CBT Engine simulates real computer-based tests. Practice Mode helps you learn with instant feedback, while Exam Mode mirrors a real timed exam with mixed question types and instant results when you finish.</p>
+            </div>
+          </div>
+        </div>
+        <div class="faq__item" data-reveal-stagger>
+          <button class="faq__q" data-cursor="hover">
+            <span class="faq__q-text">Which universities are supported?</span>
+            <span class="faq__q-icon"></span>
+          </button>
+          <div class="faq__a">
+            <div class="faq__a-inner">
+              <p class="faq__a-text">We currently support leading Nigerian universities including UNIOSUN, UNILAG, UI, OAU, FUTA, LASU and UNILORIN — and we&rsquo;re expanding to all Nigerian universities. If yours isn&rsquo;t listed yet, contact us and we&rsquo;ll add it.</p>
+            </div>
+          </div>
+        </div>
+        <div class="faq__item" data-reveal-stagger>
+          <button class="faq__q" data-cursor="hover">
+            <span class="faq__q-text">Can I upload PDFs?</span>
+            <span class="faq__q-icon"></span>
+          </button>
+          <div class="faq__a">
+            <div class="faq__a-inner">
+              <p class="faq__a-text">Yes. Upload your course PDFs and LIPRO AI will analyze them, extract key points, and generate summaries, revision guides, flashcards and practice questions from the content.</p>
+            </div>
+          </div>
+        </div>
+        <div class="faq__item" data-reveal-stagger>
+          <button class="faq__q" data-cursor="hover">
+            <span class="faq__q-text">Can I cancel my subscription anytime?</span>
+            <span class="faq__q-icon"></span>
+          </button>
+          <div class="faq__a">
+            <div class="faq__a-inner">
+              <p class="faq__a-text">Absolutely. Premium and Ultimate subscriptions can be cancelled anytime from your Wallet — no questions asked. You keep access until the end of your current billing period.</p>
+            </div>
+          </div>
+        </div>
+        <div class="faq__item" data-reveal-stagger>
+          <button class="faq__q" data-cursor="hover">
+            <span class="faq__q-text">Is my data secure?</span>
+            <span class="faq__q-icon"></span>
+          </button>
+          <div class="faq__a">
+            <div class="faq__a-inner">
+              <p class="faq__a-text">Yes. Your study data, documents and payment information are encrypted and stored securely. We never share your personal information with third parties.</p>
+            </div>
+          </div>
+        </div>
+        <div class="faq__item" data-reveal-stagger>
+          <button class="faq__q" data-cursor="hover">
+            <span class="faq__q-text">How do I upgrade?</span>
+            <span class="faq__q-icon"></span>
+          </button>
+          <div class="faq__a">
+            <div class="faq__a-inner">
+              <p class="faq__a-text">Head to the Pricing section, choose Premium or Ultimate, and follow the prompts. Payment is handled securely through your Wallet, and you can upgrade, downgrade or cancel anytime.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CONTACT -->
+  <section class="section section--pad" id="contact" style="border-top:1px solid var(--glass-border);">
+    <div class="contact">
+      <div class="contact__lead">
+        <span class="eyebrow" data-reveal><span class="dot"></span>Contact</span>
+        <h2 class="h-display h-display--lg" data-reveal style="margin-top:24px;">
+          Let&rsquo;s talk about <span class="accent-text">your grades</span>.
+        </h2>
+        <p class="body-copy" data-reveal style="margin-top:20px;">
+          Questions, feedback or a university you want supported? Reach us on any channel —
+          we usually reply fast.
+        </p>
+
+        <div class="contact__socials">
+          <a class="social-link" href="https://wa.me/2349160216396" target="_blank" rel="noopener" data-cursor="hover">
+            <span class="social-link__icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.5 8.5 0 0 1-12.4 7.5L3 21l2-5.6A8.5 8.5 0 1 1 21 11.5z"/><path d="M9 10h.01M15 10h.01M9 14c1.5 1.5 4.5 1.5 6 0"/></svg>
+            </span>
+            <div>
+              <div class="social-link__label">WhatsApp Support</div>
+              <div class="social-link__handle">Message &#120119;&#120110;&#120085;&#120082;&#120085; on WhatsApp</div>
+            </div>
+          </a>
+          <a class="social-link" href="mailto:liproacademy96@gmail.com" data-cursor="hover">
+            <span class="social-link__icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 7l9 6 9-6"/></svg>
+            </span>
+            <div>
+              <div class="social-link__label">Email Support</div>
+              <div class="social-link__handle">liproacademy96@gmail.com</div>
+            </div>
+          </a>
+          <a class="social-link" href="https://www.tiktok.com/@lipro512?is_from_webapp=1&sender_device=pc" target="_blank" rel="noopener" data-cursor="hover">
+            <span class="social-link__icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v11a3 3 0 1 1-3-3"/><path d="M14 7a6 6 0 0 0 5 3h1v4a6 6 0 0 1-6 6H9a6 6 0 0 1 0-12h1"/></svg>
+            </span>
+            <div>
+              <div class="social-link__label">TikTok</div>
+              <div class="social-link__handle">@lipro512</div>
+            </div>
+          </a>
+          <a class="social-link" href="https://linktr.ee/lipro512" target="_blank" rel="noopener" data-cursor="hover">
+            <span class="social-link__icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>
+            </span>
+            <div>
+              <div class="social-link__label">Linktree</div>
+              <div class="social-link__handle">LIPRO ACADEMY</div>
+            </div>
+          </a>
+        </div>
+      </div>
+
+      <div class="contact__form-wrap" data-reveal>
+        <h3 class="h-display h-display--md" style="margin-bottom:28px;">Send us a message</h3>
+        <form id="contactForm" novalidate>
+          <div class="field">
+            <label for="name">Full Name</label>
+            <input id="name" type="text" placeholder="e.g. Adaeze Okafor" required>
+          </div>
+          <div class="field">
+            <label for="email">Email Address</label>
+            <input id="email" type="email" placeholder="you@university.edu.ng" required>
+          </div>
+          <div class="field">
+            <label for="subject">Subject</label>
+            <input id="subject" type="text" placeholder="e.g. Add my university" required>
+          </div>
+          <div class="field">
+            <label for="message">Message</label>
+            <textarea id="message" placeholder="How can we help you?" required></textarea>
+          </div>
+          <button type="submit" class="btn btn--primary pricing__cta" data-cursor="hover">
+            <span class="btn__sheen"></span>
+            Send Message
+            <span class="btn__icon">&rarr;</span>
+          </button>
+          <div class="form-status" id="formStatus">Thanks for reaching out! We&rsquo;ll get back to you soon.</div>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer section">
+    <div class="footer__grid">
+      <div class="footer__brand">
+        <div class="logo">LIPRO<em>/ACADEMY</em></div>
+        <p>Empowering Nigerian university students with AI-powered learning.</p>
+        <div class="motto">Your Life In Progress.</div>
+      </div>
+      <div class="footer__col">
+        <h4>Company</h4>
+        <ul>
+          <li><a href="/about" data-cursor="hover">About Us</a></li>
+          <li><a href="#" data-cursor="hover">Careers</a></li>
+          <li><a href="#" data-cursor="hover">Blog</a></li>
+        </ul>
+      </div>
+      <div class="footer__col">
+        <h4>Product</h4>
+        <ul>
+          <li><a href="#features" data-cursor="hover">Features</a></li>
+          <li><a href="#pricing" data-cursor="hover">Pricing</a></li>
+          <li><a href="#features" data-cursor="hover">LIPRO AI</a></li>
+          <li><a href="#features" data-cursor="hover">CBT Engine</a></li>
+          <li><a href="#features" data-cursor="hover">Study Planner</a></li>
+        </ul>
+      </div>
+      <div class="footer__col">
+        <h4>Resources</h4>
+        <ul>
+          <li><a href="help-center.html" data-cursor="hover">Help Center</a></li>
+          <li><a href="documentation.html" data-cursor="hover">Documentation</a></li>
+          <li><a href="support.html" data-cursor="hover">Support</a></li>
+        </ul>
+      </div>
+      <div class="footer__col">
+        <h4>Legal</h4>
+        <ul>
+          <li><a href="/privacy" data-cursor="hover">Privacy Policy</a></li>
+          <li><a href="/terms" data-cursor="hover">Terms of Service</a></li>
+          <li><a href="cookie-policy.html" data-cursor="hover">Cookie Policy</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer__bottom">
+      <span>&copy; LIPRO ACADEMY. All Rights Reserved. &mdash; Your Life In Progress.</span>
+      <a href="#" class="footer__back" data-cursor="hover">
+        Back to top
+        <span class="up">&uarr;</span>
+      </a>
+    </div>
+  </footer>
+
+  <script>
+    gsap.registerPlugin(ScrollTrigger, ScrollToPlugin);
+
+    const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const isTouch = window.matchMedia('(hover: none), (pointer: coarse)').matches;
+
+    document.body.classList.add('custom-cursor');
+
+    /* =========================================================
+       CUSTOM CURSOR
+       ========================================================= */
+    if (!isTouch) {
+      const dot = document.querySelector('.cursor');
+      const ring = document.querySelector('.cursor-ring');
+      let ringX = window.innerWidth / 2, ringY = window.innerHeight / 2;
+      let mx = ringX, my = ringY;
+
+      gsap.set([dot, ring], { xPercent: -50, yPercent: -50, x: ringX, y: ringY });
+
+      window.addEventListener('pointermove', (e) => {
+        gsap.to(dot, { x: e.clientX, y: e.clientY, duration: 0.08, ease: 'power2.out', overwrite: 'auto' });
+        mx = e.clientX; my = e.clientY;
+      });
+
+      gsap.ticker.add(() => {
+        ringX += (mx - ringX) * 0.16;
+        ringY += (my - ringY) * 0.16;
+        gsap.set(ring, { x: ringX, y: ringY });
+      });
+
+      document.querySelectorAll('[data-cursor="hover"]').forEach((el) => {
+        el.addEventListener('pointerenter', () => ring.classList.add('is-hover'));
+        el.addEventListener('pointerleave', () => ring.classList.remove('is-hover'));
+      });
+    }
+
+    /* =========================================================
+       MAGNETIC BUTTONS
+       ========================================================= */
+    if (!isTouch && !prefersReduced) {
+      document.querySelectorAll('.btn, .footer__back, .nav__btn').forEach((el) => {
+        el.addEventListener('pointermove', (e) => {
+          const rect = el.getBoundingClientRect();
+          const relX = e.clientX - rect.left - rect.width / 2;
+          const relY = e.clientY - rect.top - rect.height / 2;
+          gsap.to(el, { x: relX * 0.22, y: relY * 0.28, duration: 0.5, ease: 'power3.out' });
+        });
+        el.addEventListener('pointerleave', () => {
+          gsap.to(el, { x: 0, y: 0, duration: 0.7, ease: 'elastic.out(1, 0.45)' });
+        });
+      });
+    }
+
+    /* =========================================================
+       SMOOTH ANCHOR SCROLL
+       ========================================================= */
+    document.querySelectorAll('a[href^="#"]').forEach((a) => {
+      const href = a.getAttribute('href');
+      if (!href || href.length <= 1) return;
+      a.addEventListener('click', (e) => {
+        const target = document.querySelector(href);
+        if (!target) return;
+        if (prefersReduced) return;
+        e.preventDefault();
+        gsap.to(window, {
+          scrollTo: { y: target, offsetY: 70 },
+          duration: 1.2,
+          ease: 'power3.inOut'
+        });
+      });
+    });
+
+    /* =========================================================
+       PRELOADER
+       ========================================================= */
+    const preloader = document.getElementById('preloader');
+    const counterEl = preloader.querySelector('.num');
+    const fillEl = document.getElementById('preloaderFill');
+    const preloaderTl = gsap.timeline();
+    const counter = { val: 0 };
+
+    preloaderTl.to(counter, {
+      val: 100,
+      duration: 1.6,
+      ease: 'power2.inOut',
+      onUpdate() {
+        counterEl.textContent = String(Math.round(counter.val)).padStart(2, '0');
+        fillEl.style.width = counter.val + '%';
+      }
+    });
+
+    preloaderTl.fromTo('.preloader__logo span',
+      { y: 120, opacity: 0 },
+      { y: 0, opacity: 1, stagger: 0.08, duration: 0.9, ease: 'expo.out' },
+      '-=1.2'
+    );
+
+    preloaderTl.to('.preloader__inner', {
+      y: -40, opacity: 0, duration: 0.6, ease: 'power2.in'
+    }, '+=0.2');
+
+    preloaderTl.to(preloader, {
+      clipPath: 'inset(0 0 100% 0)', duration: 0.9, ease: 'expo.inOut'
+    }, '<');
+
+    preloaderTl.set(preloader, { display: 'none' });
+
+    /* =========================================================
+       HERO ENTRANCE
+       ========================================================= */
+    const heroTl = gsap.timeline({ paused: true });
+    heroTl.from('.hero__topline .eyebrow', { opacity: 0, y: 20, duration: 0.6, ease: 'power3.out' })
+      .from('.hero__badge', { opacity: 0, scale: 0.6, rotation: -30, duration: 1, ease: 'back.out(1.4)' }, '-=0.4')
+      .from('.hero__title .line-mask > span', {
+        yPercent: 120, duration: 1.1, ease: 'expo.out', stagger: 0.12
+      }, '-=0.5')
+      .from('.hero__sub', { opacity: 0, y: 30, duration: 0.8, ease: 'power3.out' }, '-=0.5')
+      .from('.hero__scroll', { opacity: 0, duration: 0.6, ease: 'power2.out' }, '-=0.3');
+
+    /* =========================================================
+       ROTATING BADGE
+       ========================================================= */
+    gsap.to('.hero__badge-svg', {
+      rotation: 360, duration: 22, repeat: -1, ease: 'none', transformOrigin: '50% 50%'
+    });
+
+    /* =========================================================
+       MARQUEE — infinite
+       ========================================================= */
+    gsap.to('#marqueeTrack', {
+      xPercent: -50, duration: 26, ease: 'none', repeat: -1
+    });
+
+    /* =========================================================
+       SCROLL REVEALS
+       ========================================================= */
+    function revealUp(target) {
+      gsap.fromTo(target,
+        { y: 56, opacity: 0 },
+        {
+          y: 0, opacity: 1, duration: 1, ease: 'power3.out',
+          scrollTrigger: { trigger: target, start: 'top 85%', once: true }
+        });
+    }
+    document.querySelectorAll('[data-reveal]').forEach(revealUp);
+
+    ScrollTrigger.batch('[data-reveal-stagger]', {
+      start: 'top 88%',
+      once: true,
+      onEnter: (els) => gsap.fromTo(els,
+        { y: 46, opacity: 0 },
+        { y: 0, opacity: 1, stagger: 0.08, duration: 0.8, ease: 'power3.out' })
+    });
+
+    /* =========================================================
+       FEATURES — horizontal scroll
+       ========================================================= */
+    const featuresPanel = document.getElementById('featuresPanel');
+    const featuresTrack = document.getElementById('featuresTrack');
+    const progressFill = document.getElementById('progressFill');
+    const progressStart = document.getElementById('progressStart');
+
+    const getX = () => Math.max(0, featuresTrack.scrollWidth - window.innerWidth);
+
+    gsap.to(featuresTrack, {
+      x: getX,
+      ease: 'none',
+      scrollTrigger: {
+        trigger: featuresPanel,
+        start: 'top top',
+        end: () => '+=' + getX(),
+        scrub: 1,
+        pin: true,
+        anticipatePin: 1,
+        invalidateOnRefresh: true,
+        onUpdate(self) {
+          const p = self.progress;
+          progressFill.style.width = (p * 100) + '%';
+          progressStart.textContent = String(Math.min(6, Math.floor(p * 6) + 1)).padStart(2, '0');
+        }
+      }
+    });
+
+    /* =========================================================
+       HOW IT WORKS — line draw on scroll
+       ========================================================= */
+    document.querySelectorAll('.process__fill').forEach((line) => {
+      gsap.fromTo(line, { scaleX: 0 }, {
+        scaleX: 1, ease: 'none',
+        scrollTrigger: {
+          trigger: line.parentElement, start: 'top 70%', end: 'bottom 60%', scrub: 0.5
+        }
+      });
+    });
+    document.querySelectorAll('.process__item').forEach((item) => {
+      gsap.fromTo(item,
+        { y: 36, opacity: 0 },
+        {
+          y: 0, opacity: 1, duration: 0.9, ease: 'power3.out',
+          scrollTrigger: { trigger: item, start: 'top 88%', once: true }
+        });
+    });
+
+    /* =========================================================
+       NAV MENU
+       ========================================================= */
+    const nav = document.getElementById('nav');
+    const menu = document.getElementById('menu');
+    const burger = document.getElementById('burger');
+    const menuLinks = menu.querySelectorAll('.menu__link');
+    let menuOpen = false;
+    let menuTl = null;
+
+    function openMenu() {
+      if (menuOpen) return;
+      menuOpen = true;
+      nav.classList.add('is-open');
+      menu.classList.add('is-open');
+      menuTl = gsap.timeline();
+      menuTl.to(menu, {
+        clipPath: 'inset(0 0 0% 0)', duration: 0.8, ease: 'expo.inOut'
+      });
+      menuTl.fromTo(menuLinks,
+        { yPercent: 120, opacity: 0 },
+        { yPercent: 0, opacity: 1, stagger: 0.07, duration: 0.8, ease: 'expo.out' },
+        '-=0.3'
+      );
+      menuTl.fromTo('.menu__foot', { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, '-=0.4');
+    }
+
+    function closeMenu() {
+      if (!menuOpen) return;
+      menuOpen = false;
+      nav.classList.remove('is-open');
+      if (menuTl) menuTl.kill();
+      gsap.to(menuLinks, { yPercent: 120, opacity: 0, duration: 0.3, ease: 'power2.in' });
+      gsap.to(menu, {
+        clipPath: 'inset(0 0 100% 0)', duration: 0.6, ease: 'expo.inOut',
+        onComplete() { menu.classList.remove('is-open'); }
+      });
+    }
+
+    burger.addEventListener('click', () => menuOpen ? closeMenu() : openMenu());
+    menuLinks.forEach((link) => link.addEventListener('click', closeMenu));
+    window.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMenu(); });
+
+    /* =========================================================
+       FAQ ACCORDION
+       ========================================================= */
+    document.querySelectorAll('.faq__q').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const item = btn.closest('.faq__item');
+        const wasOpen = item.classList.contains('open');
+        document.querySelectorAll('.faq__item.open').forEach((i) => i.classList.remove('open'));
+        if (!wasOpen) item.classList.add('open');
+      });
+    });
+
+    /* =========================================================
+       CONTACT FORM
+       ========================================================= */
+    const contactForm = document.getElementById('contactForm');
+    const formStatus = document.getElementById('formStatus');
+    contactForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      formStatus.style.display = 'block';
+      gsap.fromTo(formStatus, { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.6, ease: 'power3.out' });
+      contactForm.reset();
+    });
+
+    /* =========================================================
+       FOOTER back-to-top
+       ========================================================= */
+    document.querySelector('.footer__back').addEventListener('click', (e) => {
+      e.preventDefault();
+      gsap.to(window, { scrollTo: 0, duration: 1.2, ease: 'power2.inOut' });
+    });
+
+    /* =========================================================
+       START
+       ========================================================= */
+    heroTl.play();
+    preloaderTl.eventCallback('onComplete', () => {
+      gsap.delayedCall(0.1, () => ScrollTrigger.refresh());
+    });
+
+    window.__motionInit = true;
+  </script>
+
+  <!-- FAILSAFE: never let the preloader trap the page -->
+  <script>
+    (function () {
+      function forceReveal() {
+        var p = document.getElementById('preloader');
+        if (p) {
+          p.style.display = 'none';
+          p.style.clipPath = 'none';
+        }
+      }
+      window.addEventListener('DOMContentLoaded', function () {
+        setTimeout(function () {
+          if (!window.__motionInit) forceReveal();
+        }, 4500);
+        window.addEventListener('error', forceReveal);
+      });
+      setTimeout(function () {
+        if (!window.__motionInit) forceReveal();
+      }, 5000);
+    })();
+  </script>
+</body>
+</html>

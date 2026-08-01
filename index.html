@@ -1,0 +1,1594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LIPRO ACADEMY — Your Life In Progress</title>
+  <meta name="description" content="Master your courses with LIPRO AI. Intelligent CBT practice, study materials, PDF analysis, and academic excellence in one premium platform.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Cabinet+Grotesk:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12/dist/ScrollTrigger.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <style>
+    :root {
+      --bg: #030712;
+      --bg-elevated: #0B1020;
+      --bg-purple: #2E1065;
+      --bg-violet: #5B21B6;
+      --fg: #FFFFFF;
+      --fg-muted: #D1D5DB;
+      --fg-subtle: #9CA3AF;
+      --accent: #EC4899;
+      --accent-dim: #DB2777;
+      --accent-glow: rgba(236, 72, 153, 0.15);
+      --accent-glow-strong: rgba(255, 79, 216, 0.25);
+      --card: rgba(255, 255, 255, 0.05);
+      --border: rgba(255, 255, 255, 0.06);
+      --border-hover: rgba(255, 255, 255, 0.12);
+
+      --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+      --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+
+      --font-display: 'Cabinet Grotesk', sans-serif;
+      --font-body: 'Geist', sans-serif;
+
+      --container: 1280px;
+      --space-sm: 8px;
+      --space-md: 16px;
+      --space-lg: 24px;
+      --space-xl: 48px;
+      --space-2xl: 96px;
+      --space-3xl: 144px;
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #fdf2f8;
+        --bg-elevated: #ffffff;
+        --fg: #050816;
+        --fg-muted: #6b6b66;
+        --fg-subtle: #9ca3af;
+        --accent: #DB2777;
+        --accent-dim: #BE185D;
+        --accent-glow: rgba(219, 39, 119, 0.12);
+        --accent-glow-strong: rgba(255, 79, 216, 0.18);
+        --card: #ffffff;
+        --border: #fce7f3;
+        --border-hover: #fbcfe8;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font-body);
+      background:
+        radial-gradient(ellipse 80% 60% at 20% 10%, rgba(236, 72, 153, 0.06) 0%, transparent 50%),
+        radial-gradient(ellipse 60% 50% at 80% 80%, rgba(46, 16, 101, 0.08) 0%, transparent 50%),
+        radial-gradient(ellipse 50% 40% at 50% 50%, rgba(5, 8, 22, 0.4) 0%, transparent 70%),
+        var(--bg);
+      background-attachment: fixed;
+      color: var(--fg);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    .noise-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      pointer-events: none;
+      opacity: 0.025;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    }
+
+    .container {
+      max-width: var(--container);
+      margin: 0 auto;
+      padding: 0 var(--space-lg);
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+      font-family: var(--font-display);
+      font-weight: 700;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+    }
+
+    .text-accent { color: var(--accent); }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-sm);
+      font-family: var(--font-body);
+      font-size: 14px;
+      font-weight: 500;
+      letter-spacing: 0.01em;
+      padding: 14px 28px;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      text-decoration: none;
+      position: relative;
+      overflow: hidden;
+      transition: transform 160ms var(--ease-out), box-shadow 160ms var(--ease-out);
+    }
+
+    .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+    .btn:active { transform: scale(0.97); }
+
+    .btn-primary { background: var(--accent); color: #fff; }
+    @media (hover: hover) and (pointer: fine) {
+      .btn-primary:hover {
+        background: var(--accent-dim);
+        transform: translateY(-2px);
+        box-shadow: 0 12px 32px rgba(0,0,0,0.3);
+      }
+    }
+
+    .btn-secondary {
+      background: var(--card);
+      color: var(--fg);
+      border: 1px solid var(--border);
+    }
+    @media (hover: hover) and (pointer: fine) {
+      .btn-secondary:hover {
+        border-color: var(--border-hover);
+        background: var(--bg-elevated);
+        transform: translateY(-2px);
+      }
+    }
+
+    header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      padding: var(--space-md) 0;
+      background:
+        radial-gradient(ellipse 50% 100% at 50% 0%, rgba(236, 72, 153, 0.05) 0%, transparent 50%),
+        rgba(11, 16, 32, 0.85);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      transition: background 300ms var(--ease-out), border-color 300ms var(--ease-out);
+    }
+
+    @media (prefers-color-scheme: light) {
+      header { background: rgba(246,245,243,0.85); }
+    }
+
+    .header-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      font-family: var(--font-display);
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: var(--fg);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo-mark {
+      width: 28px;
+      height: 28px;
+      background: var(--accent);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .nav { display: none; align-items: center; gap: 28px; }
+    @media (min-width: 768px) { .nav { display: flex; } }
+
+    .nav a {
+      color: var(--fg-muted);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      transition: color 200ms var(--ease-out);
+    }
+    @media (hover: hover) and (pointer: fine) { .nav a:hover { color: var(--fg); } }
+
+    .hero {
+      min-height: 100dvh;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      position: relative;
+      overflow: hidden;
+      padding-top: 72px;
+    }
+
+    @media (max-width: 768px) {
+      .hero { grid-template-columns: 1fr; min-height: auto; }
+    }
+
+    .hero-content {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: var(--space-xl) var(--space-xl) var(--space-2xl);
+      max-width: 600px;
+    }
+
+    @media (max-width: 768px) {
+      .hero-content { padding: var(--space-xl) var(--space-lg) var(--space-xl); }
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-sm);
+      padding: 7px 14px;
+      background: linear-gradient(135deg, #FF4FD8, #EC4899);
+      border: 1px solid rgba(255, 79, 216, 0.3);
+      border-radius: 100px;
+      font-size: 12px;
+      font-weight: 500;
+      color: white;
+      margin-bottom: var(--space-xl);
+      width: fit-content;
+      box-shadow: 0 0 20px rgba(255, 79, 216, 0.3);
+    }
+
+    .hero h1 {
+      font-size: clamp(40px, 5vw, 64px);
+      font-weight: 800;
+      line-height: 1.05;
+      letter-spacing: -0.04em;
+      margin-bottom: var(--space-lg);
+    }
+
+    .hero h1 .highlight { color: #FF4FD8; }
+
+    .hero p {
+      font-size: clamp(15px, 1.3vw, 18px);
+      color: var(--fg-muted);
+      line-height: 1.7;
+      margin-bottom: var(--space-xl);
+      max-width: 500px;
+    }
+
+    .hero-features {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: var(--space-md);
+      margin-bottom: var(--space-2xl);
+      max-width: 500px;
+    }
+
+    .hero-feature {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      padding: var(--space-sm) var(--space-md);
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-size: 13px;
+      color: var(--fg);
+      transition: border-color 200ms var(--ease-out), transform 200ms var(--ease-out);
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+      .hero-feature:hover {
+        border-color: var(--accent);
+        transform: translateY(-2px);
+      }
+    }
+
+    .hero-feature::before {
+      content: '✓';
+      color: var(--accent);
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .motto {
+      font-family: var(--font-display);
+      font-size: 15px;
+      font-weight: 600;
+      color: #FF4FD8;
+      letter-spacing: 0.05em;
+      margin-bottom: var(--space-lg);
+      text-shadow: 0 0 20px rgba(255, 79, 216, 0.5);
+    }
+
+    .hero-visual {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background:
+        radial-gradient(ellipse 60% 50% at 50% 50%, rgba(236, 72, 153, 0.12) 0%, transparent 70%),
+        radial-gradient(ellipse 40% 30% at 30% 40%, rgba(91, 33, 182, 0.1) 0%, transparent 50%),
+        radial-gradient(ellipse 40% 30% at 70% 60%, rgba(255, 79, 216, 0.08) 0%, transparent 50%),
+        linear-gradient(135deg, var(--bg-elevated), var(--bg));
+      overflow: hidden;
+    }
+
+    @media (max-width: 768px) {
+      .hero-visual { min-height: 400px; order: -1; }
+    }
+
+    .three-container {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+    }
+
+    .mesh-bg {
+      position: absolute;
+      inset: 0;
+      opacity: 0.3;
+      z-index: 0;
+      background:
+        radial-gradient(ellipse 50% 40% at 30% 30%, rgba(236, 72, 153, 0.18) 0%, transparent 60%),
+        radial-gradient(ellipse 40% 50% at 70% 70%, rgba(91, 33, 182, 0.12) 0%, transparent 50%),
+        radial-gradient(ellipse 60% 30% at 50% 20%, rgba(255, 79, 216, 0.08) 0%, transparent 50%),
+        radial-gradient(ellipse 30% 40% at 80% 50%, rgba(46, 16, 101, 0.15) 0%, transparent 50%);
+    }
+
+    section { padding: var(--space-3xl) 0; }
+
+    .section-header { margin-bottom: var(--space-2xl); max-width: 640px; }
+    .section-label {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: var(--accent);
+      margin-bottom: var(--space-md);
+    }
+
+    .section-header h2 {
+      font-size: clamp(28px, 3.5vw, 44px);
+      font-weight: 800;
+      line-height: 1.15;
+      margin-bottom: var(--space-md);
+    }
+
+    .section-header p {
+      font-size: 16px;
+      color: var(--fg-muted);
+      line-height: 1.7;
+      max-width: 520px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: var(--space-lg);
+    }
+
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: var(--space-lg);
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: var(--space-xl);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      transition: border-color 300ms var(--ease-out), transform 300ms var(--ease-out), box-shadow 300ms var(--ease-out);
+      position: relative;
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+      .card:hover {
+        border-color: var(--border-hover);
+        transform: translateY(-3px);
+        box-shadow: 0 8px 32px rgba(236, 72, 153, 0.08), 0 0 0 1px rgba(236, 72, 153, 0.06);
+      }
+    }
+
+    .card h3 {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: var(--space-sm);
+    }
+
+    .card p {
+      color: var(--fg-muted);
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: var(--space-lg);
+    }
+
+    .feature-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: var(--space-lg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      transition: border-color 300ms var(--ease-out), transform 300ms var(--ease-out), box-shadow 300ms var(--ease-out);
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+      .feature-card:hover {
+        border-color: var(--border-hover);
+        transform: translateY(-3px);
+        box-shadow: 0 8px 32px rgba(236, 72, 153, 0.08), 0 0 0 1px rgba(236, 72, 153, 0.06);
+      }
+    }
+
+    .feature-icon {
+      width: 40px;
+      height: 40px;
+      background: var(--accent-glow);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: var(--space-md);
+      font-size: 18px;
+    }
+
+    .feature-card h3 {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: var(--space-sm);
+    }
+
+    .feature-card p {
+      color: var(--fg-muted);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .feature-sublist {
+      list-style: none;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: var(--space-sm);
+    }
+
+    .feature-sublist li {
+      font-size: 12px;
+      padding: 4px 10px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      color: var(--fg-muted);
+    }
+
+    .uni-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-md);
+      justify-content: center;
+    }
+
+    .uni-badge {
+      padding: 10px 20px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--fg-muted);
+      transition: border-color 200ms var(--ease-out), color 200ms var(--ease-out), box-shadow 200ms var(--ease-out);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+      .uni-badge:hover {
+        border-color: var(--accent);
+        color: var(--fg);
+        box-shadow: 0 0 12px rgba(236, 72, 153, 0.15);
+      }
+    }
+
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: var(--space-xl);
+    }
+
+    .step {
+      position: relative;
+      padding-top: 50px;
+    }
+
+    .step-num {
+      position: absolute;
+      top: 0;
+      left: 0;
+      font-family: var(--font-display);
+      font-size: 40px;
+      font-weight: 800;
+      color: var(--accent);
+      opacity: 0.2;
+      line-height: 1;
+      transition: opacity 300ms var(--ease-out), transform 300ms var(--ease-out);
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+      .step:hover .step-num { opacity: 0.6; transform: translateX(4px); }
+    }
+
+    .step h3 {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: var(--space-sm);
+      position: relative;
+    }
+
+    .step p {
+      color: var(--fg-muted);
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: var(--space-lg);
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    .pricing-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: var(--space-xl);
+      position: relative;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      transition: border-color 300ms var(--ease-out), transform 300ms var(--ease-out), box-shadow 300ms var(--ease-out);
+    }
+
+    .pricing-card.featured {
+      border-color: var(--accent);
+      background: linear-gradient(135deg, var(--card), rgba(236, 72, 153, 0.08));
+      box-shadow: 0 0 40px rgba(236, 72, 153, 0.08);
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+      .pricing-card:hover { transform: translateY(-4px); border-color: var(--border-hover); box-shadow: 0 8px 32px rgba(236, 72, 153, 0.06); }
+      .pricing-card.featured:hover { border-color: var(--accent); box-shadow: 0 0 60px rgba(236, 72, 153, 0.12); }
+    }
+
+    .pricing-card .plan {
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--fg-subtle);
+      margin-bottom: var(--space-md);
+    }
+
+    .pricing-card .price {
+      font-family: var(--font-display);
+      font-size: 36px;
+      font-weight: 800;
+      color: var(--fg);
+      margin-bottom: 4px;
+    }
+
+    .pricing-card .price span {
+      font-size: 16px;
+      font-weight: 500;
+      color: var(--fg-subtle);
+    }
+
+    .pricing-card .period {
+      font-size: 13px;
+      color: var(--fg-subtle);
+      margin-bottom: var(--space-xl);
+    }
+
+    .pricing-card .btn { width: 100%; }
+
+    .pricing-features {
+      list-style: none;
+      margin-bottom: var(--space-xl);
+    }
+
+    .pricing-features li {
+      padding: 8px 0;
+      font-size: 14px;
+      color: var(--fg-muted);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+    }
+
+    .pricing-features li::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      background: var(--accent);
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .faq-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-lg);
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    @media (max-width: 768px) {
+      .faq-grid { grid-template-columns: 1fr; }
+    }
+
+    .faq-item {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: var(--space-lg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      transition: border-color 300ms var(--ease-out), box-shadow 300ms var(--ease-out);
+    }
+
+    .faq-item h4 {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: var(--space-sm);
+    }
+
+    .faq-item p {
+      font-size: 13px;
+      color: var(--fg-muted);
+      line-height: 1.7;
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+      .faq-item:hover {
+        border-color: var(--border-hover);
+        box-shadow: 0 4px 20px rgba(236, 72, 153, 0.06);
+      }
+    }
+
+    .contact-section {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-2xl);
+    }
+
+    @media (max-width: 768px) {
+      .contact-section { grid-template-columns: 1fr; }
+    }
+
+    .social-links {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-lg);
+    }
+
+    .social-item {
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+      padding: var(--space-md) var(--space-lg);
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      text-decoration: none;
+      transition: border-color 200ms var(--ease-out), transform 200ms var(--ease-out), box-shadow 200ms var(--ease-out);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+      .social-item:hover {
+        border-color: var(--accent);
+        transform: translateX(4px);
+        box-shadow: 0 8px 32px rgba(236, 72, 153, 0.08), 0 0 0 1px rgba(236, 72, 153, 0.06);
+      }
+    }
+
+    .social-item .label {
+      font-size: 12px;
+      color: var(--fg-subtle);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .social-item .handle {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--fg);
+    }
+
+    .contact-form {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-md);
+    }
+
+    .contact-form input,
+    .contact-form textarea {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+      font-family: var(--font-body);
+      font-size: 14px;
+      color: var(--fg);
+      transition: border-color 200ms var(--ease-out);
+    }
+
+    .contact-form input:focus,
+    .contact-form textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .contact-form textarea {
+      min-height: 120px;
+      resize: vertical;
+    }
+
+    footer {
+      background:
+        radial-gradient(ellipse 60% 50% at 20% 0%, rgba(46, 16, 101, 0.1) 0%, transparent 50%),
+        radial-gradient(ellipse 40% 40% at 80% 100%, rgba(236, 72, 153, 0.06) 0%, transparent 50%),
+        var(--bg-elevated);
+      border-top: 1px solid var(--border);
+      padding: var(--space-2xl) 0 var(--space-xl);
+    }
+
+    .footer-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
+      gap: var(--space-xl);
+      margin-bottom: var(--space-2xl);
+    }
+
+    @media (max-width: 900px) {
+      .footer-grid { grid-template-columns: 1fr 1fr; }
+    }
+
+    .footer-brand p {
+      color: var(--fg-muted);
+      margin-top: var(--space-md);
+      font-size: 13px;
+      line-height: 1.7;
+      max-width: 240px;
+    }
+
+    .footer-column h4 {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--fg-subtle);
+      margin-bottom: var(--space-lg);
+    }
+
+    .footer-column ul {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-sm);
+    }
+
+    .footer-column a {
+      color: var(--fg-muted);
+      text-decoration: none;
+      font-size: 13px;
+      transition: color 200ms var(--ease-out);
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+      .footer-column a:hover { color: var(--fg); }
+    }
+
+    .footer-bottom {
+      padding-top: var(--space-xl);
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-md);
+      flex-wrap: wrap;
+    }
+
+    .footer-bottom p { font-size: 12px; color: var(--fg-subtle); }
+
+    .mobile-menu-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 44px;
+      height: 44px;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      padding: 0;
+    }
+
+    @media (min-width: 768px) { .mobile-menu-btn { display: none; } }
+
+    .hamburger {
+      position: relative;
+      width: 20px;
+      height: 1.5px;
+      background: var(--fg);
+      border-radius: 2px;
+      transition: background 200ms var(--ease-out);
+    }
+
+    .hamburger::before,
+    .hamburger::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      width: 100%;
+      height: 1.5px;
+      background: var(--fg);
+      border-radius: 2px;
+      transition: transform 300ms var(--ease-out);
+    }
+
+    .hamburger::before { top: -6px; }
+    .hamburger::after { bottom: -6px; }
+
+    .mobile-menu-btn[aria-expanded="true"] .hamburger { background: transparent; }
+    .mobile-menu-btn[aria-expanded="true"] .hamburger::before { transform: translateY(6px) rotate(45deg); }
+    .mobile-menu-btn[aria-expanded="true"] .hamburger::after { transform: translateY(-6px) rotate(-45deg); }
+
+    .mobile-nav {
+      position: fixed;
+      top: 0; right: 0; bottom: 0;
+      width: 100%;
+      max-width: 320px;
+      background:
+        radial-gradient(ellipse 50% 50% at 0% 50%, rgba(236, 72, 153, 0.08) 0%, transparent 50%),
+        var(--bg-elevated);
+      border-left: 1px solid var(--border);
+      padding: 100px var(--space-xl) var(--space-xl);
+      transform: translateX(100%);
+      transition: transform 350ms var(--ease-out);
+      z-index: 200;
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-lg);
+    }
+
+    .mobile-nav.open { transform: translateX(0); }
+    .mobile-nav a {
+      font-size: 18px;
+      font-weight: 500;
+      color: var(--fg);
+      text-decoration: none;
+      padding: var(--space-sm) 0;
+    }
+
+    .mobile-nav .btn { width: 100%; margin-top: var(--space-lg); }
+
+    .mobile-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 300ms var(--ease-out), visibility 300ms var(--ease-out);
+      z-index: 150;
+    }
+
+    .mobile-overlay.visible { opacity: 1; visibility: visible; }
+
+    ::selection { background: var(--accent); color: #fff; }
+    *:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  </style>
+</head>
+<body>
+  <div class="noise-overlay" aria-hidden="true"></div>
+
+  <header id="header">
+    <div class="container header-inner">
+      <a href="#" class="logo" aria-label="LIPRO ACADEMY Home">
+        <span class="logo-mark">L</span>
+        LIPRO ACADEMY
+      </a>
+
+      <nav class="nav" aria-label="Main navigation">
+        <a href="#features">Features</a>
+        <a href="#universities">Universities</a>
+        <a href="#pricing">Pricing</a>
+        <a href="#faq">FAQ</a>
+        <a href="#contact">Contact</a>
+      </nav>
+
+<div class="header-actions" style="display:flex;align-items:center;gap:var(--space-md);">
+  <a href="#" class="btn btn-primary">Get Started</a>
+  <a href="#contact" class="faq-item" style="margin-left: var(--space-sm);display:flex;align-items:center;gap:var(--space-sm);height:40px;padding-left:12px;padding-right:12px;">
+    <div class="faq-icon">C</div>
+    <span class="faq-text">Contact</span>
+  </a>
+  <button class="mobile-menu-btn" aria-expanded="false" aria-controls="mobile-nav" aria-label="Toggle menu">
+    <span class="hamburger" aria-hidden="true"></span>
+  </button>
+</div>
+    </div>
+  </header>
+
+  <div class="mobile-overlay" id="mobile-overlay" aria-hidden="true"></div>
+  <nav class="mobile-nav" id="mobile-nav" aria-label="Mobile navigation">
+    <a href="#features">Features</a>
+    <a href="#universities">Universities</a>
+    <a href="#pricing">Pricing</a>
+    <a href="#faq">FAQ</a>
+    <a href="#contact">Contact</a>
+    <a href="#" class="btn btn-primary">Get Started</a>
+  </nav>
+
+  <main>
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-content">
+        <div class="hero-badge">
+          <span>LIPRO ACADEMY</span>
+        </div>
+        <h1 id="hero-title">
+          The Future of University Learning <span class="highlight">Starts Here.</span>
+        </h1>
+        <p>
+          Study smarter, practice with interactive CBT exams, organize your course materials, track your academic progress, and achieve excellence—all in one premium learning platform.
+        </p>
+        <div class="hero-features">
+          <div class="hero-feature">AI study assistant</div>
+          <div class="hero-feature">Smart CBT exams</div>
+          <div class="hero-feature">Study planner</div>
+          <div class="hero-feature">PDF analysis</div>
+          <div class="hero-feature">Performance tracking</div>
+          <div class="hero-feature">University-specific content</div>
+        </div>
+        <div class="motto">Your Life In Progress.</div>
+        <div class="hero-actions">
+          <a href="#" class="btn btn-primary">Start Free Trial</a>
+          <a href="#features" class="btn btn-secondary">Explore Features</a>
+        </div>
+      </div>
+
+      <div class="hero-visual" aria-hidden="true">
+        <div class="mesh-bg"></div>
+        <div id="three-container" class="three-container"></div>
+      </div>
+    </section>
+
+    <section id="universities" class="universities" aria-labelledby="universities-title">
+      <div class="container">
+        <header class="section-header" style="text-align:center;margin:0 auto var(--space-2xl);">
+          <span class="section-label">Trusted Universities</span>
+          <h2 id="universities-title">Supported <span class="text-accent">Nigerian Universities</span></h2>
+          <p style="margin:0 auto;">We support students from leading Nigerian universities with university-specific content.</p>
+        </header>
+
+        <div class="uni-grid">
+          <span class="uni-badge">Osun State University (UNIOSUN)</span>
+          <span class="uni-badge">University of Lagos (UNILAG)</span>
+          <span class="uni-badge">University of Ibadan (UI)</span>
+          <span class="uni-badge">Obafemi Awolowo University (OAU)</span>
+          <span class="uni-badge">Federal University of Technology Akure (FUTA)</span>
+          <span class="uni-badge">Lagos State University (LASU)</span>
+          <span class="uni-badge">University of Ilorin (UNILORIN)</span>
+        </div>
+        <p style="text-align:center;margin-top:var(--space-lg);color:var(--fg-subtle);font-size:13px;">Expandable to all Nigerian universities.</p>
+      </div>
+    </section>
+
+<section id="features" class="features" aria-labelledby="features-title" 
+    style="background:linear-gradient(180deg, var(--bg-elevated) 0%, var(--bg) 100%);border-top:1px solid var(--border);border-bottom:1px solid var(--border);">
+      <div class="container">
+        <header class="section-header">
+          <span class="section-label">Features</span>
+          <h2 id="features-title">Everything you need to <span class="text-accent">excel</span></h2>
+          <p>Study smarter, practice with interactive CBT exams, organize your course materials, track your academic progress, and achieve excellence—all in one premium platform.</p>
+        </header>
+
+        <div class="feature-grid">
+          <div class="feature-card">
+            <div class="feature-icon">AI</div>
+            <h3>LIPRO AI</h3>
+            <p>AI Chat Assistant, PDF Intelligence, Revision Guides, Flashcards, Deep Research, AI Quiz Generation, Study Assistant.</p>
+            <ul class="feature-sublist">
+              <li>AI Chat</li><li>PDF Analysis</li><li>Flashcards</li><li>Deep Research</li><li>Quiz Gen</li>
+            </ul>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-icon">CB</div>
+            <h3>CBT Engine</h3>
+            <p>Practice Mode, Exam Mode, Mixed Question Types, Instant Results, AI Question Generation for realistic exam preparation.</p>
+            <ul class="feature-sublist">
+              <li>Practice Mode</li><li>Exam Mode</li><li>Instant Results</li><li>AI Questions</li>
+            </ul>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-icon">CM</div>
+            <h3>Course Management</h3>
+            <p>Organize your courses, notes, PDFs, outlines, and videos in one place. University-specific content tailored to your curriculum.</p>
+            <ul class="feature-sublist">
+              <li>Courses</li><li>Notes</li><li>PDFs</li><li>Outlines</li><li>Videos</li>
+            </ul>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-icon">SP</div>
+            <h3>Study Planner</h3>
+            <p>Daily and weekly planners, study goals, exam countdown. Stay on track with personalized study schedules.</p>
+            <ul class="feature-sublist">
+              <li>Daily Planner</li><li>Weekly Planner</li><li>Goals</li><li>Countdown</li>
+            </ul>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-icon">AN</div>
+            <h3>Analytics</h3>
+            <p>Track your performance, study time, progress reports, and weak topic detection to focus on what matters.</p>
+            <ul class="feature-sublist">
+              <li>Performance</li><li>Study Time</li><li>Reports</li><li>Weak Topics</li>
+            </ul>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-icon">LB</div>
+            <h3>Leaderboard</h3>
+            <p>Compete with peers in Department, Faculty, and University rankings. Unlock achievements as you progress.</p>
+            <ul class="feature-sublist">
+              <li>Department</li><li>Faculty</li><li>University</li><li>Achievements</li>
+            </ul>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-icon">WA</div>
+            <h3>Wallet</h3>
+            <p>Manage subscriptions, check wallet balance, and view payment history seamlessly.</p>
+            <ul class="feature-sublist">
+              <li>Subscription</li><li>Balance</li><li>History</li>
+            </ul>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-icon">NO</div>
+            <h3>Notifications</h3>
+            <p>AI recommendations, course updates, exam reminders, and subscription alerts to keep you informed.</p>
+            <ul class="feature-sublist">
+              <li>AI Recs</li><li>Updates</li><li>Reminders</li><li>Alerts</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="how-it-works" aria-labelledby="how-title">
+      <div class="container">
+        <header class="section-header">
+          <span class="section-label">How It Works</span>
+          <h2 id="how-title">Start your journey in <span class="text-accent">8 simple steps</span></h2>
+          <p>From creating your account to improving your grades—we guide you every step of the way.</p>
+        </header>
+
+        <div class="steps">
+          <div class="step">
+            <div class="step-num">01</div>
+            <h3>Create Account</h3>
+            <p>Sign up and set up your profile in seconds.</p>
+          </div>
+          <div class="step">
+            <div class="step-num">02</div>
+            <h3>Select University</h3>
+            <p>Choose your institution from our supported list.</p>
+          </div>
+          <div class="step">
+            <div class="step-num">03</div>
+            <h3>Choose Department</h3>
+            <p>Pick your Faculty and Department for tailored content.</p>
+          </div>
+          <div class="step">
+            <div class="step-num">04</div>
+            <h3>Access Courses</h3>
+            <p>View your registered courses with organized materials.</p>
+          </div>
+          <div class="step">
+            <div class="step-num">05</div>
+            <h3>Study with AI</h3>
+            <p>Use LIPRO AI for notes, flashcards, and research.</p>
+          </div>
+          <div class="step">
+            <div class="step-num">06</div>
+            <h3>Practice CBT</h3>
+            <p>Take intelligent practice tests with instant results.</p>
+          </div>
+          <div class="step">
+            <div class="step-num">07</div>
+            <h3>Track Performance</h3>
+            <p>Monitor your analytics and identify weak topics.</p>
+          </div>
+          <div class="step">
+            <div class="step-num">08</div>
+            <h3>Improve Grades</h3>
+            <p>Study smarter, achieve more. Your life in progress.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+<section id="why-choose" aria-labelledby="why-title" 
+    style="background:linear-gradient(180deg, var(--bg-elevated) 0%, var(--bg) 100%);border-top:1px solid var(--border);border-bottom:1px solid var(--border);">
+      <div class="container">
+        <header class="section-header">
+          <span class="section-label">Smart Learning</span>
+          <h2 id="why-title">Built for <span class="text-accent">academic excellence</span></h2>
+          <p>Every feature is designed to help Nigerian university students succeed with smarter learning, personalized study experiences, and the tools to achieve academic excellence.</p>
+        </header>
+
+        <div class="grid-3">
+          <div class="card"><h3>AI-Powered Learning</h3><p>Smart study assistance powered by advanced AI tailored to your curriculum.</p></div>
+          <div class="card"><h3>Smart CBT Practice</h3><p>Intelligent test engine with instant feedback and adaptive difficulty.</p></div>
+          <div class="card"><h3>Personalized Study Plans</h3><p>Custom daily and weekly plans that adapt to your progress.</p></div>
+          <div class="card"><h3>PDF Intelligence</h3><p>Upload and analyze PDFs instantly with AI-powered insights.</p></div>
+          <div class="card"><h3>Performance Analytics</h3><p>Detailed analytics to track your strengths and areas for improvement.</p></div>
+          <div class="card"><h3>University-Specific Content</h3><p>Content tailored to your university's curriculum and exam format.</p></div>
+          <div class="card"><h3>Secure Platform</h3><p>Your data and progress are protected with enterprise-grade security.</p></div>
+          <div class="card"><h3>Mobile-Friendly</h3><p>Study anywhere, anytime with our fully responsive mobile experience.</p></div>
+          <div class="card"><h3>Organized Materials</h3><p>All your courses, notes, and resources in one structured place.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="pricing" aria-labelledby="pricing-title">
+      <div class="container">
+        <header class="section-header" style="text-align:center;margin:0 auto var(--space-2xl);">
+          <span class="section-label">Pricing</span>
+          <h2 id="pricing-title">Choose your <span class="text-accent">plan</span></h2>
+          <p style="margin:0 auto;">Start free and upgrade as you grow. All plans include access to your university's content.</p>
+        </header>
+
+        <div class="pricing-grid">
+          <div class="pricing-card">
+            <div class="plan">Free</div>
+            <div class="price">NGN 0 <span>/month</span></div>
+            <div class="period">Get started with basic features</div>
+            <ul class="pricing-features">
+              <li>Basic LIPRO AI</li>
+              <li>10 Practice Questions per Topic</li>
+              <li>20 Exam Questions per Course</li>
+              <li>Limited PDF Analysis</li>
+              <li>Limited Notes</li>
+            </ul>
+            <a href="#" class="btn btn-secondary">Get Started Free</a>
+          </div>
+
+          <div class="pricing-card featured">
+            <div class="plan">Premium</div>
+            <div class="price">NGN 1,700 <span>/month</span></div>
+            <div class="period">Most popular choice</div>
+            <ul class="pricing-features">
+              <li>Unlimited CBT</li>
+              <li>Unlimited Notes</li>
+              <li>Advanced LIPRO AI</li>
+              <li>Unlimited Flashcards</li>
+              <li>Revision Guides</li>
+              <li>Study Planner</li>
+              <li>Analytics Dashboard</li>
+              <li>Priority Support</li>
+            </ul>
+            <a href="#" class="btn btn-primary">Subscribe Now</a>
+          </div>
+
+          <div class="pricing-card">
+            <div class="plan">Ultimate</div>
+            <div class="price">NGN 3,000 <span>/month</span></div>
+            <div class="period">For the power users</div>
+            <ul class="pricing-features">
+              <li>Everything in Premium</li>
+              <li>Unlimited AI Usage</li>
+              <li>Unlimited PDF Intelligence</li>
+              <li>Deep Research</li>
+              <li>Unlimited Study Material Gen</li>
+              <li>Priority AI Processing</li>
+              <li>Early Access to New Features</li>
+            </ul>
+            <a href="#" class="btn btn-secondary">Subscribe Now</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+<section id="contact" aria-labelledby="contact-title" 
+    style="background:linear-gradient(180deg, var(--bg-elevated) 0%, var(--bg) 100%);border-top:1px solid var(--border);border-bottom:1px solid var(--border);">
+      <div class="container">
+        <header class="section-header">
+          <span class="section-label">Contact</span>
+          <h2 id="contact-title">Get in <span class="text-accent">touch</span></h2>
+          <p>Have questions? Reach out to us or connect on social media.</p>
+        </header>
+
+        <div class="contact-section">
+          <div class="social-links">
+            <a href="https://wa.me/2349160216396" target="_blank" rel="noopener" class="social-item">
+              <div>
+                <div class="label">WhatsApp Support</div>
+                <div class="handle">Message LIPRO on WhatsApp</div>
+              </div>
+            </a>
+            <a href="https://www.tiktok.com/@lipro512" target="_blank" rel="noopener" class="social-item">
+              <div>
+                <div class="label">TikTok</div>
+                <div class="handle">@lipro512</div>
+              </div>
+            </a>
+            <a href="https://linktr.ee/lipro512" target="_blank" rel="noopener" class="social-item">
+              <div>
+                <div class="label">Linktree</div>
+                <div class="handle">LIPRO ACADEMY</div>
+              </div>
+            </a>
+          </div>
+
+          <form class="contact-form">
+            <input type="text" placeholder="Your Name" required>
+            <input type="email" placeholder="Your Email" required>
+            <input type="text" placeholder="Subject">
+            <textarea placeholder="Your Message" required></textarea>
+            <button type="submit" class="btn btn-primary">Send Message</button>
+          </form>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <a href="#" class="logo" style="margin-bottom:var(--space-md);" aria-label="LIPRO ACADEMY Home">
+            <span class="logo-mark">L</span>
+            LIPRO ACADEMY
+          </a>
+          <p>Your Life In Progress. Empowering Nigerian university students with smarter learning, personalized study experiences, and the tools to achieve academic excellence.</p>
+        </div>
+
+        <div class="footer-column">
+          <h4>Company</h4>
+          <ul>
+            <li><a href="#">About Us</a></li>
+            <li><a href="#">Careers</a></li>
+            <li><a href="#">Blog</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-column">
+          <h4>Product</h4>
+          <ul>
+            <li><a href="#features">Features</a></li>
+            <li><a href="#pricing">Pricing</a></li>
+            <li><a href="#features">LIPRO AI</a></li>
+            <li><a href="#features">CBT Engine</a></li>
+            <li><a href="#features">Study Planner</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-column">
+          <h4>Resources</h4>
+          <ul>
+            <li><a href="#">Help Center</a></li>
+            <li><a href="#">Documentation</a></li>
+            <li><a href="#">Support Center</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-column">
+          <h4>Legal</h4>
+          <ul>
+            <li><a href="#">Privacy Policy</a></li>
+            <li><a href="#">Terms &amp; Conditions</a></li>
+            <li><a href="#">Cookie Policy</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <p>&copy; LIPRO ACADEMY. All Rights Reserved. Your Life In Progress.</p>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    gsap.registerPlugin(ScrollTrigger);
+
+    const mm = gsap.matchMedia();
+
+    const header = document.getElementById('header');
+    window.addEventListener('scroll', () => {
+      if (window.scrollY > 20) header.classList.add('scrolled');
+      else header.classList.remove('scrolled');
+    }, { passive: true });
+
+    const menuBtn = document.querySelector('.mobile-menu-btn');
+    const mobileNav = document.getElementById('mobile-nav');
+    const mobileOverlay = document.getElementById('mobile-overlay');
+    const mobileContactBtn = document.querySelector('#contact .btn-primary');
+
+    function toggleMenu() {
+      const isOpen = menuBtn.getAttribute('aria-expanded') === 'true';
+      menuBtn.setAttribute('aria-expanded', !isOpen);
+      mobileNav.classList.toggle('open');
+      mobileOverlay.classList.toggle('visible');
+      document.body.style.overflow = isOpen ? '' : 'hidden';
+    }
+
+    menuBtn.addEventListener('click', toggleMenu);
+    mobileOverlay.addEventListener('click', toggleMenu);
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && mobileNav.classList.contains('open')) toggleMenu();
+    });
+
+    const prefersRM = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function(e) {
+        const targetId = this.getAttribute('href');
+        if (targetId === '#') return;
+        const target = document.querySelector(targetId);
+        if (target) {
+          e.preventDefault();
+          const top = target.getBoundingClientRect().top + window.scrollY - header.offsetHeight;
+          window.scrollTo({ top, behavior: prefersRM ? 'auto' : 'smooth' });
+        }
+      });
+    });
+
+    mm.add("(prefers-reduced-motion: no-preference)", () => {
+      gsap.defaults({ ease: "power3.out", duration: 0.8 });
+
+      const heroTl = gsap.timeline({ defaults: { ease: "power3.out" } });
+      heroTl
+        .from(".hero-badge", { y: 20, autoAlpha: 0, duration: 0.5 })
+        .from(".hero h1", { y: 40, autoAlpha: 0, duration: 0.7 }, "-=0.3")
+        .from(".hero p", { y: 30, autoAlpha: 0, duration: 0.6 }, "-=0.4")
+        .from(".motto", { y: 20, autoAlpha: 0, duration: 0.4 }, "-=0.3")
+        .from(".hero-actions", { y: 20, autoAlpha: 0, duration: 0.5 }, "-=0.3");
+
+      gsap.from(".feature-card", {
+        y: 30, autoAlpha: 0, stagger: 0.08, duration: 0.5,
+        scrollTrigger: { trigger: ".feature-grid", start: "top 85%", toggleActions: "play none none none" }
+      });
+
+      gsap.from(".step", {
+        y: 30, autoAlpha: 0, stagger: 0.1, duration: 0.5,
+        scrollTrigger: { trigger: ".steps", start: "top 85%", toggleActions: "play none none none" }
+      });
+
+      gsap.from(".card", {
+        y: 30, autoAlpha: 0, stagger: 0.08, duration: 0.5,
+        scrollTrigger: { trigger: ".grid-3", start: "top 85%", toggleActions: "play none none none" }
+      });
+
+      gsap.from(".pricing-card", {
+        y: 30, autoAlpha: 0, stagger: 0.12, duration: 0.6,
+        scrollTrigger: { trigger: ".pricing-grid", start: "top 85%", toggleActions: "play none none none" }
+      });
+
+      gsap.from(".faq-item", {
+        y: 20, autoAlpha: 0, stagger: 0.08, duration: 0.4,
+        scrollTrigger: { trigger: ".faq-grid", start: "top 85%", toggleActions: "play none none none" }
+      });
+
+      gsap.from(".uni-badge", {
+        y: 15, autoAlpha: 0, stagger: 0.05, duration: 0.4,
+        scrollTrigger: { trigger: ".uni-grid", start: "top 85%", toggleActions: "play none none none" }
+      });
+
+      gsap.from(".social-item", {
+        x: -20, autoAlpha: 0, stagger: 0.1, duration: 0.5,
+        scrollTrigger: { trigger: ".social-links", start: "top 85%", toggleActions: "play none none none" }
+      });
+
+      return () => { ScrollTrigger.getAll().forEach(st => st.kill()); };
+    });
+
+    mm.add("(prefers-reduced-motion: reduce)", () => {
+      document.querySelectorAll('[style*="visibility: hidden"], [style*="opacity: 0"]').forEach(el => {
+        el.style.visibility = 'visible';
+        el.style.opacity = '1';
+      });
+    });
+  </script>
+
+  <script>
+    const rm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!rm) {
+      const container = document.getElementById('three-container');
+      if (!container) throw new Error('three-container not found');
+      const w = container.clientWidth;
+      const h = container.clientHeight || 500;
+
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 100);
+      camera.position.set(0, 0.5, 4.5);
+
+      const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setSize(w, h);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.2;
+      container.appendChild(renderer.domElement);
+
+      const ambient = new THREE.AmbientLight(0xDB2777, 0.3);
+      scene.add(ambient);
+
+      const key = new THREE.DirectionalLight(0xFF4FD8, 2);
+      key.position.set(2, 3, 4);
+      scene.add(key);
+
+      const fill = new THREE.DirectionalLight(0xEC4899, 0.7);
+      fill.position.set(-3, 1, -2);
+      scene.add(fill);
+
+      const rim = new THREE.DirectionalLight(0xF472B6, 1);
+      rim.position.set(-1, -2, -4);
+      scene.add(rim);
+
+      const point = new THREE.PointLight(0xFDA4AF, 0.5, 10);
+      point.position.set(0, 1.5, 0);
+      scene.add(point);
+
+      const torusGeo = new THREE.TorusKnotGeometry(1.1, 0.32, 180, 24);
+      const torusMat = new THREE.MeshPhysicalMaterial({
+        color: 0xEC4899,
+        metalness: 0.9,
+        roughness: 0.1,
+        clearcoat: 0.8,
+        clearcoatRoughness: 0.1,
+        envMapIntensity: 2,
+        emissive: 0xFF4FD8,
+        emissiveIntensity: 0.1,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.9,
+      });
+      const torus = new THREE.Mesh(torusGeo, torusMat);
+      scene.add(torus);
+
+      const innerGeo = new THREE.TorusKnotGeometry(0.85, 0.15, 120, 16);
+      const innerMat = new THREE.MeshPhysicalMaterial({
+        color: 0xF472B6,
+        metalness: 0.9,
+        roughness: 0.1,
+        clearcoat: 0.8,
+        clearcoatRoughness: 0.1,
+        envMapIntensity: 2,
+        emissive: 0xEC4899,
+        emissiveIntensity: 0.05,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.7,
+      });
+      const inner = new THREE.Mesh(innerGeo, innerMat);
+      scene.add(inner);
+
+      const coreGeo = new THREE.IcosahedronGeometry(0.45, 1);
+      const coreMat = new THREE.MeshPhysicalMaterial({
+        color: 0xFF4FD8,
+        metalness: 0.95,
+        roughness: 0.05,
+        clearcoat: 1,
+        clearcoatRoughness: 0.05,
+        envMapIntensity: 3,
+        emissive: 0xEC4899,
+        emissiveIntensity: 0.1,
+        flatShading: true,
+      });
+      const core = new THREE.Mesh(coreGeo, coreMat);
+      scene.add(core);
+
+      const particleCount = 200;
+      const pGeo = new THREE.BufferGeometry();
+      const positions = new Float32Array(particleCount * 3);
+      for (let i = 0; i < particleCount * 3; i++) {
+        const r = 1.6 + Math.random() * 0.6;
+        const theta = Math.random() * Math.PI * 2;
+        const phi = Math.acos(2 * Math.random() - 1);
+        positions[i] = r * Math.sin(phi) * Math.cos(theta); i++;
+        positions[i] = r * Math.sin(phi) * Math.sin(theta); i++;
+        positions[i] = r * Math.cos(phi);
+      }
+      pGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      const pMat = new THREE.PointsMaterial({
+        color: 0xFDA4AF,
+        size: 0.015,
+        transparent: true,
+        opacity: 0.6,
+        blending: THREE.AdditiveBlending,
+        emissive: 0xEC4899,
+        emissiveIntensity: 0.05,
+      });
+      const particles = new THREE.Points(pGeo, pMat);
+      scene.add(particles);
+
+      let mouseX = 0, mouseY = 0;
+      container.addEventListener('mousemove', (e) => {
+        const rect = container.getBoundingClientRect();
+        mouseX = ((e.clientX - rect.left) / rect.width - 0.5) * 2;
+        mouseY = ((e.clientY - rect.top) / rect.height - 0.5) * 2;
+      });
+
+      container.addEventListener('touchmove', (e) => {
+        const touch = e.touches[0];
+        const rect = container.getBoundingClientRect();
+        mouseX = ((touch.clientX - rect.left) / rect.width - 0.5) * 2;
+        mouseY = ((touch.clientY - rect.top) / rect.height - 0.5) * 2;
+      }, { passive: true });
+
+      const resizeObserver = new ResizeObserver(() => {
+        const w = container.clientWidth, h = container.clientHeight || 500;
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+        renderer.setSize(w, h);
+      });
+      resizeObserver.observe(container);
+
+      gsap.to(torus.position, { y: 0.12, duration: 2.5, ease: 'sine.inOut', yoyo: true, repeat: -1 });
+      gsap.to(inner.position, { y: -0.08, duration: 3, ease: 'sine.inOut', yoyo: true, repeat: -1 });
+      gsap.to(core.position, { y: 0.06, duration: 2, ease: 'sine.inOut', yoyo: true, repeat: -1 });
+      gsap.to(particles.rotation, { y: Math.PI * 2, duration: 20, ease: 'none', repeat: -1 });
+      gsap.to(particles.material, { opacity: 0.3, duration: 3, yoyo: true, repeat: -1, ease: 'sine.inOut' });
+
+      function animate() {
+        requestAnimationFrame(animate);
+        const targetRotX = 0, targetRotY = 0;
+        torus.rotation.x += 0.003; torus.rotation.y += 0.008; torus.rotation.z += 0.001;
+        inner.rotation.x += 0.005; inner.rotation.y -= 0.01; inner.rotation.z += 0.002;
+        core.rotation.x += 0.01; core.rotation.y += 0.015;
+        renderer.render(scene, camera);
+      }
+      animate();
+
+      window.addEventListener('beforeunload', () => { resizeObserver.disconnect(); renderer.dispose(); });
+    }
+  </script>
+</body>
+</html>
