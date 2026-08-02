@@ -30,7 +30,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (rawFormats.length > 0 && formats.length === 0) {
     return NextResponse.json({ error: 'Invalid formats. Use MCQ, TRUE_FALSE, FILL_BLANK or THEORY.' }, { status: 422 });
   }
-  const count = Math.min(Math.max(Number(body?.count) || 2, 1), 20);
+  const count = Math.min(Math.max(Number(body?.count) || 2, 1), 50);
   const save = body?.save === true;
 
   if (!material.text || material.text.trim().length === 0) {
