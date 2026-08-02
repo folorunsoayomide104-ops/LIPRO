@@ -2,6 +2,10 @@
 const nextConfig = {
   outputFileTracingRoot: __dirname,
   serverExternalPackages: ['pdf-parse', '@napi-rs/canvas'],
+  outputFileTracingIncludes: {
+    '/api/materials': ['./node_modules/@napi-rs/canvas*/**/*'],
+    '/api/lipro-ai/chat': ['./node_modules/@napi-rs/canvas*/**/*'],
+  },
   images: {
     remotePatterns: [{ protocol: 'https', hostname: 'files.lipro.academy' }],
   },
