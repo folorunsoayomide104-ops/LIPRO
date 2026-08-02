@@ -2,9 +2,10 @@ export const MAX_UPLOAD_BYTES = 100 * 1024 * 1024;
 export const MAX_TEXT_CHARS = 60000;
 
 const g = globalThis as Record<string, unknown>;
-if (!g.DOMMatrix || !g.ImageData || !g.Path2D) {
+async function ensureDomPolyfills() {
+  if (g.DOMMatrix && g.ImageData && g.Path2D) return;
   try {
-    const canvas = require('@napi-rs/canvas') as Record<string, unknown>;
+    const canvas = await import('@napi-rs/canvas') as unknown as Record<string, unknown>;
     if (!g.DOMMatrix && canvas.DOMMatrix) g.DOMMatrix = canvas.DOMMatrix;
     if (!g.ImageData && canvas.ImageData) g.ImageData = canvas.ImageData;
     if (!g.Path2D && canvas.Path2D) g.Path2D = canvas.Path2D;
@@ -23,6 +24,7 @@ export async function extractText(buffer: Buffer, mimeType: string): Promise<Ext
 
   if (mimeType === 'application/pdf' || buffer.subarray(0, 5).toString('latin1') === '%PDF-') {
     try {
+      await ensureDomPolyfills();
       const { PDFParse } = await import('pdf-parse');
       const parser = new PDFParse({ data: buffer });
       const parsed = await parser.getText();
