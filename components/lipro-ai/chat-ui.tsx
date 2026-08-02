@@ -245,7 +245,7 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
   };
 
   return (
-    <div className={cn('relative flex gap-4 overflow-hidden', fullscreen ? 'fixed inset-0 z-[100] h-screen bg-[rgb(var(--bg))] p-4 sm:p-6' : 'h-[calc(100vh-9rem)]')}>
+    <div className={cn('relative flex gap-4 overflow-hidden', fullscreen ? 'fixed inset-0 z-[100] h-screen bg-[rgb(var(--bg))] p-4 sm:p-6' : 'h-[calc(100dvh-13.5rem)] md:h-[calc(100vh-9rem)]')}>
       <AmbientBackground variant="aurora" />
       {!fullscreen && (
         <aside className="glass relative hidden w-64 shrink-0 flex-col rounded-2xl p-3 md:flex">

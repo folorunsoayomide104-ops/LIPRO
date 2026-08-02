@@ -127,9 +127,9 @@ export function ExamRunner({ sessionId }: { sessionId: string }) {
               {opts.length > 0 ? (
                 <div className="space-y-2">
                   {opts.map((opt: string, idx: number) => (
-                    <label key={idx} className="flex items-center gap-2 rounded-xl p-2 hover:bg-lipro-50/50 dark:hover:bg-lipro-950/30 cursor-pointer">
-                      <input type="radio" name={q.id} value={opt} checked={answers[q.id] === opt} onChange={(e) => setAnswers((a) => ({ ...a, [q.id]: e.target.value }))} />
-                      <span className="text-sm">{opt}</span>
+                    <label key={idx} className="tap flex items-center gap-3 rounded-xl border border-lipro-200/50 p-3.5 hover:bg-lipro-50/50 dark:border-lipro-700/40 dark:hover:bg-lipro-950/30 cursor-pointer">
+                      <input type="radio" name={q.id} value={opt} checked={answers[q.id] === opt} onChange={(e) => setAnswers((a) => ({ ...a, [q.id]: e.target.value }))} className="h-5 w-5 shrink-0 accent-lipro-600" />
+                      <span className="text-sm leading-snug">{opt}</span>
                     </label>
                   ))}
                 </div>
@@ -143,7 +143,12 @@ export function ExamRunner({ sessionId }: { sessionId: string }) {
           </Card>
         );
       })}
-      <Button onClick={submit} disabled={submitting} size="lg"><Send className="h-4 w-4" /> {submitting ? 'Submitting…' : 'Submit answers'}</Button>
+      <div className="lg:hidden sticky bottom-0 z-10 -mx-4 mt-6 border-t border-lipro-100/60 bg-[rgb(var(--bg))]/90 px-4 py-3 backdrop-blur-xl dark:border-lipro-500/10" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0.75rem)' }}>
+        <Button onClick={submit} disabled={submitting} size="lg" className="w-full"><Send className="h-4 w-4" /> {submitting ? 'Submitting…' : 'Submit answers'}</Button>
+      </div>
+      <div className="hidden lg:block">
+        <Button onClick={submit} disabled={submitting} size="lg"><Send className="h-4 w-4" /> {submitting ? 'Submitting…' : 'Submit answers'}</Button>
+      </div>
     </div>
   );
 }

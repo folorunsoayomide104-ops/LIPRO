@@ -47,6 +47,19 @@ body {
   .heading {
     @apply font-display tracking-tight text-balance;
   }
+  .pb-safe {
+    padding-bottom: max(env(safe-area-inset-bottom), 0px);
+  }
+  .pt-safe {
+    padding-top: max(env(safe-area-inset-top), 0px);
+  }
+  .pb-tabbar {
+    padding-bottom: calc(max(env(safe-area-inset-bottom), 0px) + 4.5rem);
+  }
+  .tap {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
   .glass {
     background: rgba(var(--glass-bg) / var(--glass-alpha));
     backdrop-filter: blur(18px) saturate(1.4);

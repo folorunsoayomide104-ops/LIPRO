@@ -3,7 +3,7 @@ import { ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  LayoutDashboard, BookOpen, StickyNote, Brain, Wallet as WalletIcon, Bell, Settings, LogOut, Menu, Home, ArrowRight
+  LayoutDashboard, BookOpen, StickyNote, Brain, Wallet as WalletIcon, Bell, Settings, LogOut, Menu, Home, ArrowRight, MoreHorizontal, GraduationCap
 } from 'lucide-react';
 import { LiproLogo } from '@/components/LiproLogo';
 import { cn } from '@/lib/utils';
@@ -16,9 +16,16 @@ const NAV = [
   { label: 'Notes', href: '/notes', icon: StickyNote },
   { label: 'CBT Engine', href: '/cbt', icon: Brain },
   { label: 'LIPRO AI', href: '/lipro-ai', icon: LiproLogo, highlight: true },
-  { label: 'PDF Intelligence', href: '/pdf-intelligence', icon: LiproLogo, highlight: true },
+  { label: 'PDF Intelligence', href: '/pdf-intelligence', icon: GraduationCap, highlight: true },
   { label: 'Wallet', href: '/wallet', icon: WalletIcon },
   { label: 'Settings', href: '/settings', icon: Settings },
+];
+
+const MOBILE_TABS = [
+  NAV[0], // Dashboard
+  NAV[1], // Courses
+  NAV[3], // CBT Engine
+  NAV[4], // LIPRO AI
 ];
 
 export function LayoutShell({ children, roleLabel }: { children: ReactNode; roleLabel?: string }) {
@@ -85,20 +92,35 @@ export function LayoutShell({ children, roleLabel }: { children: ReactNode; role
       {mobileOpen && <div className="fixed inset-0 z-50 lg:hidden"><div className="absolute inset-0 bg-black/40" onClick={() => setMobileOpen(false)} /><div className="absolute left-0 top-0 h-full glass">{Sidebar()}</div></div>}
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-40 flex h-16 items-center justify-between gap-3 border-b border-lipro-100/60 bg-white/70 px-4 backdrop-blur-xl dark:border-lipro-500/10 dark:bg-surface-dark/70">
-          <button className="lg:hidden" onClick={() => setMobileOpen(true)}><Menu className="h-5 w-5" /></button>
+          <button className="tap lg:hidden" onClick={() => setMobileOpen(true)} aria-label="Open menu"><Menu className="h-6 w-6" /></button>
           <div className="ml-auto flex items-center gap-2">
-            <Link href="/notifications" className="grid h-9 w-9 place-items-center rounded-xl glass-hover"><Bell className="h-4 w-4" /></Link>
-            <Link href="/settings" className="grid h-9 w-9 place-items-center rounded-xl glass-hover"><Settings className="h-4 w-4" /></Link>
-            <Link href="/settings" className="ml-1 flex items-center gap-2 rounded-xl glass px-3 py-1.5">
+            <Link href="/notifications" className="tap grid h-10 w-10 place-items-center rounded-xl glass-hover" aria-label="Notifications"><Bell className="h-5 w-5" /></Link>
+            <Link href="/settings" className="tap ml-1 flex items-center gap-2 rounded-xl glass px-3 py-1.5" aria-label="Account">
               <div className="grid h-7 w-7 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-lipro-500 to-lipro-700 text-xs font-bold text-white">
                 {avatarUrl ? <img src={avatarUrl} alt="Avatar" className="h-full w-full object-cover" /> : 'U'}
               </div>
-              <span className="text-xs font-medium">Account</span>
+              <span className="hidden text-xs font-medium sm:inline">Account</span>
             </Link>
           </div>
         </header>
-        <main className="flex-1 px-4 pb-12 pt-2">{children}</main>
+        <main className="flex-1 px-4 pb-tabbar pt-2 lg:pb-12">{children}</main>
       </div>
+      <nav className="fixed inset-x-0 bottom-0 z-50 flex items-stretch border-t border-lipro-100/60 bg-white/80 backdrop-blur-xl lg:hidden dark:border-lipro-500/10 dark:bg-surface-dark/80" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+        {MOBILE_TABS.map((item) => {
+          const active = pathname === item.href || pathname.startsWith(item.href + '/');
+          const Icon = item.icon;
+          return (
+            <Link key={item.href} href={item.href} onClick={() => setMobileOpen(false)} className={cn('tap flex min-w-0 flex-1 flex-col items-center justify-center gap-1 py-2 text-[10px] font-medium transition-colors', active ? 'text-lipro-600 dark:text-lipro-400' : 'text-lipro-600/60 dark:text-lipro-200/50')}>
+              <Icon className={cn('h-5 w-5', active && 'scale-110')} />
+              <span className="truncate">{item.label}</span>
+            </Link>
+          );
+        })}
+        <button onClick={() => setMobileOpen(true)} className={cn('tap flex min-w-0 flex-1 flex-col items-center justify-center gap-1 py-2 text-[10px] font-medium transition-colors', mobileOpen ? 'text-lipro-600 dark:text-lipro-400' : 'text-lipro-600/60 dark:text-lipro-200/50')} aria-label="More">
+          <MoreHorizontal className="h-5 w-5" />
+          <span>More</span>
+        </button>
+      </nav>
     </div>
   );
 }
