@@ -1,5 +1,6 @@
 'use client';
 import { useState, useRef, useEffect } from 'react';
+import { upload as blobUpload } from '@vercel/blob/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Send, Bot, User, Loader2, Plus, Trash2, MessageSquare, Maximize2, Minimize2, Paperclip, X, FileText, CheckCircle2 } from 'lucide-react';
@@ -141,15 +142,29 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
     };
 
     try {
-      const fd = new FormData();
-      fd.append('message', text);
-      if (conversationId) fd.append('conversationId', conversationId);
-      fd.append('stream', 'true');
-      if (attached) fd.append('file', attached.file);
+      let body;
+      if (attached) {
+        const blob = await blobUpload(attached.file.name, attached.file, {
+          access: 'public',
+          handleUploadUrl: '/api/materials/upload',
+          clientPayload: JSON.stringify({ sizeBytes: attached.file.size }),
+          multipart: attached.file.size > 50 * 1024 * 1024,
+        });
+        body = JSON.stringify({
+          message: text,
+          conversationId,
+          stream: true,
+          blobUrl: blob.url,
+          originalName: attached.file.name,
+        });
+      } else {
+        body = JSON.stringify({ message: text, conversationId, stream: true });
+      }
       setAttached(null);
       const res = await fetch('/api/lipro-ai/chat', {
         method: 'POST',
-        body: fd,
+        headers: { 'Content-Type': 'application/json' },
+        body,
       });
 
       if (!res.ok) {

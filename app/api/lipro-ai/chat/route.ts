@@ -64,6 +64,8 @@ export async function POST(req: Request) {
   let conversationId: string | undefined;
   let wantStream = false;
   let file: File | undefined;
+  let blobUrl: string | undefined;
+  let originalName: string | undefined;
 
   if (contentType.includes('multipart/form-data')) {
     const form = await req.formData().catch(() => null);
@@ -82,13 +84,48 @@ export async function POST(req: Request) {
     message = parsed.data.message;
     conversationId = parsed.data.conversationId;
     wantStream = parsed.data.stream === true;
+    blobUrl = parsed.data.blobUrl;
+    originalName = parsed.data.originalName;
   }
 
   if (!message.trim()) return NextResponse.json({ error: 'Message is required' }, { status: 422 });
 
   let docContext: DocContext | null = null;
   let materialId: string | null = null;
-  if (file) {
+  if (blobUrl) {
+    const sizeCheck = await (async () => {
+      const head = await fetch(blobUrl!, { method: 'HEAD' }).catch(() => null);
+      const len = Number(head?.headers.get('content-length') || 0);
+      return len;
+    })();
+    if (sizeCheck > MAX_UPLOAD_BYTES) {
+      return NextResponse.json({ error: 'File is too large. Max size is 100MB.' }, { status: 413 });
+    }
+    const blobRes = await fetch(blobUrl).catch(() => null);
+    if (!blobRes || !blobRes.ok) {
+      return NextResponse.json({ error: 'Could not download the uploaded file' }, { status: 422 });
+    }
+    const buffer = Buffer.from(await blobRes.arrayBuffer());
+    if (buffer.length === 0) {
+      return NextResponse.json({ error: 'The file is empty.' }, { status: 422 });
+    }
+    const name = originalName || 'document.pdf';
+    const looksLikePdf = name.toLowerCase().endsWith('.pdf');
+    const mimeType = looksLikePdf ? 'application/pdf' : 'text/plain';
+    let text = '';
+    try {
+      const result = await extractText(buffer, mimeType);
+      text = result.text;
+    } catch (err: any) {
+      return NextResponse.json({ error: err?.message || 'Failed to read the document' }, { status: 422 });
+    }
+    docContext = { name, text: text.slice(0, 24000) };
+    const material = await prisma.material.create({
+      data: { userId: user.userId, originalName: name, mimeType, sizeBytes: buffer.length, status: 'ready', text },
+      select: { id: true },
+    });
+    materialId = material.id;
+  } else if (file) {
     if (file.size > MAX_UPLOAD_BYTES) {
       return NextResponse.json({ error: 'File is too large. Max size is 100MB.' }, { status: 413 });
     }
