@@ -3,12 +3,14 @@ import { ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  LayoutDashboard, BookOpen, StickyNote, Brain, Wallet as WalletIcon, Bell, Settings, LogOut, Menu, Home, ArrowRight, MoreHorizontal, GraduationCap
+  LayoutDashboard, BookOpen, StickyNote, Brain, Wallet as WalletIcon, Bell, Settings, LogOut, Menu, Home, ArrowRight, MoreHorizontal, GraduationCap, Smartphone, Monitor
 } from 'lucide-react';
 import { LiproLogo } from '@/components/LiproLogo';
 import { cn } from '@/lib/utils';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useViewMode } from '@/components/view-mode-provider';
+import { MobileModeFrame } from '@/components/mobile-mode-frame';
 
 const NAV = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -33,6 +35,12 @@ export function LayoutShell({ children, roleLabel }: { children: ReactNode; role
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [inFrame, setInFrame] = useState(false);
+  const { viewMode, setViewMode } = useViewMode();
+
+  useEffect(() => {
+    setInFrame(typeof window !== 'undefined' && window.self !== window.top);
+  }, []);
 
   useEffect(() => {
     fetch('/api/auth/me').then((r) => r.json()).then((d) => { if (d.user?.avatarUrl) setAvatarUrl(d.user.avatarUrl); }).catch(() => {});
@@ -87,6 +95,9 @@ export function LayoutShell({ children, roleLabel }: { children: ReactNode; role
   );
 
   return (
+    viewMode === 'mobile' && !inFrame ? (
+      <MobileModeFrame src={pathname} onExit={() => setViewMode('desktop')} />
+    ) : (
     <div className="flex min-h-screen">
       <div className="sticky top-0 hidden h-screen lg:block">{Sidebar()}</div>
       {mobileOpen && <div className="fixed inset-0 z-50 lg:hidden"><div className="absolute inset-0 bg-black/40" onClick={() => setMobileOpen(false)} /><div className="absolute left-0 top-0 h-full glass">{Sidebar()}</div></div>}
@@ -94,6 +105,12 @@ export function LayoutShell({ children, roleLabel }: { children: ReactNode; role
         <header className="sticky top-0 z-40 flex h-16 items-center justify-between gap-3 border-b border-lipro-100/60 bg-white/70 px-4 backdrop-blur-xl dark:border-lipro-500/10 dark:bg-surface-dark/70">
           <button className="tap lg:hidden" onClick={() => setMobileOpen(true)} aria-label="Open menu"><Menu className="h-6 w-6" /></button>
           <div className="ml-auto flex items-center gap-2">
+            {!inFrame && (
+              <button onClick={() => setViewMode(viewMode === 'mobile' ? 'desktop' : 'mobile')} className="tap hidden items-center gap-1.5 rounded-xl border border-lipro-200/60 px-3 py-2 text-xs font-medium text-lipro-700 transition-colors hover:bg-lipro-50 lg:flex dark:border-lipro-500/20 dark:text-lipro-200 dark:hover:bg-lipro-950/40" aria-label="Toggle view mode" title="Toggle mobile/desktop view">
+                {viewMode === 'mobile' ? <Monitor className="h-4 w-4" /> : <Smartphone className="h-4 w-4" />}
+                {viewMode === 'mobile' ? 'Desktop view' : 'Mobile view'}
+              </button>
+            )}
             <Link href="/notifications" className="tap grid h-10 w-10 place-items-center rounded-xl glass-hover" aria-label="Notifications"><Bell className="h-5 w-5" /></Link>
             <Link href="/settings" className="tap ml-1 flex items-center gap-2 rounded-xl glass px-3 py-1.5" aria-label="Account">
               <div className="grid h-7 w-7 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-lipro-500 to-lipro-700 text-xs font-bold text-white">
@@ -122,5 +139,6 @@ export function LayoutShell({ children, roleLabel }: { children: ReactNode; role
         </button>
       </nav>
     </div>
+    )
   );
 }
