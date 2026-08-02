@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { LiproLogo } from '@/components/LiproLogo';
-import { RotateCcw, X, Monitor } from 'lucide-react';
+import { RotateCcw, Monitor } from 'lucide-react';
 
 const W = 430;
 const H = 932;
@@ -10,8 +10,12 @@ export function MobileModeFrame({ src, onExit }: { src: string; onExit: () => vo
   const [frameKey, setFrameKey] = useState(0);
   const wrapRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
+  const [device, setDevice] = useState<{ w: number; h: number } | null>(null);
+  const isPhone = typeof window !== 'undefined' && window.innerWidth < 768;
 
   useEffect(() => {
+    const d = { w: window.innerWidth, h: window.innerHeight };
+    setDevice(d);
     const compute = () => {
       const el = wrapRef.current;
       if (!el) return;
@@ -24,6 +28,42 @@ export function MobileModeFrame({ src, onExit }: { src: string; onExit: () => vo
     if (wrapRef.current) ro.observe(wrapRef.current);
     return () => ro.disconnect();
   }, []);
+
+  // On a phone: render the app full-bleed at the device's real dimensions.
+  if (isPhone && device) {
+    return (
+      <div className="flex h-[100dvh] flex-col bg-[#0a0a0c]">
+        <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-2">
+          <div className="flex items-center gap-2 text-white">
+            <LiproLogo className="h-5 w-5" />
+            <span className="text-sm font-bold tracking-tight">Mobile view · {device.w}×{device.h}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setFrameKey((k) => k + 1)}
+              className="tap flex items-center gap-1.5 rounded-lg bg-white/10 px-3 py-2 text-xs font-medium text-white/80 transition-colors hover:bg-white/20"
+            >
+              <RotateCcw className="h-3.5 w-3.5" /> Reload
+            </button>
+            <button
+              onClick={onExit}
+              className="tap flex items-center gap-1.5 rounded-lg bg-lipro-600 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-lipro-500"
+            >
+              <Monitor className="h-3.5 w-3.5" /> Desktop view
+            </button>
+          </div>
+        </div>
+        <div className="min-h-0 flex-1">
+          <iframe
+            key={frameKey}
+            src={src}
+            className="h-full w-full border-0"
+            title={`Mobile view of ${src}`}
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen flex-col bg-[#0a0a0c]">
