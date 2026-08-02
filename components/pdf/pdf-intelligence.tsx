@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { upload as blobUpload } from '@vercel/blob/client';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -48,6 +49,7 @@ export function PdfIntelligence({ initialMaterials }: { initialMaterials: Materi
   const [materials, setMaterials] = useState<Material[]>(initialMaterials);
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
   const [error, setError] = useState('');
 
   const [activeMaterial, setActiveMaterial] = useState<Material | null>(null);
@@ -65,10 +67,25 @@ export function PdfIntelligence({ initialMaterials }: { initialMaterials: Materi
   const upload = async () => {
     if (!file) { setError('Choose a file first.'); return; }
     setUploading(true); setError('');
-    const fd = new FormData();
-    fd.append('file', file);
     try {
-      const res = await fetch('/api/materials', { method: 'POST', body: fd });
+      const blob = await blobUpload(file.name, file, {
+        access: 'public',
+        handleUploadUrl: '/api/materials/upload',
+        clientPayload: JSON.stringify({ sizeBytes: file.size }),
+        multipart: file.size > 50 * 1024 * 1024,
+        onUploadProgress: (p) => setProgress(p.percentage),
+      });
+
+      const res = await fetch('/api/materials', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          blobUrl: blob.url,
+          originalName: file.name,
+          sizeBytes: file.size,
+          mimeType: file.type || (file.name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'text/plain'),
+        }),
+      });
       const data = await res.json().catch(() => null);
       if (!res.ok) throw new Error(data?.error || 'Upload failed');
       setMaterials((m) => [data.material, ...m]);
@@ -78,6 +95,7 @@ export function PdfIntelligence({ initialMaterials }: { initialMaterials: Materi
       setError(e?.message || 'Upload failed');
     } finally {
       setUploading(false);
+      setProgress(0);
     }
   };
 
@@ -147,8 +165,13 @@ export function PdfIntelligence({ initialMaterials }: { initialMaterials: Materi
           {error && <p className="mt-3 text-sm text-rose-500">{error}</p>}
           {file && <p className="mt-3 text-xs text-lipro-600/70 dark:text-lipro-200/70">Selected: <span className="font-medium">{file.name}</span> ({formatBytes(file.size)})</p>}
           <Button onClick={upload} disabled={uploading} className="mt-4">
-            {uploading ? <><Loader2 className="h-4 w-4 animate-spin" /> Uploading…</> : <><UploadCloud className="h-4 w-4" /> Upload document</>}
+            {uploading ? <><Loader2 className="h-4 w-4 animate-spin" /> Uploading… {progress > 0 ? `${progress}%` : ''}</> : <><UploadCloud className="h-4 w-4" /> Upload document</>}
           </Button>
+          {uploading && (
+            <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-lipro-100 dark:bg-white/10">
+              <div className="h-full rounded-full bg-lipro-500 transition-all" style={{ width: `${progress}%` }} />
+            </div>
+          )}
         </CardContent>
       </Card>
 

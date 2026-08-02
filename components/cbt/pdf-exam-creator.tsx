@@ -1,6 +1,7 @@
 'use client';
 import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { upload as blobUpload } from '@vercel/blob/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { FileUp, FileText, Loader2, Play, Zap } from 'lucide-react';
@@ -17,6 +18,7 @@ export function PdfExamCreator({ materials }: { materials: Doc[] }) {
   const [count, setCount] = useState(25);
   const [durationMin, setDurationMin] = useState(30);
   const [phase, setPhase] = useState<'idle' | 'uploading' | 'generating' | 'starting'>('idle');
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState('');
 
   const startExam = async (materialId: string, durationSec: number) => {
@@ -37,9 +39,24 @@ export function PdfExamCreator({ materials }: { materials: Doc[] }) {
     setPhase('uploading');
     let materialId = '';
     try {
-      const fd = new FormData();
-      fd.append('file', file);
-      const up = await fetch('/api/materials', { method: 'POST', body: fd });
+      const blob = await blobUpload(file.name, file, {
+        access: 'public',
+        handleUploadUrl: '/api/materials/upload',
+        clientPayload: JSON.stringify({ sizeBytes: file.size }),
+        multipart: file.size > 50 * 1024 * 1024,
+        onUploadProgress: (p) => setUploadProgress(p.percentage),
+      });
+
+      const up = await fetch('/api/materials', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          blobUrl: blob.url,
+          originalName: file.name,
+          sizeBytes: file.size,
+          mimeType: file.type || (file.name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'text/plain'),
+        }),
+      });
       const upData = await up.json().catch(() => null);
       if (!up.ok) throw new Error(upData?.error || 'Upload failed');
       materialId = upData.material.id;
@@ -118,7 +135,13 @@ export function PdfExamCreator({ materials }: { materials: Doc[] }) {
       <Button onClick={generateAndStart} disabled={phase !== 'idle'} className="w-full" size="lg">
         {phase === 'idle' ? <Zap className="h-4 w-4" /> : <Loader2 className="h-4 w-4 animate-spin" />}
         {phaseText}
+        {phase === 'uploading' && uploadProgress > 0 ? ` ${uploadProgress}%` : ''}
       </Button>
+      {phase === 'uploading' && (
+        <div className="h-1.5 w-full overflow-hidden rounded-full bg-lipro-100 dark:bg-white/10">
+          <div className="h-full rounded-full bg-lipro-500 transition-all" style={{ width: `${uploadProgress}%` }} />
+        </div>
+      )}
       {error && <p className="text-xs text-rose-500">{error}</p>}
       <p className="text-xs text-lipro-600/60">Generates up to {count} questions from your document and starts a countdown timed exam. Auto-submits when time runs out.</p>
 
