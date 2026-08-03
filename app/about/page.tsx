@@ -1,6 +1,12 @@
-﻿import { LandingNav } from '@/components/landing/nav';
+﻿import type { Metadata } from 'next';
+import { LandingNav } from '@/components/landing/nav';
 import { LandingFooter } from '@/components/landing/footer';
 import { GraduationCap, BookOpen, Wallet, HeartHandshake, Target, Award } from 'lucide-react';
+
+export const metadata: Metadata = {
+  title: 'About LIPRO ACADEMY — Our story and mission',
+  description: 'LIPRO ACADEMY makes serious revision possible for every Nigerian university student — structured notes, past questions and CBT practice that follow your curriculum, at a price any student can afford.',
+};
 
 const VALUES = [
   { icon: Target, title: 'Built for Nigeria', desc: 'Designed around Nigerian curricula, faculties and matric conventions — from 100 to 500 level.' },

@@ -5,7 +5,7 @@ export function LandingFooter() {
   return (
     <footer className="px-4 pb-12 pt-16">
       <div className="glass mx-auto max-w-7xl rounded-2xl p-8">
-        <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-8 md:grid-cols-5">
           <div className="col-span-2 md:col-span-1">
             <Link href="/" className="flex items-center gap-2">
               <div className="grid h-9 w-9 place-items-center rounded-xl bg-[#0a0a0c] ring-1 ring-white/10">
@@ -16,7 +16,8 @@ export function LandingFooter() {
             <p className="mt-3 text-xs text-lipro-700/60 dark:text-lipro-200/60">Smarter revision for Nigerian university students.</p>
           </div>
           {[
-            { title: 'Product', links: [{ label: 'LIPRO AI', href: '/lipro-ai' }] },
+            { title: 'Product', links: [{ label: 'LIPRO AI', href: '/lipro-ai' }, { label: 'CBT Engine', href: '/cbt' }, { label: 'Notes', href: '/notes' }, { label: 'Study Planner', href: '/dashboard' }] },
+            { title: 'Company', links: [{ label: 'About Us', href: '/about' }, { label: 'Documentation', href: '/documentation.html' }, { label: 'Help Center', href: '/help-center.html' }] },
             { title: 'Account', links: [{ label: 'Sign in', href: '/login' }, { label: 'Register', href: '/register' }, { label: 'Wallet', href: '/wallet' }] },
             { title: 'Legal', links: [{ label: 'Privacy Policy', href: '/privacy' }, { label: 'Terms', href: '/terms' }] },
           ].map((col) => (
