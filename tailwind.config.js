@@ -60,6 +60,15 @@ module.exports = {
           700: '#b91c1c',
         },
       },
+      height: {
+        screen: '100dvh',
+      },
+      minHeight: {
+        screen: '100dvh',
+      },
+      fontSize: {
+        base: ['16px', { lineHeight: '1.5rem' }],
+      },
       fontFamily: {
         sans: ['Manrope', 'system-ui', 'sans-serif'],
         display: ['Outfit', 'system-ui', 'sans-serif'],

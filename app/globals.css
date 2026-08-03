@@ -31,16 +31,43 @@ html.dark {
   -moz-osx-font-smoothing: grayscale;
 }
 
+html {
+  height: 100%;
+}
+
 body {
   background-color: rgb(var(--bg));
   color: rgb(var(--fg));
   font-family: 'Manrope', system-ui, sans-serif;
   transition: background-color 0.3s ease, color 0.3s ease;
   min-height: 100vh;
+  min-height: 100dvh;
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+  -webkit-text-size-adjust: 100%;
   background-image:
     radial-gradient(circle at 0% 0%, rgba(168,85,247,0.10), transparent 42%),
     radial-gradient(circle at 100% 0%, rgba(99,102,241,0.08), transparent 38%),
     radial-gradient(circle at 50% 100%, rgba(217,70,239,0.06), transparent 46%);
+}
+
+/* Safe area padding for notched phones (iPhone X+) */
+.safe-top { padding-top: env(safe-area-inset-top); }
+.safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+.safe-left { padding-left: env(safe-area-inset-left); }
+.safe-right { padding-right: env(safe-area-inset-right); }
+
+/* Touch targets — minimum 44px for interactive elements; remove 300ms tap delay */
+button, a, input, textarea, select, [role="button"] {
+  touch-action: manipulation;
+}
+
+/* Prevent iOS Safari zoom on input focus (font must be >= 16px) */
+input, textarea, select {
+  font-size: 16px;
+}
+input[type="checkbox"], input[type="radio"] {
+  font-size: inherit;
 }
 
 @layer components {

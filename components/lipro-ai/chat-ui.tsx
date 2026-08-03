@@ -2,7 +2,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { upload as blobUpload } from '@vercel/blob/client';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Send, Bot, User, Loader2, Plus, Trash2, MessageSquare, Maximize2, Minimize2, Paperclip, X, FileText, CheckCircle2 } from 'lucide-react';
 import { LiproLogo } from '@/components/LiproLogo';
 import AmbientBackground from '@/components/dashboard/ambient-bg';
@@ -33,10 +32,25 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
   const [fullscreen, setFullscreen] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [attached, setAttached] = useState<{ name: string; file: File } | null>(null);
   const [attachError, setAttachError] = useState('');
   const [docs, setDocs] = useState<{ id: string; name: string }[]>([]);
   const [savedNote, setSavedNote] = useState(false);
+
+  const autoResize = () => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 200) + 'px';
+  };
+
+  const handleComposerKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey && window.innerWidth >= 768) {
+      e.preventDefault();
+      send(input);
+    }
+  };
 
   const onPickFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -118,6 +132,7 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
   const send = async (text: string) => {
     if (!text.trim() || loading || loadingConversation) return;
     setInput('');
+    if (textareaRef.current) textareaRef.current.style.height = 'auto';
     setLoading(true);
     setFallback(false);
     const fileName = attached?.name;
@@ -351,7 +366,7 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
           </div>
         )}
         {attachError && <p className="mt-2 text-xs font-medium text-rose-500">{attachError}</p>}
-        <form className="mt-3 flex items-center gap-2" onSubmit={(e) => { e.preventDefault(); send(input); }}>
+        <form className="mt-3 flex items-end gap-2" onSubmit={(e) => { e.preventDefault(); send(input); }}>
           <input
             ref={fileInputRef}
             type="file"
@@ -368,9 +383,22 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
           >
             <Paperclip className="h-4 w-4" />
           </button>
-          <Input value={input} onChange={(e) => setInput(e.target.value)} placeholder="Ask LIPRO AI anything…" />
+          <textarea
+            ref={textareaRef}
+            value={input}
+            onChange={(e) => { setInput(e.target.value); autoResize(); }}
+            onKeyDown={handleComposerKeyDown}
+            placeholder="Ask LIPRO AI anything…"
+            rows={1}
+            autoCapitalize="sentences"
+            autoCorrect="on"
+            spellCheck={true}
+            enterKeyHint="send"
+            className="max-h-[200px] min-h-11 flex-1 resize-none rounded-xl border border-lipro-200/60 bg-white/70 px-4 py-2.5 text-base leading-6 outline-none transition-all placeholder:text-lipro-300/70 focus:border-lipro-400 focus:ring-4 focus:ring-lipro-400/15 dark:border-lipro-700/40 dark:bg-surface-dark/60 dark:placeholder:text-lipro-300/40"
+          />
           <Button type="submit" disabled={loading || loadingConversation}><Send className="h-4 w-4" /></Button>
         </form>
+        <div className="h-2" style={{ height: 'max(env(safe-area-inset-bottom), 0.5rem)' }} />
       </div>
     </div>
   );
