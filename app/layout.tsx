@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import { Analytics } from '@vercel/analytics/next';
 import { ThemeProvider } from '@/components/theme-provider';
 import { ServiceWorkerRegistration } from '@/components/ServiceWorkerRegistration';
 import { ViewModeProvider } from '@/components/view-mode-provider';
@@ -52,6 +53,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <ServiceWorkerRegistration />
           </ViewModeProvider>
         </ThemeProvider>
+        <Analytics />
       </body>
     </html>
   );
