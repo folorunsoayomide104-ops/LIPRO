@@ -3,10 +3,10 @@ import { LandingFooter } from '@/components/landing/footer';
 import { GraduationCap, BookOpen, Wallet, HeartHandshake, Target, Award } from 'lucide-react';
 
 const VALUES = [
-  { icon: Target, title: 'Built for Nigeria', desc: 'Designed around Nigerian curricula, faculties and matric conventions â€” from 100 to 500 level.' },
+  { icon: Target, title: 'Built for Nigeria', desc: 'Designed around Nigerian curricula, faculties and matric conventions — from 100 to 500 level.' },
   { icon: Award, title: 'Independent', desc: 'A self-owned platform, not tied to any institution. We answer only to the students who use us.' },
   { icon: HeartHandshake, title: 'Student-first', desc: 'Affordable pricing, premium experience, and no gatekeeping on quality.' },
-  { icon: Wallet, title: 'Honest value', desc: 'One platform for revision materials, CBT practice and results tracking â€” without the cost of private tutoring.' },
+  { icon: Wallet, title: 'Honest value', desc: 'One platform for revision materials, CBT practice and results tracking — without the cost of private tutoring.' },
 ];
 
 export default function AboutPage() {
@@ -18,7 +18,7 @@ export default function AboutPage() {
           <h1 className="text-4xl font-bold tracking-tight md:text-5xl">About LIPRO ACADEMY</h1>
           <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-lipro-700/80 dark:text-lipro-200/80">
             LIPRO ACADEMY exists to make serious revision possible for every Nigerian university
-            student â€” structured notes, past questions and CBT practice that follow your curriculum,
+            student — structured notes, past questions and CBT practice that follow your curriculum,
             at a price any student can afford.
           </p>
         </section>
