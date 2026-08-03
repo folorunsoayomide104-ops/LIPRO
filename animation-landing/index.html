@@ -1406,7 +1406,7 @@
             Send Message
             <span class="btn__icon">&rarr;</span>
           </button>
-          <div class="form-status" id="formStatus">Thanks for reaching out! We&rsquo;ll get back to you soon.</div>
+          <div class="form-status" id="formStatus" role="status" aria-live="polite"></div>
         </form>
       </div>
     </div>
@@ -1424,8 +1424,6 @@
         <h4>Company</h4>
         <ul>
           <li><a href="/about" data-cursor="hover">About Us</a></li>
-          <li><a href="#" data-cursor="hover">Careers</a></li>
-          <li><a href="#" data-cursor="hover">Blog</a></li>
         </ul>
       </div>
       <div class="footer__col">
@@ -1729,6 +1727,7 @@
     const formStatus = document.getElementById('formStatus');
     contactForm.addEventListener('submit', (e) => {
       e.preventDefault();
+      formStatus.textContent = 'Thanks for reaching out! We\u2019ll get back to you soon.';
       formStatus.style.display = 'block';
       gsap.fromTo(formStatus, { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.6, ease: 'power3.out' });
       contactForm.reset();

@@ -1,6 +1,6 @@
 'use client';
-import { Suspense, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input, Label } from '@/components/ui/input';
@@ -8,22 +8,24 @@ import { Mail, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { LiproLogo } from '@/components/LiproLogo';
 
 export default function LoginPage() {
-  return (
-    <Suspense fallback={null}>
-      <LoginForm />
-    </Suspense>
-  );
+  return <LoginForm />;
 }
 
 function LoginForm() {
   const router = useRouter();
-  const search = useSearchParams();
+  const redirectRef = useRef<string | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [agree, setAgree] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      redirectRef.current = new URLSearchParams(window.location.search).get('redirect');
+    }
+  }, []);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,8 +38,7 @@ function LoginForm() {
     });
     const data = await res.json().catch(() => null);
     if (!res.ok) { setError(data?.error || 'Login failed'); setLoading(false); return; }
-    const redirect = search.get('redirect') || '/dashboard';
-    router.push(redirect);
+    router.push(redirectRef.current || '/dashboard');
   };
 
   return (
