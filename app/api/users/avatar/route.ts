@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { writeFile, unlink } from 'node:fs/promises';
-import path from 'node:path';
+import { put, del } from '@vercel/blob';
 import { prisma } from '@/lib/prisma';
 import { guard } from '@/lib/api-guard';
 
@@ -25,24 +24,23 @@ export async function POST(req: Request) {
   if (!ALLOWED_EXT[file.type]) return NextResponse.json({ error: 'Unsupported image type. Use PNG, JPG, WEBP or GIF.' }, { status: 415 });
 
   const ext = ALLOWED_EXT[file.type];
-  const filename = `${user.userId}-${Date.now()}${ext}`;
-  const dir = path.join(process.cwd(), 'public', 'avatars');
-  const filePath = path.join(dir, filename);
   const buffer = Buffer.from(await file.arrayBuffer());
+  const pathname = `avatars/${user.userId}-${Date.now()}${ext}`;
+
+  const blob = await put(pathname, buffer, {
+    access: 'public',
+    contentType: file.type,
+    addRandomSuffix: true,
+  });
 
   const previous = await prisma.user.findUnique({ where: { id: user.userId }, select: { avatarUrl: true } });
 
-  await writeFile(filePath, buffer);
-
   if (previous?.avatarUrl) {
-    const match = previous.avatarUrl.match(/^\/avatars\/([A-Za-z0-9_.-]+)$/);
-    if (match) {
-      const oldPath = path.join(dir, match[1]);
-      if (oldPath.startsWith(dir)) await unlink(oldPath).catch(() => {});
-    }
+    const match = previous.avatarUrl.match(/^https:\/\/[^/]+\/avatars\/.+$/);
+    if (match) await del(previous.avatarUrl).catch(() => {});
   }
 
-  await prisma.user.update({ where: { id: user.userId }, data: { avatarUrl: `/avatars/${filename}` } });
+  await prisma.user.update({ where: { id: user.userId }, data: { avatarUrl: blob.url } });
 
-  return NextResponse.json({ avatarUrl: `/avatars/${filename}` });
+  return NextResponse.json({ avatarUrl: blob.url });
 }
