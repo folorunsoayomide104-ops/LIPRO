@@ -17,7 +17,7 @@ export function LandingFooter() {
           </div>
           {[
             { title: 'Product', links: [{ label: 'LIPRO AI', href: '/lipro-ai' }, { label: 'CBT Engine', href: '/cbt' }, { label: 'Notes', href: '/notes' }, { label: 'Study Planner', href: '/dashboard' }] },
-            { title: 'Company', links: [{ label: 'About Us', href: '/about' }, { label: 'Documentation', href: '/documentation.html' }, { label: 'Help Center', href: '/help-center.html' }] },
+            { title: 'Company', links: [{ label: 'About Us', href: '/about' }, { label: 'Documentation', href: '/documentation' }, { label: 'Help Center', href: '/help-center' }] },
             { title: 'Account', links: [{ label: 'Sign in', href: '/login' }, { label: 'Register', href: '/register' }, { label: 'Wallet', href: '/wallet' }] },
             { title: 'Legal', links: [{ label: 'Privacy Policy', href: '/privacy' }, { label: 'Terms', href: '/terms' }] },
           ].map((col) => (

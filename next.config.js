@@ -10,5 +10,13 @@ const nextConfig = {
   images: {
     remotePatterns: [{ protocol: 'https', hostname: 'files.lipro.academy' }],
   },
+  async rewrites() {
+    return [
+      { source: '/help-center', destination: '/help-center.html' },
+      { source: '/documentation', destination: '/documentation.html' },
+      { source: '/support', destination: '/support.html' },
+      { source: '/cookie-policy', destination: '/cookie-policy.html' },
+    ];
+  },
 };
 module.exports = nextConfig;

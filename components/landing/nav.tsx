@@ -4,7 +4,17 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { LiproLogo } from '@/components/LiproLogo';
 import { Menu, X } from 'lucide-react';
-import { cn } from '@/lib/utils';
+
+const NAV = [
+  { label: 'Home', href: '/#home' },
+  { label: 'Features', href: '/#features' },
+  { label: 'Universities', href: '/#universities' },
+  { label: 'Pricing', href: '/#pricing' },
+  { label: 'Testimonials', href: '/#testimonials' },
+  { label: 'FAQ', href: '/#faq' },
+  { label: 'Contact', href: '/#contact' },
+  { label: 'About', href: '/about' },
+];
 
 export function LandingNav() {
   const [open, setOpen] = useState(false);
@@ -17,8 +27,10 @@ export function LandingNav() {
           </div>
           <span className="text-base font-bold tracking-tight">LIPRO ACADEMY</span>
         </Link>
-        <div className="hidden items-center gap-6 text-sm font-medium text-lipro-700/80 dark:text-lipro-200/80 md:flex">
-          <a href="#about" className="hover:text-lipro-600">About</a>
+        <div className="hidden items-center gap-5 text-sm font-medium text-lipro-700/80 dark:text-lipro-200/80 lg:flex">
+          {NAV.map((item) => (
+            <Link key={item.label} href={item.href} className="whitespace-nowrap hover:text-lipro-600">{item.label}</Link>
+          ))}
         </div>
         <div className="hidden items-center gap-2 md:flex">
           <Link href="/login"><Button variant="ghost" size="sm">Sign in</Button></Link>
@@ -30,7 +42,9 @@ export function LandingNav() {
       </div>
       {open && (
         <div className="glass mx-auto flex max-w-7xl flex-col gap-2 border-t border-lipro-200/20 px-4 py-4 md:hidden">
-          <a href="#about" onClick={() => setOpen(false)} className="rounded-xl px-3 py-2.5 text-sm font-medium text-lipro-700/80 hover:bg-lipro-50 dark:text-lipro-200/80 dark:hover:bg-lipro-950/40">About</a>
+          {NAV.map((item) => (
+            <Link key={item.label} href={item.href} onClick={() => setOpen(false)} className="rounded-xl px-3 py-2.5 text-sm font-medium text-lipro-700/80 hover:bg-lipro-50 dark:text-lipro-200/80 dark:hover:bg-lipro-950/40">{item.label}</Link>
+          ))}
           <div className="mt-1 flex gap-2">
             <Link href="/login" className="flex-1" onClick={() => setOpen(false)}><Button variant="ghost" className="w-full">Sign in</Button></Link>
             <Link href="/register" className="flex-1" onClick={() => setOpen(false)}><Button className="w-full">Get started</Button></Link>

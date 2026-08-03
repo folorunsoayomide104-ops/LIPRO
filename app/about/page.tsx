@@ -1,7 +1,7 @@
 ﻿import type { Metadata } from 'next';
 import { LandingNav } from '@/components/landing/nav';
 import { LandingFooter } from '@/components/landing/footer';
-import { GraduationCap, BookOpen, Wallet, HeartHandshake, Target, Award } from 'lucide-react';
+import { GraduationCap, BookOpen, Wallet, HeartHandshake, Target, Award, Users } from 'lucide-react';
 
 export const metadata: Metadata = {
   title: 'About LIPRO ACADEMY — Our story and mission',
@@ -33,9 +33,9 @@ export default function AboutPage() {
           <h2 className="text-2xl font-bold tracking-tight">Our story</h2>
           <div className="mt-4 space-y-4 text-[15px] leading-relaxed text-lipro-700/80 dark:text-lipro-200/75">
             <p>
-              LIPRO ACADEMY was founded by LIPRO and his colleagues — an independent team who saw
-              the same problem repeat itself: smart students failing courses they could have passed —
-              not because they lacked ability, but because they had no organised way to revise.
+              LIPRO ACADEMY was founded by an independent team of Nigerian educators and engineers
+              who saw the same problem repeat itself: smart students failing courses they could have
+              passed — not because they lacked ability, but because they had no organised way to revise.
             </p>
             <p>
               Most students were stuck with scattered lecture notes, half-finished past questions and
@@ -64,6 +64,31 @@ export default function AboutPage() {
                 <p className="mt-1 text-sm text-lipro-600/70 dark:text-lipro-200/70">{v.desc}</p>
               </div>
             ))}
+          </div>
+        </section>
+
+        <section className="mx-auto max-w-3xl px-4 py-10 text-center">
+          <div className="card">
+            <Users className="mx-auto h-8 w-8 text-lipro-500" />
+            <h2 className="mt-3 text-2xl font-bold tracking-tight">The team behind LIPRO ACADEMY</h2>
+            <p className="mx-auto mt-3 max-w-xl text-[15px] leading-relaxed text-lipro-700/80 dark:text-lipro-200/75">
+              We are a small, independent team of former university students — educators, software
+              engineers and exam-writers — who know what it takes to pass in a Nigerian university.
+              Every feature ships through our own hands, and every revision note is reviewed against
+              the actual curriculum before it reaches students.
+            </p>
+            <div className="mt-6 grid gap-4 sm:grid-cols-3">
+              {[
+                { title: 'Product & curriculum', desc: 'Notes and question banks built from real Nigerian syllabi, reviewed course by course.' },
+                { title: 'Engineering', desc: 'The CBT engine, LIPRO AI and analytics — built and maintained by our in-house developers.' },
+                { title: 'Student support', desc: 'Real humans on WhatsApp and email who answer fast, because we answer the way we would want to be answered.' },
+              ].map((t) => (
+                <div key={t.title} className="rounded-xl bg-lipro-50/50 p-4 text-left dark:bg-lipro-950/30">
+                  <div className="text-sm font-semibold">{t.title}</div>
+                  <p className="mt-1 text-[13px] text-lipro-600/70 dark:text-lipro-200/70">{t.desc}</p>
+                </div>
+              ))}
+            </div>
           </div>
         </section>
 
