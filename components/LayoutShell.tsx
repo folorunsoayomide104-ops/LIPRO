@@ -106,7 +106,7 @@ export function LayoutShell({ children, roleLabel }: { children: ReactNode; role
           <button className="tap lg:hidden" onClick={() => setMobileOpen(true)} aria-label="Open menu"><Menu className="h-6 w-6" /></button>
           <div className="ml-auto flex items-center gap-2">
             {!inFrame && (
-              <button onClick={() => setViewMode(viewMode === 'mobile' ? 'desktop' : 'mobile')} className="tap flex items-center gap-1.5 rounded-xl border border-lipro-200/60 px-3 py-2 text-xs font-medium text-lipro-700 transition-colors hover:bg-lipro-50 dark:border-lipro-500/20 dark:text-lipro-200 dark:hover:bg-lipro-950/40" aria-label="Toggle view mode" title="Toggle mobile/desktop view">
+              <button onClick={() => setViewMode(viewMode === 'mobile' ? 'desktop' : 'mobile')} className="tap hidden lg:flex items-center gap-1.5 rounded-xl border border-lipro-200/60 px-3 py-2 text-xs font-medium text-lipro-700 transition-colors hover:bg-lipro-50 dark:border-lipro-500/20 dark:text-lipro-200 dark:hover:bg-lipro-950/40" aria-label="Toggle view mode" title="Toggle mobile/desktop view">
                 {viewMode === 'mobile' ? <Monitor className="h-4 w-4" /> : <Smartphone className="h-4 w-4" />}
                 {viewMode === 'mobile' ? 'Desktop' : 'Mobile'}
               </button>
