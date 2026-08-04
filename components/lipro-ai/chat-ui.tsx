@@ -66,8 +66,9 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
     }
     const looksPdf = f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf');
     const looksText = f.type.startsWith('text/') || /\.(txt|md|markdown)$/i.test(f.name);
-    if (!looksPdf && !looksText) {
-      setAttachError('Unsupported file. Upload a PDF, TXT or Markdown file.');
+    const looksImage = /^image\//.test(f.type) || /\.(jpg|jpeg|png|gif|webp|bmp|tiff|svg)$/i.test(f.name);
+    if (!looksPdf && !looksText && !looksImage) {
+      setAttachError('Unsupported file. Upload a PDF, image (JPG, PNG, etc.), TXT or Markdown file.');
       return;
     }
     setAttached({ name: f.name, file: f });
@@ -474,7 +475,7 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
           <input
             ref={fileInputRef}
             type="file"
-            accept=".pdf,.txt,.md,.markdown,application/pdf,text/plain,text/markdown"
+            accept=".pdf,.txt,.md,.markdown,.jpg,.jpeg,.png,.gif,.webp,.bmp,.tiff,.svg,application/pdf,text/plain,text/markdown,image/jpeg,image/png,image/gif,image/webp,image/bmp,image/tiff,image/svg+xml"
             className="hidden"
             onChange={onPickFile}
           />
