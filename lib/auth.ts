@@ -21,7 +21,7 @@ export async function signResetToken(userId: string): Promise<string> {
   return await new SignJWT({ purpose: "password-reset", userId })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime(RESET_TOKEN_TTL_SECONDS)
+    .setExpirationTime(`${RESET_TOKEN_TTL_SECONDS}s`)
     .sign(secret);
 }
 
