@@ -36,10 +36,12 @@ export function LayoutShell({ children, roleLabel }: { children: ReactNode; role
   const [mobileOpen, setMobileOpen] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [inFrame, setInFrame] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const { viewMode, setViewMode } = useViewMode();
 
   useEffect(() => {
     setInFrame(typeof window !== 'undefined' && window.self !== window.top);
+    setIsMobile(typeof window !== 'undefined' && window.innerWidth < 768);
   }, []);
 
   useEffect(() => {
@@ -95,7 +97,7 @@ export function LayoutShell({ children, roleLabel }: { children: ReactNode; role
   );
 
   return (
-    viewMode === 'mobile' && !inFrame ? (
+    viewMode === 'mobile' && !inFrame && !isMobile ? (
       <MobileModeFrame src={pathname} onExit={() => setViewMode('desktop')} />
     ) : (
     <div className="flex min-h-screen">
