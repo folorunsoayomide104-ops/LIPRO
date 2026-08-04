@@ -5,6 +5,7 @@ import { chatSchema } from '@/lib/validators';
 import { resolveAiProvider } from '@/lib/ai';
 import { nvidiaChatCompletion, openNvidiaStream } from '@/lib/nvidia';
 import { extractText, MAX_UPLOAD_BYTES } from '@/lib/pdf';
+import { generateEmbedding } from '@/lib/embeddings';
 
 export const maxDuration = 120;
 export const dynamic = 'force-dynamic';
@@ -23,6 +24,7 @@ Guidelines:
 
 type HistoryMsg = { role: string; content: string };
 type DocContext = { name: string; text: string };
+type ChunkResult = { id: string; content: string; chunkIndex: number };
 
 function buildModelMessages(history: HistoryMsg[], docs: DocContext[]): Array<{ role: string; content: string }> {
   const msgs = history.slice(-10).map((h) => ({ role: h.role, content: h.content }));
@@ -36,6 +38,30 @@ function buildModelMessages(history: HistoryMsg[], docs: DocContext[]): Array<{ 
     }
   }
   return msgs;
+}
+
+async function fetchRelevantChunks(userId: string, queryEmbedding: number[], limit: number = 5): Promise<ChunkResult[]> {
+  try {
+    const embeddingArray = queryEmbedding.map((v) => v.toFixed(6));
+    const rows = await prisma.$queryRaw<
+      Array<{ id: string; content: string; chunkIndex: number; materialId: string }>
+    >`
+      SELECT id, content, "chunkIndex", "materialId"
+      FROM "DocumentChunk"
+      WHERE "userId" = ${userId}
+      ORDER BY "embedding" <=> ARRAY[${embeddingArray.join(',')}]::vector
+      LIMIT ${limit}
+    `;
+    return rows.map((r) => ({ id: r.id, content: r.content, chunkIndex: r.chunkIndex }));
+  } catch (err: any) {
+    console.error('Semantic retrieval failed:', err?.message || err);
+    return [];
+  }
+}
+
+function buildRagContext(chunks: ChunkResult[]): string {
+  if (chunks.length === 0) return '';
+  return chunks.map((c) => `[Chunk ${c.chunkIndex}]\n${c.content}`).join('\n\n---\n\n');
 }
 
 async function linkMaterialToConversation(convId: string, materialId: string): Promise<void> {
@@ -174,6 +200,18 @@ export async function POST(req: Request) {
   const history: HistoryMsg[] = conversation ? JSON.parse(conversation.messages) : [];
   history.push({ role: 'user', content: message });
 
+  let ragChunks: ChunkResult[] = [];
+  let queryEmbedding: number[] | null = null;
+  if (apiKey && apiKey.trim().length > 0) {
+    try {
+      const embedding = await generateEmbedding(message, user.userId);
+      queryEmbedding = Array.from(embedding);
+      ragChunks = await fetchRelevantChunks(user.userId, queryEmbedding, 5);
+    } catch (err: any) {
+      console.error('RAG embedding failed:', err?.message || err);
+    }
+  }
+
   // All documents saved to this conversation (+ the one just attached) are
   // always available in context so the AI knows they're attached — but the
   // system prompt tells it not to teach from them until the user asks.
@@ -197,13 +235,15 @@ export async function POST(req: Request) {
   const shouldStream = wantStream && apiKey.trim().length > 0;
 
   if (shouldStream) {
-    return handleStream(user.userId, conversation, history, message, apiKey, baseURL, model, provider.provider, docs, materialId);
+    return handleStream(user.userId, conversation, history, message, apiKey, baseURL, model, provider.provider, docs, materialId, queryEmbedding ?? null, ragChunks);
   }
   let replyText: string;
   let usedFallback = false;
 
   if (apiKey && apiKey.trim().length > 0) {
     try {
+      const ragContext = buildRagContext(ragChunks);
+      const ragDocs = ragContext ? [{ name: 'Relevant Document Chunks', text: ragContext }] : [];
       replyText = await nvidiaChatCompletion({
         apiKey,
         baseURL,
@@ -211,7 +251,7 @@ export async function POST(req: Request) {
         label: provider.provider === 'groq' ? 'Groq' : 'NVIDIA NIM',
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },
-          ...buildModelMessages(history, docs),
+          ...buildModelMessages(history, [...docs, ...ragDocs]),
         ],
         temperature: 0.7,
         maxTokens: 800,
@@ -244,7 +284,9 @@ async function handleStream(
   model: string,
   providerName: 'groq' | 'nvidia' | 'none',
   docs: DocContext[] = [],
-  materialId?: string | null
+  materialId?: string | null,
+  queryEmbedding: number[] | null = null,
+  ragChunks: ChunkResult[] = []
 ): Promise<Response> {
   const encoder = new TextEncoder();
 
@@ -273,6 +315,9 @@ async function handleStream(
 
   if (materialId) await linkMaterialToConversation(convId, materialId);
 
+  const ragContext = buildRagContext(ragChunks);
+  const ragDocs = ragContext ? [{ name: 'Relevant Document Chunks', text: ragContext }] : [];
+
   const upstreamRes = await openNvidiaStream({
     apiKey,
     baseURL,
@@ -280,7 +325,7 @@ async function handleStream(
     label: providerName === 'groq' ? 'Groq' : 'NVIDIA NIM',
     messages: [
       { role: 'system', content: SYSTEM_PROMPT },
-      ...buildModelMessages(history, docs),
+      ...buildModelMessages(history, [...docs, ...ragDocs]),
     ],
     temperature: 0.7,
     maxTokens: 800,

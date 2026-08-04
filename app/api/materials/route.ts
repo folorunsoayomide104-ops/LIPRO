@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { guard } from '@/lib/api-guard';
 import { extractText, MAX_UPLOAD_BYTES } from '@/lib/pdf';
+import { chunkText } from '@/lib/chunkText';
+import { generateEmbeddings } from '@/lib/embeddings';
 
 export const maxDuration = 120;
 
@@ -34,6 +36,40 @@ async function parseAndCreate(userId: string, buffer: Buffer, originalName: stri
       createdAt: true,
     },
   });
+
+  const chunks = chunkText(text);
+  if (chunks.length > 0) {
+    const texts = chunks.map((c) => c.content);
+    try {
+      const embeddings = await generateEmbeddings(texts, userId);
+      await Promise.all(
+        chunks.map(async (chunk, i) => {
+          const embedding = embeddings[i] ? Array.from(embeddings[i]) : null;
+          if (embedding) {
+            const placeholders = embedding.map((_, idx) => `$${idx + 5}`).join(', ');
+            await prisma.$executeRawUnsafe(
+              `INSERT INTO "DocumentChunk" (id, "materialId", "userId", "chunkIndex", content, embedding, "createdAt") VALUES (gen_random_uuid(), $1, $2, $3, $4, ARRAY[${placeholders}]::vector, NOW())`,
+              material.id,
+              userId,
+              i,
+              chunk.content,
+              ...embedding
+            );
+          } else {
+            await prisma.$executeRawUnsafe(
+              `INSERT INTO "DocumentChunk" (id, "materialId", "userId", "chunkIndex", content, embedding, "createdAt") VALUES (gen_random_uuid(), $1, $2, $3, $4, NULL, NOW())`,
+              material.id,
+              userId,
+              i,
+              chunk.content
+            );
+          }
+        })
+      );
+    } catch (err: any) {
+      console.error('Embedding generation failed:', err?.message || err);
+    }
+  }
 
   return { material: { ...material, createdAt: material.createdAt.toISOString(), _count: { questions: 0 } } };
 }
