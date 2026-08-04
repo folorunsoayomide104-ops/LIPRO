@@ -98,6 +98,7 @@ export async function POST(req: Request) {
   let file: File | undefined;
   let blobUrl: string | undefined;
   let originalName: string | undefined;
+  let files: Array<{ url: string; name: string }> | undefined;
 
   if (contentType.includes('multipart/form-data')) {
     const form = await req.formData().catch(() => null);
@@ -118,13 +119,57 @@ export async function POST(req: Request) {
     wantStream = parsed.data.stream === true;
     blobUrl = parsed.data.blobUrl;
     originalName = parsed.data.originalName;
+    files = parsed.data.files as Array<{ url: string; name: string }> | undefined;
   }
 
   if (!message.trim()) return NextResponse.json({ error: 'Message is required' }, { status: 422 });
 
-  let docContext: DocContext | null = null;
-  let materialId: string | null = null;
-  if (blobUrl) {
+  const allDocContexts: DocContext[] = [];
+  const materialIds: string[] = [];
+
+  // Handle multiple files from the new format
+  if (files && files.length > 0) {
+    const validFiles = files.filter((f): f is { url: string; name: string } => !!f.url && !!f.name);
+    for (const fileInfo of validFiles) {
+      try {
+        const head = await fetch(fileInfo.url, { method: 'HEAD' }).catch(() => null);
+        const len = Number(head?.headers.get('content-length') || 0);
+        if (len > MAX_UPLOAD_BYTES) continue;
+
+        const blobRes = await fetch(fileInfo.url).catch(() => null);
+        if (!blobRes || !blobRes.ok) continue;
+
+        const buffer = Buffer.from(await blobRes.arrayBuffer());
+        if (buffer.length === 0) continue;
+
+        const name = fileInfo.name || 'document.pdf';
+        const looksLikePdf = name.toLowerCase().endsWith('.pdf');
+        const looksLikeImage = /^image\//.test(head?.headers.get('content-type') || '') || /\.(jpg|jpeg|png|gif|webp|bmp|tiff|svg)$/i.test(name);
+        const mimeType = looksLikePdf ? 'application/pdf' : looksLikeImage ? (head?.headers.get('content-type') || 'image/jpeg') : 'text/plain';
+
+        let text = '';
+        if (looksLikeImage) {
+          text = await extractTextFromImage(buffer);
+        } else {
+          const result = await extractText(buffer, mimeType);
+          text = result.text;
+        }
+
+        if (text) {
+          allDocContexts.push({ name, text: text.slice(0, 24000) });
+          const material = await prisma.material.create({
+            data: { userId: user.userId, originalName: name, mimeType, sizeBytes: buffer.length, status: 'ready', text },
+            select: { id: true },
+          });
+          materialIds.push(material.id);
+        }
+      } catch (err: any) {
+        console.error(`Failed to process file ${fileInfo.name}:`, err?.message || err);
+      }
+    }
+  }
+  // Handle single blobUrl (legacy format)
+  else if (blobUrl) {
     const sizeCheck = await (async () => {
       const head = await fetch(blobUrl!, { method: 'HEAD' }).catch(() => null);
       const len = Number(head?.headers.get('content-length') || 0);
@@ -143,20 +188,28 @@ export async function POST(req: Request) {
     }
     const name = originalName || 'document.pdf';
     const looksLikePdf = name.toLowerCase().endsWith('.pdf');
-    const mimeType = looksLikePdf ? 'application/pdf' : 'text/plain';
+    const looksLikeImage = /\.(jpg|jpeg|png|gif|webp|bmp|tiff|svg)$/i.test(name);
+    const mimeType = looksLikePdf ? 'application/pdf' : looksLikeImage ? 'image/jpeg' : 'text/plain';
     let text = '';
     try {
-      const result = await extractText(buffer, mimeType);
-      text = result.text;
+      if (looksLikeImage) {
+        text = await extractTextFromImage(buffer);
+        if (!text) {
+          return NextResponse.json({ error: 'Could not read any text from this image. Try uploading a clearer image.' }, { status: 422 });
+        }
+      } else {
+        const result = await extractText(buffer, mimeType);
+        text = result.text;
+      }
     } catch (err: any) {
       return NextResponse.json({ error: err?.message || 'Failed to read the document' }, { status: 422 });
     }
-    docContext = { name, text: text.slice(0, 24000) };
+    allDocContexts.push({ name, text: text.slice(0, 24000) });
     const material = await prisma.material.create({
       data: { userId: user.userId, originalName: name, mimeType, sizeBytes: buffer.length, status: 'ready', text },
       select: { id: true },
     });
-    materialId = material.id;
+    materialIds.push(material.id);
   } else if (file) {
     if (file.size > MAX_UPLOAD_BYTES) {
       return NextResponse.json({ error: 'File is too large. Max size is 100MB.' }, { status: 413 });
@@ -186,12 +239,12 @@ export async function POST(req: Request) {
     } catch (err: any) {
       return NextResponse.json({ error: err?.message || 'Failed to read the file' }, { status: 422 });
     }
-    docContext = { name: file.name, text: text.slice(0, 24000) };
+    allDocContexts.push({ name: file.name, text: text.slice(0, 24000) });
     const material = await prisma.material.create({
       data: { userId: user.userId, originalName: file.name, mimeType, sizeBytes: file.size, status: 'ready', text },
       select: { id: true },
     });
-    materialId = material.id;
+    materialIds.push(material.id);
   }
 
   const provider = await resolveAiProvider(user.userId);
@@ -229,8 +282,10 @@ export async function POST(req: Request) {
     text: m.material.text ?? '',
   }));
   const teachingDocs: DocContext[] = [...persistedDocs];
-  if (docContext && !persistedDocs.some((d) => d.name === docContext!.name && d.text === docContext!.text)) {
-    teachingDocs.push(docContext);
+  for (const ctx of allDocContexts) {
+    if (!persistedDocs.some((d) => d.name === ctx.name && d.text === ctx.text)) {
+      teachingDocs.push(ctx);
+    }
   }
   const docs: DocContext[] = [];
   let budget = 12000;
@@ -244,7 +299,7 @@ export async function POST(req: Request) {
   const shouldStream = wantStream && apiKey.trim().length > 0;
 
   if (shouldStream) {
-    return handleStream(user.userId, conversation, history, message, apiKey, baseURL, model, provider.provider, docs, materialId, queryEmbedding ?? null, ragChunks);
+    return handleStream(user.userId, conversation, history, message, apiKey, baseURL, model, provider.provider, docs, materialIds, queryEmbedding ?? null, ragChunks);
   }
   let replyText: string;
   let usedFallback = false;
@@ -278,9 +333,11 @@ export async function POST(req: Request) {
 
   history.push({ role: 'assistant', content: replyText });
   const convId = await persistConversation(user.userId, conversationId, conversation, history, message);
-  if (materialId) await linkMaterialToConversation(convId, materialId);
+  for (const mid of materialIds) {
+    await linkMaterialToConversation(convId, mid);
+  }
 
-  return NextResponse.json({ reply: replyText, conversationId: convId, fallback: usedFallback, materialId });
+  return NextResponse.json({ reply: replyText, conversationId: convId, fallback: usedFallback, materialIds });
 }
 
 async function handleStream(
@@ -293,7 +350,7 @@ async function handleStream(
   model: string,
   providerName: 'groq' | 'nvidia' | 'none',
   docs: DocContext[] = [],
-  materialId?: string | null,
+  materialIds: string[] = [],
   queryEmbedding: number[] | null = null,
   ragChunks: ChunkResult[] = []
 ): Promise<Response> {
@@ -322,7 +379,9 @@ async function handleStream(
     return NextResponse.json({ error: 'Could not start conversation' }, { status: 500 });
   }
 
-  if (materialId) await linkMaterialToConversation(convId, materialId);
+  for (const mid of materialIds) {
+    await linkMaterialToConversation(convId, mid);
+  }
 
   const ragContext = buildRagContext(ragChunks);
   const ragDocs = ragContext ? [{ name: 'Relevant Document Chunks', text: ragContext }] : [];

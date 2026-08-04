@@ -51,6 +51,10 @@ export const chatSchema = z.object({
   stream: z.boolean().optional(),
   blobUrl: z.string().optional(),
   originalName: z.string().optional(),
+  files: z.array(z.object({
+    url: z.string().min(1),
+    name: z.string().min(1),
+  })).optional(),
   context: z.object({
     courseId: z.string().optional(),
     noteId: z.string().optional(),

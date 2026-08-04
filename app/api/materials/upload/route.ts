@@ -21,7 +21,19 @@ export async function POST(request: Request) {
           throw new Error('File is too large. Max size is 100MB.');
         }
         return {
-          allowedContentTypes: ['application/pdf', 'text/plain', 'text/markdown', 'text/csv'],
+          allowedContentTypes: [
+            'application/pdf',
+            'text/plain',
+            'text/markdown',
+            'text/csv',
+            'image/jpeg',
+            'image/png',
+            'image/gif',
+            'image/webp',
+            'image/bmp',
+            'image/tiff',
+            'image/svg+xml',
+          ],
           maximumSizeInBytes: MAX_UPLOAD_BYTES,
           addRandomSuffix: true,
         };

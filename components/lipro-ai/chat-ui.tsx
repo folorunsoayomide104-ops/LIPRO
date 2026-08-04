@@ -34,7 +34,7 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
   const endRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [attached, setAttached] = useState<{ name: string; file: File } | null>(null);
+  const [attached, setAttached] = useState<Array<{ name: string; file: File }>>([]);
   const [attachError, setAttachError] = useState('');
   const [docs, setDocs] = useState<{ id: string; name: string }[]>([]);
   const [savedNote, setSavedNote] = useState(false);
@@ -56,22 +56,28 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
   };
 
   const onPickFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
+    const files = e.target.files;
     e.target.value = '';
     setAttachError('');
-    if (!f) return;
-    if (f.size > 100 * 1024 * 1024) {
-      setAttachError('File is too large — max 100MB.');
-      return;
+    if (!files || files.length === 0) return;
+
+    const newFiles: Array<{ name: string; file: File }> = [];
+    for (let i = 0; i < files.length; i++) {
+      const f = files[i];
+      if (f.size > 100 * 1024 * 1024) {
+        setAttachError(`${f.name} is too large — max 100MB.`);
+        return;
+      }
+      const looksPdf = f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf');
+      const looksText = f.type.startsWith('text/') || /\.(txt|md|markdown)$/i.test(f.name);
+      const looksImage = /^image\//.test(f.type) || /\.(jpg|jpeg|png|gif|webp|bmp|tiff|svg)$/i.test(f.name);
+      if (!looksPdf && !looksText && !looksImage) {
+        setAttachError(`${f.name} is unsupported. Upload a PDF, image (JPG, PNG, etc.), TXT or Markdown file.`);
+        return;
+      }
+      newFiles.push({ name: f.name, file: f });
     }
-    const looksPdf = f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf');
-    const looksText = f.type.startsWith('text/') || /\.(txt|md|markdown)$/i.test(f.name);
-    const looksImage = /^image\//.test(f.type) || /\.(jpg|jpeg|png|gif|webp|bmp|tiff|svg)$/i.test(f.name);
-    if (!looksPdf && !looksText && !looksImage) {
-      setAttachError('Unsupported file. Upload a PDF, image (JPG, PNG, etc.), TXT or Markdown file.');
-      return;
-    }
-    setAttached({ name: f.name, file: f });
+    setAttached((prev) => [...prev, ...newFiles]);
   };
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, loadingConversation]);
@@ -164,10 +170,10 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
     if (textareaRef.current) textareaRef.current.style.height = 'auto';
     setLoading(true);
     setFallback(false);
-    const fileName = attached?.name;
+    const fileNames = attached.map((a) => a.name);
     setMessages((m) => [...m, { role: 'user', content: text }, { role: 'assistant', content: '' }]);
-    if (fileName) {
-      setDocs((d) => [...d.filter((x) => x.name !== fileName), { id: '', name: fileName }]);
+    if (fileNames.length > 0) {
+      setDocs((d) => [...d.filter((x) => !fileNames.includes(x.name)), ...fileNames.map((name) => ({ id: '', name }))]);
       setSavedNote(true);
       window.setTimeout(() => setSavedNote(false), 5000);
     }
@@ -187,24 +193,27 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
 
     try {
       let body;
-      if (attached) {
-        const blob = await blobUpload(attached.file.name, attached.file, {
-          access: 'public',
-          handleUploadUrl: '/api/materials/upload',
-          clientPayload: JSON.stringify({ sizeBytes: attached.file.size }),
-          multipart: attached.file.size > 50 * 1024 * 1024,
-        });
+      if (attached.length > 0) {
+        const blobUrls: Array<{ url: string; name: string }> = [];
+        for (const a of attached) {
+          const blob = await blobUpload(a.file.name, a.file, {
+            access: 'public',
+            handleUploadUrl: '/api/materials/upload',
+            clientPayload: JSON.stringify({ sizeBytes: a.file.size }),
+            multipart: a.file.size > 50 * 1024 * 1024,
+          });
+          blobUrls.push({ url: blob.url, name: a.file.name });
+        }
         body = JSON.stringify({
           message: text,
           conversationId,
           stream: true,
-          blobUrl: blob.url,
-          originalName: attached.file.name,
+          files: blobUrls,
         });
       } else {
         body = JSON.stringify({ message: text, conversationId, stream: true });
       }
-      setAttached(null);
+      setAttached([]);
       const res = await fetch('/api/lipro-ai/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -455,19 +464,23 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
             <CheckCircle2 className="h-3.5 w-3.5" /> Document saved — ask LIPRO AI about it and it will teach from it.
           </p>
         )}
-        {attached && (
-          <div className="relative mt-3 flex items-center gap-2 rounded-xl border border-lipro-300/50 bg-white/60 px-3 py-2 text-sm dark:border-lipro-700/40 dark:bg-surface-dark/60">
-            <FileText className="h-4 w-4 shrink-0 text-lipro-500" />
-            <span className="min-w-0 flex-1 truncate font-medium">{attached.name}</span>
-            <button
-              type="button"
-              onClick={() => setAttached(null)}
-              className="shrink-0 rounded-full p-1 text-lipro-500 transition-colors hover:bg-lipro-100 hover:text-lipro-700 dark:hover:bg-lipro-950/40"
-              title="Remove file"
-              aria-label="Remove attached file"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
+        {attached.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {attached.map((a, i) => (
+              <div key={i} className="relative flex items-center gap-2 rounded-xl border border-lipro-300/50 bg-white/60 px-3 py-2 text-sm dark:border-lipro-700/40 dark:bg-surface-dark/60">
+                <FileText className="h-4 w-4 shrink-0 text-lipro-500" />
+                <span className="min-w-0 flex-1 truncate font-medium">{a.name}</span>
+                <button
+                  type="button"
+                  onClick={() => setAttached((prev) => prev.filter((_, idx) => idx !== i))}
+                  className="shrink-0 rounded-full p-1 text-lipro-500 transition-colors hover:bg-lipro-100 hover:text-lipro-700 dark:hover:bg-lipro-950/40"
+                  title="Remove file"
+                  aria-label={`Remove attached file ${a.name}`}
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ))}
           </div>
         )}
         {attachError && <p className="mt-2 text-xs font-medium text-rose-500">{attachError}</p>}
@@ -475,6 +488,7 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
           <input
             ref={fileInputRef}
             type="file"
+            multiple
             accept=".pdf,.txt,.md,.markdown,.jpg,.jpeg,.png,.gif,.webp,.bmp,.tiff,.svg,application/pdf,text/plain,text/markdown,image/jpeg,image/png,image/gif,image/webp,image/bmp,image/tiff,image/svg+xml"
             className="hidden"
             onChange={onPickFile}
