@@ -20,6 +20,60 @@ const SUGGESTIONS = [
 
 const GREETING: Msg = { role: 'assistant', content: "Hi! I'm LIPRO AI, your personal tutoring assistant. Ask me anything about your courses, request revision guides, MCQs, summaries, or explanations." };
 
+const IMAGE_EXT = /\.(jpg|jpeg|png|gif|webp|bmp|tiff)$/i;
+
+function isImageFile(f: File): boolean {
+  return /^image\//.test(f.type) || IMAGE_EXT.test(f.name);
+}
+
+async function compressImage(file: File): Promise<File> {
+  if (!isImageFile(file) || file.type === 'image/svg+xml') return file;
+
+  const isLarge = file.size > 1.5 * 1024 * 1024;
+  if (!isLarge) return file;
+
+  try {
+    const bitmap = await createImageBitmap(file).catch(() => null);
+    if (!bitmap) return file;
+
+    const maxDim = 1600;
+    let { width, height } = bitmap;
+    if (Math.max(width, height) > maxDim) {
+      const scale = maxDim / Math.max(width, height);
+      width = Math.round(width * scale);
+      height = Math.round(height * scale);
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) { bitmap.close(); return file; }
+    ctx.drawImage(bitmap, 0, 0, width, height);
+    bitmap.close();
+
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, 'image/jpeg', 0.82)
+    );
+    if (!blob) return file;
+
+    const baseName = file.name.replace(/\.[^.]+$/, '');
+    const outFile = new File([blob], `${baseName}.jpg`, { type: 'image/jpeg' });
+    if (outFile.size >= file.size) return file;
+    return outFile;
+  } catch {
+    return file;
+  }
+}
+
+function objectUrlFor(file: File): string {
+  try {
+    return URL.createObjectURL(file);
+  } catch {
+    return '';
+  }
+}
+
 export function ChatUI({ initialConversations, initialMessages }: { initialConversations: Conversation[]; initialMessages?: Msg[] }) {
   const [conversations, setConversations] = useState<Conversation[]>(initialConversations);
   const [activeId, setActiveId] = useState<string | null>(initialConversations[0]?.id ?? null);
@@ -34,8 +88,10 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
   const endRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [attached, setAttached] = useState<Array<{ name: string; file: File }>>([]);
+  const [attached, setAttached] = useState<Array<{ name: string; file: File; preview?: string }>>([]);
   const [attachError, setAttachError] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState('');
   const [docs, setDocs] = useState<{ id: string; name: string }[]>([]);
   const [savedNote, setSavedNote] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
@@ -55,13 +111,13 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
     }
   };
 
-  const onPickFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const onPickFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     e.target.value = '';
     setAttachError('');
     if (!files || files.length === 0) return;
 
-    const newFiles: Array<{ name: string; file: File }> = [];
+    const newFiles: Array<{ name: string; file: File; preview?: string }> = [];
     for (let i = 0; i < files.length; i++) {
       const f = files[i];
       if (f.size > 100 * 1024 * 1024) {
@@ -75,7 +131,8 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
         setAttachError(`${f.name} is unsupported. Upload a PDF, image (JPG, PNG, etc.), TXT or Markdown file.`);
         return;
       }
-      newFiles.push({ name: f.name, file: f });
+      const file = looksImage ? await compressImage(f) : f;
+      newFiles.push({ name: file.name, file, preview: looksImage ? objectUrlFor(file) : undefined });
     }
     setAttached((prev) => [...prev, ...newFiles]);
   };
@@ -195,7 +252,10 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
       let body;
       if (attached.length > 0) {
         const blobUrls: Array<{ url: string; name: string }> = [];
-        for (const a of attached) {
+        setUploading(true);
+        for (let i = 0; i < attached.length; i++) {
+          const a = attached[i];
+          setUploadProgress(`Uploading ${i + 1} of ${attached.length} — ${a.name}…`);
           const blob = await blobUpload(a.file.name, a.file, {
             access: 'public',
             handleUploadUrl: '/api/materials/upload',
@@ -204,6 +264,8 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
           });
           blobUrls.push({ url: blob.url, name: a.file.name });
         }
+        setUploadProgress('');
+        setUploading(false);
         body = JSON.stringify({
           message: text,
           conversationId,
@@ -282,6 +344,8 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
       }
       refreshList();
     } catch (err: any) {
+      setUploading(false);
+      setUploadProgress('');
       appendReply('Sorry, something went wrong. Try again.');
     } finally {
       setLoading(false);
@@ -467,12 +531,19 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
         {attached.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-2">
             {attached.map((a, i) => (
-              <div key={i} className="relative flex items-center gap-2 rounded-xl border border-lipro-300/50 bg-white/60 px-3 py-2 text-sm dark:border-lipro-700/40 dark:bg-surface-dark/60">
-                <FileText className="h-4 w-4 shrink-0 text-lipro-500" />
-                <span className="min-w-0 flex-1 truncate font-medium">{a.name}</span>
+              <div key={i} className="relative flex items-center gap-2 rounded-xl border border-lipro-300/50 bg-white/60 px-2.5 py-2 text-sm dark:border-lipro-700/40 dark:bg-surface-dark/60">
+                {a.preview ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={a.preview} alt={a.name} className="h-10 w-10 shrink-0 rounded-md object-cover" />
+                ) : (
+                  <FileText className="h-4 w-4 shrink-0 text-lipro-500" />
+                )}
+                <span className="max-w-[160px] min-w-0 flex-1 truncate font-medium">{a.name}</span>
                 <button
                   type="button"
-                  onClick={() => setAttached((prev) => prev.filter((_, idx) => idx !== i))}
+                  onClick={() => {
+                    setAttached((prev) => prev.filter((_, idx) => idx !== i));
+                  }}
                   className="shrink-0 rounded-full p-1 text-lipro-500 transition-colors hover:bg-lipro-100 hover:text-lipro-700 dark:hover:bg-lipro-950/40"
                   title="Remove file"
                   aria-label={`Remove attached file ${a.name}`}
@@ -482,6 +553,11 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
               </div>
             ))}
           </div>
+        )}
+        {uploading && (
+          <p className="mt-3 flex items-center gap-1.5 text-xs font-medium text-lipro-600 dark:text-lipro-300">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" /> {uploadProgress || 'Uploading…'}
+          </p>
         )}
         {attachError && <p className="mt-2 text-xs font-medium text-rose-500">{attachError}</p>}
         <form className="mt-3 flex items-end gap-2" onSubmit={(e) => { e.preventDefault(); send(input); }}>
