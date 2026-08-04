@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Sign in to LIPRO ACADEMY',
+  title: 'Sign in',
   description: 'Sign in to LIPRO ACADEMY — revision materials, past questions, notes and CBT practice for Nigerian university students.',
 };
 

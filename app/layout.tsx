@@ -5,7 +5,10 @@ import { ViewModeProvider } from '@/components/view-mode-provider';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'LIPRO ACADEMY — University Learning Platform',
+  title: {
+    default: 'LIPRO ACADEMY | Your Life In Progress',
+    template: '%s | LIPRO ACADEMY',
+  },
   description: 'Revision materials, past questions, notes and CBT practice for Nigerian university students — written and reviewed by lecturers.',
   manifest: '/manifest.webmanifest',
   icons: {
