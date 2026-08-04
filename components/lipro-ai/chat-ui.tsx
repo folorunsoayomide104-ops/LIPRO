@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { upload as blobUpload } from '@vercel/blob/client';
 import { Button } from '@/components/ui/button';
-import { Send, Bot, User, Loader2, Plus, Trash2, MessageSquare, Maximize2, Minimize2, Paperclip, X, FileText, CheckCircle2 } from 'lucide-react';
+import { Send, Bot, User, Loader2, Plus, Trash2, MessageSquare, Maximize2, Minimize2, Paperclip, X, FileText, CheckCircle2, Edit2, Check, RotateCcw } from 'lucide-react';
 import { LiproLogo } from '@/components/LiproLogo';
 import AmbientBackground from '@/components/dashboard/ambient-bg';
 import { Badge } from '@/components/ui/badge';
@@ -37,6 +37,8 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
   const [attachError, setAttachError] = useState('');
   const [docs, setDocs] = useState<{ id: string; name: string }[]>([]);
   const [savedNote, setSavedNote] = useState(false);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editInput, setEditInput] = useState('');
 
   const autoResize = () => {
     const el = textareaRef.current;
@@ -118,6 +120,31 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
     await fetch(`/api/lipro-ai/conversations/${id}`, { method: 'DELETE' });
     setConversations((c) => c.filter((x) => x.id !== id));
     if (id === activeId) newChat();
+  };
+
+  const startEdit = (index: number) => {
+    if (messages[index].role !== 'user') return;
+    setEditingIndex(index);
+    setEditInput(messages[index].content);
+  };
+
+  const cancelEdit = () => {
+    setEditingIndex(null);
+    setEditInput('');
+  };
+
+  const saveEdit = async () => {
+    if (editingIndex === null || !editInput.trim() || loading) return;
+    const newContent = editInput.trim();
+    setMessages((prev) => {
+      const next = prev.slice(0, editingIndex + 1);
+      next[editingIndex] = { role: 'user', content: newContent };
+      return next;
+    });
+    setEditingIndex(null);
+    setEditInput('');
+    // Regenerate AI response from this point
+    await send(newContent);
   };
 
   const removeDoc = async (id: string) => {
@@ -305,16 +332,60 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
           {messages.map((m, i) => (
             <div key={i} className={`flex gap-3 ${m.role === 'user' ? 'justify-end' : ''}`}>
               {m.role === 'assistant' && <div className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-lipro-500 to-lipro-700 text-white"><Bot className="h-4 w-4" /></div>}
-              <div className={`max-w-[80%] whitespace-pre-wrap rounded-2xl p-3 text-sm ${m.role === 'user' ? 'bg-gradient-to-r from-lipro-600 to-lipro-500 text-white' : 'glass'}`}>
-                {m.content || (
-                  <span className="inline-flex items-center gap-1">
-                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-lipro-500" />
-                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-lipro-500" style={{ animationDelay: '0.15s' }} />
-                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-lipro-500" style={{ animationDelay: '0.3s' }} />
-                  </span>
-                )}
-              </div>
-              {m.role === 'user' && <div className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-lipro-200 text-lipro-700"><User className="h-4 w-4" /></div>}
+              {editingIndex === i && m.role === 'user' ? (
+                <div className="max-w-[80%] w-full flex gap-2">
+                  <textarea
+                    ref={textareaRef}
+                    value={editInput}
+                    onChange={(e) => { setEditInput(e.target.value); autoResize(); }}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); saveEdit(); } }}
+                    rows={1}
+                    className="max-h-[200px] min-h-11 flex-1 resize-none rounded-xl border border-lipro-300/50 bg-white/70 px-4 py-2.5 text-base outline-none placeholder:text-lipro-300/70 focus:border-lipro-400 focus:ring-4 focus:ring-lipro-400/15 dark:border-lipro-700/40 dark:bg-surface-dark/60"
+                    placeholder="Edit your message…"
+                    autoFocus
+                  />
+                  <div className="flex items-center gap-1">
+                    <Button size="sm" variant="primary" onClick={saveEdit} disabled={!editInput.trim()}><Check className="h-4 w-4" /></Button>
+                    <Button size="sm" variant="ghost" onClick={cancelEdit}><X className="h-4 w-4" /></Button>
+                  </div>
+                </div>
+              ) : (
+                <div className={`max-w-[80%] whitespace-pre-wrap rounded-2xl p-3 text-sm ${m.role === 'user' ? 'bg-gradient-to-r from-lipro-600 to-lipro-500 text-white' : 'glass'}`}>
+                  {m.content || (
+                    <span className="inline-flex items-center gap-1">
+                      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-lipro-500" />
+                      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-lipro-500" style={{ animationDelay: '0.15s' }} />
+                      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-lipro-500" style={{ animationDelay: '0.3s' }} />
+                    </span>
+                  )}
+                </div>
+              )}
+              {m.role === 'user' && editingIndex !== i && (
+                <div className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-lipro-200 text-lipro-700 relative">
+                  <User className="h-4 w-4" />
+                  <button
+                    onClick={() => startEdit(i)}
+                    className="absolute -top-1 -right-1 rounded-full p-0.5 text-lipro-400 opacity-0 transition-opacity hover:text-lipro-600 group-hover:opacity-100"
+                    title="Edit message"
+                    aria-label="Edit message"
+                  >
+                    <Edit2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
+              {m.role === 'assistant' && editingIndex !== i && (
+                <div className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-lipro-200 text-lipro-700 relative">
+                  <Bot className="h-4 w-4" />
+                  <button
+                    onClick={() => { if (i > 0 && messages[i-1].role === 'user') startEdit(i-1); }}
+                    className="absolute -top-1 -right-1 rounded-full p-0.5 text-lipro-400 opacity-0 transition-opacity hover:text-lipro-600 group-hover:opacity-100"
+                    title="Edit previous message"
+                    aria-label="Edit previous message"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
             </div>
           ))}
           <div ref={endRef} />
