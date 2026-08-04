@@ -15,7 +15,7 @@ async function parseAndCreate(userId: string, buffer: Buffer, originalName: stri
   let text = '';
   try {
     if (IMAGE_TYPES.includes(mimeType) || /^image\//.test(mimeType)) {
-      text = await extractTextFromImage(buffer);
+      text = await extractTextFromImage(buffer, userId);
       if (!text) {
         return { error: 'Could not read any text from this image. Try uploading a clearer image.' };
       }

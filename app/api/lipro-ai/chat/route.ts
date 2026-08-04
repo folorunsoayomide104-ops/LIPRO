@@ -149,7 +149,7 @@ export async function POST(req: Request) {
 
         let text = '';
         if (looksLikeImage) {
-          text = await extractTextFromImage(buffer);
+          text = await extractTextFromImage(buffer, user.userId);
         } else {
           const result = await extractText(buffer, mimeType);
           text = result.text;
@@ -162,10 +162,15 @@ export async function POST(req: Request) {
             select: { id: true },
           });
           materialIds.push(material.id);
+        } else {
+          console.error(`No text extracted from file ${fileInfo.name}`);
         }
       } catch (err: any) {
         console.error(`Failed to process file ${fileInfo.name}:`, err?.message || err);
       }
+    }
+    if (validFiles.length > 0 && allDocContexts.length === 0) {
+      return NextResponse.json({ error: 'Could not read any text from your uploaded files. Make sure images are clear and documents contain text.' }, { status: 422 });
     }
   }
   // Handle single blobUrl (legacy format)
@@ -193,7 +198,7 @@ export async function POST(req: Request) {
     let text = '';
     try {
       if (looksLikeImage) {
-        text = await extractTextFromImage(buffer);
+        text = await extractTextFromImage(buffer, user.userId);
         if (!text) {
           return NextResponse.json({ error: 'Could not read any text from this image. Try uploading a clearer image.' }, { status: 422 });
         }
@@ -228,7 +233,7 @@ export async function POST(req: Request) {
     let text = '';
     try {
       if (looksLikeImage) {
-        text = await extractTextFromImage(buffer);
+        text = await extractTextFromImage(buffer, user.userId);
         if (!text) {
           return NextResponse.json({ error: 'Could not read any text from this image. Try uploading a clearer image.' }, { status: 422 });
         }
