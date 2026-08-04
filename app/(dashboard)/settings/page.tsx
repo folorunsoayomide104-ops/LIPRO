@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { ProfileEditor } from '@/components/dashboard/profile-editor';
 import { ApiKeyEditor } from '@/components/dashboard/api-key-editor';
+import { SignOutButton } from '@/components/dashboard/sign-out-button';
 import { maskApiKey } from '@/lib/ai';
 import { formatDate } from '@/lib/utils';
 import AmbientBackground from '@/components/dashboard/ambient-bg';
@@ -28,6 +29,7 @@ export default async function SettingsPage() {
       <Card><CardHeader><CardTitle>Profile</CardTitle><CardDescription>Update your personal information</CardDescription></CardHeader><CardContent><ProfileEditor user={u} /></CardContent></Card>
       <Card><CardHeader><CardTitle>AI API Key — NVIDIA NIM</CardTitle><CardDescription>Connect your NVIDIA NIM key to power LIPRO AI and PDF Intelligence</CardDescription></CardHeader><CardContent><ApiKeyEditor provider="nvidia" hasKey={!!u.nvidiaApiKey} masked={u.nvidiaApiKey ? maskApiKey(u.nvidiaApiKey) : null} /></CardContent></Card>
       <Card><CardHeader><CardTitle>AI API Key — Groq</CardTitle><CardDescription>Optional. Add a Groq key for faster chat; when set, Groq is preferred over NVIDIA</CardDescription></CardHeader><CardContent><ApiKeyEditor provider="groq" hasKey={!!u.groqApiKey} masked={u.groqApiKey ? maskApiKey(u.groqApiKey) : null} /></CardContent></Card>
+      <Card className="border-rose-200/60 dark:border-rose-500/20"><CardHeader><CardTitle>Sign out</CardTitle><CardDescription>End your session and return to the sign-in page</CardDescription></CardHeader><CardContent><SignOutButton /></CardContent></Card>
       </div>
     </div>
   );
