@@ -1,9 +1,17 @@
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 const FROM_EMAIL = process.env.EMAIL_FROM || 'LIPRO Academy <onboarding@resend.dev>';
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://liproacademyapp.vercel.app';
+
+function getResend(): Resend | null {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) return null;
+  try {
+    return new Resend(key);
+  } catch {
+    return null;
+  }
+}
 
 export async function sendPasswordResetEmail(to: string, resetUrl: string) {
   const from = FROM_EMAIL;
@@ -52,6 +60,11 @@ export async function sendPasswordResetEmail(to: string, resetUrl: string) {
   </table>
 </body>
 </html>`;
+
+  const resend = getResend();
+  if (!resend) {
+    throw new Error('RESEND_API_KEY is not set');
+  }
 
   return resend.emails.send({ from, to, subject, html });
 }
