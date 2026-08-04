@@ -7,6 +7,7 @@ const secret = new TextEncoder().encode(
 );
 
 export const TOKEN_COOKIE = "lipro_token";
+export const RESET_TOKEN_TTL_SECONDS = 60 * 30; // 30 minutes
 
 export async function signToken(payload: JWTPayload): Promise<string> {
   return await new SignJWT({ ...payload })
@@ -14,6 +15,24 @@ export async function signToken(payload: JWTPayload): Promise<string> {
     .setIssuedAt()
     .setExpirationTime("7d")
     .sign(secret);
+}
+
+export async function signResetToken(userId: string): Promise<string> {
+  return await new SignJWT({ purpose: "password-reset", userId })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime(RESET_TOKEN_TTL_SECONDS)
+    .sign(secret);
+}
+
+export async function verifyResetToken(token: string): Promise<string | null> {
+  try {
+    const { payload } = await jwtVerify(token, secret);
+    if (payload.purpose !== "password-reset") return null;
+    return typeof payload.userId === "string" ? payload.userId : null;
+  } catch {
+    return null;
+  }
 }
 
 export async function verifyToken(token: string): Promise<JWTPayload | null> {

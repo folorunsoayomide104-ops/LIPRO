@@ -77,6 +77,10 @@ function LoginForm() {
               </button>
             </div>
           </div>
+          <div className="flex items-center justify-between">
+            <span />
+            <Link href="/forgot-password" className="text-xs font-medium text-lipro-600 hover:underline dark:text-lipro-200/80">Forgot password?</Link>
+          </div>
           <label className="flex items-start gap-2 text-sm text-lipro-600/80 dark:text-lipro-200/70">
             <input
               type="checkbox"
