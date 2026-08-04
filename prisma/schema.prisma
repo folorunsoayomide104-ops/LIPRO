@@ -39,6 +39,7 @@ model User {
   notifications     Notification[]
   aiConversations   AiConversation[]
   materials         Material[]
+  documentChunks    DocumentChunk[]
 
   @@index([role])
   @@index([university, faculty, department])
@@ -121,9 +122,26 @@ model Material {
   course    Course?    @relation(fields: [courseId], references: [id])
   questions Question[]
   aiConversations AiConversationMaterial[]
+  documentChunks DocumentChunk[]
 
   @@index([userId])
   @@index([courseId])
+}
+
+model DocumentChunk {
+  id        String   @id @default(cuid())
+  materialId String
+  material  Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chunkIndex Int
+  content   String
+  embedding  Unsupported("vector(1536)") // pgvector 1536-dim embeddings
+  createdAt DateTime @default(now())
+
+  @@index([materialId])
+  @@index([userId])
+  @@index([materialId, chunkIndex])
 }
 
 model ExamSession {

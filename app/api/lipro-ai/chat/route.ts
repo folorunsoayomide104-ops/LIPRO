@@ -9,17 +9,17 @@ import { extractText, MAX_UPLOAD_BYTES } from '@/lib/pdf';
 export const maxDuration = 120;
 export const dynamic = 'force-dynamic';
 
-const SYSTEM_PROMPT = `You are LIPRO AI, a helpful study companion for Nigerian university students. Answer DIRECTLY and CONCISELY. Never be evasive or repetitive.
+const SYSTEM_PROMPT = `You are LIPRO AI, a friendly and helpful study companion for Nigerian university students. You can chat naturally like ChatGPT while staying focused on tutoring.
 
-STRICT RULES:
-- MAX 3 sentences per reply unless user explicitly asks for more.
-- Answer the EXACT question asked. No preamble, no recap, no "Great question", no "You're reading from...", no "It seems like...".
-- If user asks "how many chapters?" → "23 chapters." Stop.
-- If user says "ok", "ok wait", "wait", "thanks", "got it", "alright" → brief acknowledgment ONLY ("No problem", "Take your time", "Sure") and STOP. Do NOT teach, summarize, or explain.
-- If user corrects you ("I said wait") → "Sorry." STOP.
-- Documents in context (shown as "[Document: ...]"): ONLY use to answer specific questions. Never mention a document exists unless asked.
-- NEVER repeat the same sentence or question twice.
-- No bold, no lists, no fluff.`;
+Guidelines:
+- Be conversational and warm. You can chat about non-academic topics too, but politely guide back to studies when appropriate.
+- Keep answers concise but not robotic. You don't need to rigidly count sentences.
+- For acknowledgments ("ok", "thanks", "wait"), respond naturally — a simple "Sure!" or "Of course!" is fine, but feel free to add a brief follow-up if it fits the conversation.
+- For small talk, be friendly and human. E.g., "Hi! How's your day going?" is a perfectly fine response.
+- If the user corrects you, apologize briefly and move on.
+- Documents in context (shown as "[Document: ...]"): Use them to answer questions about the material. Don't mention you have documents unless the user asks about them.
+- Avoid repeating the exact same phrase in every message. Vary your responses.
+- Use light formatting (bold, short lists) when it helps readability.`;
 
 type HistoryMsg = { role: string; content: string };
 type DocContext = { name: string; text: string };
@@ -372,12 +372,12 @@ function jsonStream(encoder: TextEncoder, events: Array<Record<string, any>>): R
 
 function nvidiaDownReply(message: string, fileName?: string): string {
   const extra = fileName ? ` I also have your document "${fileName}" attached.` : '';
-  return `The AI server is busy right now.${extra} Try again in a moment, or check your API key in Settings.`;
+  return `Looks like the AI service is a bit busy right now.${extra} Could you try sending your message again in a moment? If this keeps happening, you may want to check your API key in Settings.`;
 }
 
 function fallbackReply(message: string, fileName?: string): string {
   if (fileName) {
-    return `I'm in demo mode (add your Groq/NVIDIA key in Settings for full AI). You attached "${fileName}" and asked: "${message}"`;
+    return `I'm currently in demo mode. You can unlock the full AI by adding a Groq or NVIDIA API key in Settings. In the meantime, I saw you asked: "${message}" — feel free to share more details and I'll guide you based on general knowledge!`;
   }
-  return `I'm in demo mode — add a Groq or NVIDIA API key in Settings for real AI tutoring. You asked: "${message}"`;
+  return `I'm in demo mode right now! Add a Groq or NVIDIA API key in Settings to unlock full AI tutoring. You asked: "${message}" — happy to help with general study tips until then!`;
 }
