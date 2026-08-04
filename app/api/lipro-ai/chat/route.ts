@@ -6,6 +6,7 @@ import { resolveAiProvider } from '@/lib/ai';
 import { nvidiaChatCompletion, openNvidiaStream } from '@/lib/nvidia';
 import { extractText, MAX_UPLOAD_BYTES } from '@/lib/pdf';
 import { generateEmbedding } from '@/lib/embeddings';
+import { extractTextFromImage } from '@/lib/ocr';
 
 export const maxDuration = 120;
 export const dynamic = 'force-dynamic';
@@ -164,18 +165,26 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'The file is empty.' }, { status: 422 });
     }
     const looksLikePdf = file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf';
+    const looksLikeImage = /^image\/(jpeg|png|gif|webp|bmp|tiff|svg\+xml)$/.test(file.type) || /\.(jpg|jpeg|png|gif|webp|bmp|tiff|svg)$/.test(file.name.toLowerCase());
     const allowedTypes = ['application/pdf', 'text/plain', 'text/markdown', 'text/csv'];
-    if (!looksLikePdf && !allowedTypes.includes(file.type) && !/\.(txt|md|markdown|csv)$/.test(file.name.toLowerCase())) {
-      return NextResponse.json({ error: 'Unsupported file type. Upload a PDF, TXT or MD file.' }, { status: 415 });
+    if (!looksLikePdf && !looksLikeImage && !allowedTypes.includes(file.type) && !/\.(txt|md|markdown|csv)$/.test(file.name.toLowerCase())) {
+      return NextResponse.json({ error: 'Unsupported file type. Upload a PDF, image (JPG, PNG, etc.), TXT or MD file.' }, { status: 415 });
     }
     const buffer = Buffer.from(await file.arrayBuffer());
-    const mimeType = looksLikePdf ? 'application/pdf' : (file.type || 'text/plain');
+    const mimeType = looksLikePdf ? 'application/pdf' : looksLikeImage ? file.type : (file.type || 'text/plain');
     let text = '';
     try {
-      const result = await extractText(buffer, mimeType);
-      text = result.text;
+      if (looksLikeImage) {
+        text = await extractTextFromImage(buffer);
+        if (!text) {
+          return NextResponse.json({ error: 'Could not read any text from this image. Try uploading a clearer image.' }, { status: 422 });
+        }
+      } else {
+        const result = await extractText(buffer, mimeType);
+        text = result.text;
+      }
     } catch (err: any) {
-      return NextResponse.json({ error: err?.message || 'Failed to read the document' }, { status: 422 });
+      return NextResponse.json({ error: err?.message || 'Failed to read the file' }, { status: 422 });
     }
     docContext = { name: file.name, text: text.slice(0, 24000) };
     const material = await prisma.material.create({
