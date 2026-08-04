@@ -9,12 +9,13 @@ import { extractText, MAX_UPLOAD_BYTES } from '@/lib/pdf';
 export const maxDuration = 120;
 export const dynamic = 'force-dynamic';
 
-const SYSTEM_PROMPT = `You are LIPRO AI, an advanced university tutoring assistant for Nigerian students. You are patient, encouraging, and use clear examples. When a student asks about a concept, explain it simply, provide a worked example, and end with a short practice question they can attempt. You reference their faculty and level where useful. Always be accurate. If a question is about CBT material, format answers concisely.
+const SYSTEM_PROMPT = `You are LIPRO AI, a helpful study companion for Nigerian university students. Be conversational, concise, and natural — like a knowledgeable peer, not a lecturer.
 
-A document may be attached (shown as "[Attached document: ...]" or "[Document: ...]" blocks). IMPORTANT — behave like ChatGPT with an uploaded file:
-- You always know the document is attached. NEVER say "no document is attached" when a "[Document:" block is present.
-- Do NOT start teaching, summarizing, or explaining the document content unprompted. If the user is just chatting or greeting, respond normally without referencing the document.
-- Only read into / teach from the document when the user actually asks about it or refers to it (e.g. "summarize this", "what does it say", "teach me from this", "answer from the document"). Then use the document's content and quote from it where helpful.`;
+- Keep responses short (2–4 sentences max) unless the user asks for detail.
+- Don't lecture, summarize, or give worked examples unless asked.
+- If the user greets or chats casually, respond normally — don't reference any attached document.
+- When a document is attached (shown as "[Document: ...]" blocks), ONLY discuss it if the user asks about it (e.g., "summarize this", "what's in this", "explain from the doc"). Then be helpful and quote from it.
+- End with a simple follow-up question when it feels natural (e.g., "Want me to explain any part in more detail?" or "Should I quiz you on this?").`;
 
 type HistoryMsg = { role: string; content: string };
 type DocContext = { name: string; text: string };
@@ -366,35 +367,13 @@ function jsonStream(encoder: TextEncoder, events: Array<Record<string, any>>): R
 }
 
 function nvidiaDownReply(message: string, fileName?: string): string {
-  return `**LIPRO AI — model server is temporarily unavailable**
-
-You asked: "${message}"${fileName ? `\n\nI also received your attached document "${fileName}".` : ''}
-
-The AI model server didn't respond in time (it's often busy during peak hours). Try again in a moment, and if it keeps failing, you can:
-
-- Double-check your API key in **Settings → AI API Key**
-- Wait a few minutes and retry
-
-Your conversation is saved, so you can continue where you left off.`;
+  const extra = fileName ? ` I also have your document "${fileName}" attached.` : '';
+  return `The AI server is busy right now.${extra} Try again in a moment, or check your API key in Settings.`;
 }
 
 function fallbackReply(message: string, fileName?: string): string {
   if (fileName) {
-    return `**LIPRO AI (demo mode — add your Groq or NVIDIA API key in Settings > AI API Key for full AI tutoring)**
-
-You attached "${fileName}" and asked: "${message}"
-
-In demo mode I can't read the document contents. Add your Groq or NVIDIA NIM API key in **Settings → AI API Key** and I'll analyze the attached PDF and answer from it — summarise, explain concepts, and generate practice questions from the material.`;
+    return `I'm in demo mode (add your Groq/NVIDIA key in Settings for full AI). You attached "${fileName}" and asked: "${message}"`;
   }
-  return `**LIPRO AI (demo mode — add your Groq or NVIDIA API key in Settings > AI API Key for full AI tutoring)**
-
-You asked: "${message}"
-
-Here's a sample response to demonstrate the wiring:
-
-Great question! Let me break this down step by step.
-
-First, identify the key concept. Then work through a concrete example. Finally, try a small practice question on your own.
-
-> Tip: Go to **Settings → AI API Key** and paste your free key from build.nvidia.com to enable real AI tutoring.`;
+  return `I'm in demo mode — add a Groq or NVIDIA API key in Settings for real AI tutoring. You asked: "${message}"`;
 }
