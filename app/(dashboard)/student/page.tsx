@@ -4,6 +4,7 @@ import { getSession } from '@/lib/auth';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { Sparkles, ArrowRight, GraduationCap, FileText, MessageSquare, Brain, TrendingUp, PieChart } from 'lucide-react';
+import { LiproLogo } from '@/components/LiproLogo';
 import StatTiles from '@/components/dashboard/stat-tiles';
 import ScoreTrend from '@/components/dashboard/score-trend';
 import TypeDonut from '@/components/dashboard/type-donut';
@@ -86,7 +87,7 @@ export default async function StudentDashboard() {
         <div className="relative flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
           <div className="min-w-0">
             <span className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] backdrop-blur">
-              <Sparkles className="h-3 w-3" /> Student dashboard
+              <LiproLogo className="h-3 w-3" /> Student dashboard
             </span>
             <h1 className="heading mt-4 text-2xl font-bold md:text-3xl">Good to see you, {me?.fullName?.split(' ')[0] || 'student'}</h1>
             <p className="mt-1.5 text-sm text-white/80">
