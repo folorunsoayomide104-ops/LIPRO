@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { upload as blobUpload } from '@vercel/blob/client';
 import { Button } from '@/components/ui/button';
-import { Send, Bot, User, Loader2, Plus, Trash2, MessageSquare, Maximize2, Minimize2, Paperclip, X, FileText, CheckCircle2, Edit2, Check, RotateCcw } from 'lucide-react';
+import { Send, Bot, User, Loader2, Plus, Trash2, MessageSquare, Maximize2, Minimize2, Paperclip, X, FileText, CheckCircle2, Edit2, Check, RotateCcw, List, ChevronLeft } from 'lucide-react';
 import { LiproLogo } from '@/components/LiproLogo';
 import AmbientBackground from '@/components/dashboard/ambient-bg';
 import { Badge } from '@/components/ui/badge';
@@ -30,6 +30,7 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
   const [conversationId, setConversationId] = useState<string | undefined>(activeId ?? undefined);
   const [fallback, setFallback] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
+  const [showConvoDrawer, setShowConvoDrawer] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -318,12 +319,44 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
           </div>
           <div className="flex shrink-0 items-center gap-2">
             {fallback && <Badge tone="amber">Demo mode — add API key in Settings</Badge>}
+            <Button variant="outline" size="sm" className="md:hidden" onClick={() => setShowConvoDrawer(true)}><List className="h-4 w-4" /></Button>
             <Button variant="outline" size="sm" className="md:hidden" onClick={newChat}><Plus className="h-4 w-4" /> New</Button>
             <Button variant="outline" size="sm" onClick={() => setFullscreen((f) => !f)} title={fullscreen ? 'Exit fullscreen (Esc)' : 'Fullscreen'} aria-label={fullscreen ? 'Exit fullscreen' : 'Fullscreen'}>
               {fullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
             </Button>
           </div>
         </div>
+
+        {/* Mobile conversation drawer */}
+        {showConvoDrawer && (
+          <div className="fixed inset-0 z-50 md:hidden">
+            <div className="absolute inset-0 bg-black/40" onClick={() => setShowConvoDrawer(false)} />
+            <div className="absolute left-0 top-0 bottom-0 w-full max-w-sm bg-white dark:bg-gray-900 shadow-xl flex flex-col">
+              <div className="flex items-center justify-between gap-2 border-b border-lipro-200/60 p-3">
+                <button onClick={() => setShowConvoDrawer(false)} className="tap grid h-10 w-10 place-items-center rounded-xl text-lipro-600 hover:bg-lipro-100 dark:hover:bg-lipro-900/50">
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+                <h2 className="text-lg font-semibold flex-1 text-center">Conversations</h2>
+                <Button onClick={newChat} size="sm" className="shrink-0"><Plus className="h-4 w-4" /> New</Button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-3 space-y-1">
+                {conversations.length === 0 && <p className="px-2 py-4 text-center text-xs text-lipro-600/60">No chats yet. Start a new one.</p>}
+                {conversations.map((c) => (
+                  <div key={c.id} className={cn('group flex items-center gap-2 rounded-xl px-2.5 py-2 text-sm transition-all', activeId === c.id ? 'glass font-medium text-lipro-700 dark:text-white' : 'text-lipro-600/70 hover:bg-lipro-50 dark:text-lipro-200/70 dark:hover:bg-lipro-950/40')}>
+                    <button onClick={() => { openConversation(c.id); setShowConvoDrawer(false); }} className="flex min-w-0 flex-1 items-center gap-2 text-left">
+                      <MessageSquare className="h-3.5 w-3.5 shrink-0 opacity-70" />
+                      <span className="truncate">{c.title}</span>
+                    </button>
+                    <span className="shrink-0 text-[10px] opacity-60">{fmt(c.updatedAt)}</span>
+                    <button onClick={() => deleteConversation(c.id)} className="shrink-0 rounded p-1 opacity-0 transition-opacity hover:bg-rose-50 hover:text-rose-500 group-hover:opacity-100 dark:hover:bg-rose-950/30" title="Delete chat">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="glass flex-1 overflow-y-auto rounded-2xl p-4 space-y-4">
           {loadingConversation && (
