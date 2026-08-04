@@ -564,8 +564,7 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
           <input
             ref={fileInputRef}
             type="file"
-            multiple
-            accept=".pdf,.txt,.md,.markdown,.jpg,.jpeg,.png,.gif,.webp,.bmp,.tiff,.svg,application/pdf,text/plain,text/markdown,image/jpeg,image/png,image/gif,image/webp,image/bmp,image/tiff,image/svg+xml"
+            accept="application/pdf,text/plain,text/markdown,text/csv,image/jpeg,image/png,image/gif,image/webp,image/bmp,image/tiff,image/svg+xml"
             className="hidden"
             onChange={onPickFile}
           />

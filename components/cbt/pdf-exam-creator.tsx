@@ -100,7 +100,7 @@ export function PdfExamCreator({ materials }: { materials: Doc[] }) {
         <input
           ref={inputRef}
           type="file"
-          accept=".pdf,.txt,.md,.markdown"
+          accept="application/pdf,text/plain,text/markdown"
           className="hidden"
           onChange={(e) => setFile(e.target.files?.[0] || null)}
         />
