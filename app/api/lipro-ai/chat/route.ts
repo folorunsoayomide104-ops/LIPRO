@@ -3,10 +3,11 @@ import { prisma } from '@/lib/prisma';
 import { guard } from '@/lib/api-guard';
 import { chatSchema } from '@/lib/validators';
 import { resolveAiProvider } from '@/lib/ai';
-import { nvidiaChatCompletion, openNvidiaStream } from '@/lib/nvidia';
+import { runAgenticLoop, type ToolDefinition, type ToolExecutor } from '@/lib/nvidia';
 import { extractText, MAX_UPLOAD_BYTES } from '@/lib/pdf';
 import { generateEmbedding } from '@/lib/embeddings';
 import { extractTextFromImage } from '@/lib/ocr';
+import { webSearch, formatSearchResults } from '@/lib/websearch';
 
 export const maxDuration = 120;
 export const dynamic = 'force-dynamic';
@@ -19,7 +20,32 @@ Guidelines:
 - For small talk, keep it light and brief, then nudge back to studying.
 - When explaining concepts, use short, clear sentences and only include details that help. Use light formatting (bold, short lists) sparingly.
 - Documents in context: answer from them when asked; don't mention them otherwise.
+- You can search the web in real time using the web_search tool whenever you need current, up-to-date information, recent news, or facts you're unsure about. Reason through the question, decide if a search would help, and use it.
 - If the user corrects you, acknowledge simply and move on.`;
+
+const WEB_SEARCH_TOOL: ToolDefinition = {
+  type: 'function',
+  function: {
+    name: 'web_search',
+    description:
+      'Search the web in real time. Use this to get current, up-to-date information, recent news, facts, or anything you are unsure about. Provide a concise query.',
+    parameters: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'The search query, e.g. "JAMB 2026 date"' },
+      },
+      required: ['query'],
+    },
+  },
+};
+
+async function executeWebSearch(name: string, args: any): Promise<string> {
+  if (name !== 'web_search') return 'Unknown tool';
+  const query = String(args?.query || '').trim();
+  if (!query) return 'No query provided';
+  const results = await webSearch(query, 5);
+  return formatSearchResults(results);
+}
 
 type HistoryMsg = { role: string; content: string };
 type DocContext = { name: string; text: string };
@@ -302,7 +328,7 @@ export async function POST(req: Request) {
   const shouldStream = wantStream && apiKey.trim().length > 0;
 
   if (shouldStream) {
-    return handleStream(user.userId, conversation, history, message, apiKey, baseURL, model, provider.provider, docs, materialIds, queryEmbedding ?? null, ragChunks);
+    return handleStream(user.userId, conversation, history, message, apiKey, baseURL, model, provider.provider, docs, materialIds, ragChunks);
   }
   let replyText: string;
   let usedFallback = false;
@@ -311,7 +337,7 @@ export async function POST(req: Request) {
     try {
       const ragContext = buildRagContext(ragChunks);
       const ragDocs = ragContext ? [{ name: 'Relevant Document Chunks', text: ragContext }] : [];
-      replyText = await nvidiaChatCompletion({
+      const result = await runAgenticLoop({
         apiKey,
         baseURL,
         model,
@@ -320,10 +346,12 @@ export async function POST(req: Request) {
           { role: 'system', content: SYSTEM_PROMPT },
           ...buildModelMessages(history, [...docs, ...ragDocs]),
         ],
+        tools: [WEB_SEARCH_TOOL],
+        executeTool: executeWebSearch as ToolExecutor,
         temperature: 0.7,
-        maxTokens: 800,
-        timeoutMs: 55000,
+        maxTokens: 900,
       });
+      replyText = result.content;
     } catch (err: any) {
       console.error('LIPRO AI error:', err?.message || err);
       replyText = nvidiaDownReply(message, docs[0]?.name);
@@ -354,11 +382,8 @@ async function handleStream(
   providerName: 'groq' | 'nvidia' | 'none',
   docs: DocContext[] = [],
   materialIds: string[] = [],
-  queryEmbedding: number[] | null = null,
   ragChunks: ChunkResult[] = []
 ): Promise<Response> {
-  const encoder = new TextEncoder();
-
   // Persist the thread up-front (user message only) so we have a conversationId for the client.
   let convId: string;
   try {
@@ -389,77 +414,53 @@ async function handleStream(
   const ragContext = buildRagContext(ragChunks);
   const ragDocs = ragContext ? [{ name: 'Relevant Document Chunks', text: ragContext }] : [];
 
-  const upstreamRes = await openNvidiaStream({
-    apiKey,
-    baseURL,
-    model,
-    label: providerName === 'groq' ? 'Groq' : 'NVIDIA NIM',
-    messages: [
-      { role: 'system', content: SYSTEM_PROMPT },
-      ...buildModelMessages(history, [...docs, ...ragDocs]),
-    ],
-    temperature: 0.7,
-    maxTokens: 800,
-  });
-
-  const decoder = new TextDecoder();
-
-  if (!upstreamRes.ok) {
-    const replyText = nvidiaDownReply(firstUserMsg, docs[0]?.name);
-    history.push({ role: 'assistant', content: replyText });
-    await prisma.aiConversation.update({ where: { id: convId }, data: { messages: JSON.stringify(history) } }).catch(() => undefined);
-    return jsonStream(encoder, [{ conversationId: convId }, { text: replyText }, { fallback: true }]);
+  // Run the reasoning loop (may invoke web_search) to get the full answer,
+  // then stream it back to the client chunk-by-chunk to preserve streaming UX.
+  let finalText: string;
+  let usedFallback = false;
+  try {
+    const result = await runAgenticLoop({
+      apiKey,
+      baseURL,
+      model,
+      label: providerName === 'groq' ? 'Groq' : 'NVIDIA NIM',
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        ...buildModelMessages(history, [...docs, ...ragDocs]),
+      ],
+      tools: [WEB_SEARCH_TOOL],
+      executeTool: executeWebSearch as ToolExecutor,
+      temperature: 0.7,
+      maxTokens: 900,
+    });
+    finalText = result.content;
+  } catch (err: any) {
+    console.error('LIPRO AI stream error:', err?.message || err);
+    finalText = nvidiaDownReply(firstUserMsg, docs[0]?.name);
+    usedFallback = true;
   }
 
-  if (!upstreamRes.body) {
-    return NextResponse.json({ error: 'Upstream stream unavailable' }, { status: 502 });
+  history.push({ role: 'assistant', content: finalText });
+  try {
+    await prisma.aiConversation.update({ where: { id: convId }, data: { messages: JSON.stringify(history) } });
+  } catch (err: any) {
+    console.error('Persist conversation (post) failed:', err?.message || err);
   }
 
-  const reader = upstreamRes.body.getReader();
+  const encoder2 = new TextEncoder();
   const stream = new ReadableStream({
     async start(controller) {
-      let buffer = '';
-      let fullText = '';
-      controller.enqueue(encoder.encode(`data: ${JSON.stringify({ conversationId: convId })}\n\n`));
-
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop() ?? '';
-          for (const line of lines) {
-            const trimmed = line.trim();
-            if (!trimmed.startsWith('data:')) continue;
-            const payload = trimmed.slice(5).trim();
-            if (!payload || payload === '[DONE]') continue;
-            let json: any;
-            try { json = JSON.parse(payload); } catch { continue; }
-            const delta = json.choices?.[0]?.delta?.content;
-            if (typeof delta === 'string' && delta.length > 0) {
-              fullText += delta;
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: delta })}\n\n`));
-            }
-          }
-        }
-      } catch (err: any) {
-        console.error('Stream error:', err?.message || err);
-      } finally {
-        controller.enqueue(encoder.encode('data: [DONE]\n\n'));
-        controller.close();
+      controller.enqueue(encoder2.encode(`data: ${JSON.stringify({ conversationId: convId })}\n\n`));
+      const chunks = finalText.length > 0 ? finalText.match(/.{1,24}/g) || [finalText] : [finalText];
+      for (const chunk of chunks) {
+        controller.enqueue(encoder2.encode(`data: ${JSON.stringify({ text: chunk })}\n\n`));
+        await new Promise((r) => setTimeout(r, 18));
       }
-
-      try {
-        const finalText = fullText.trim().length > 0 ? fullText : nvidiaDownReply(firstUserMsg, docs[0]?.name);
-        history.push({ role: 'assistant', content: finalText });
-        await prisma.aiConversation.update({ where: { id: convId }, data: { messages: JSON.stringify(history) } });
-      } catch (err: any) {
-        console.error('Persist conversation (post) failed:', err?.message || err);
+      if (usedFallback) {
+        controller.enqueue(encoder2.encode(`data: ${JSON.stringify({ fallback: true })}\n\n`));
       }
-    },
-    cancel() {
-      reader.cancel().catch(() => undefined);
+      controller.enqueue(encoder2.encode('data: [DONE]\n\n'));
+      controller.close();
     },
   });
 
@@ -470,19 +471,6 @@ async function handleStream(
       Connection: 'keep-alive',
       'X-Accel-Buffering': 'no',
     },
-  });
-}
-
-function jsonStream(encoder: TextEncoder, events: Array<Record<string, any>>): Response {
-  const body = new ReadableStream({
-    start(controller) {
-      for (const ev of events) controller.enqueue(encoder.encode(`data: ${JSON.stringify(ev)}\n\n`));
-      controller.enqueue(encoder.encode('data: [DONE]\n\n'));
-      controller.close();
-    },
-  });
-  return new Response(body, {
-    headers: { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-cache', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' },
   });
 }
 
