@@ -28,6 +28,7 @@ You receive lecture notes and must write questions based ONLY on the material gi
 - FILL_BLANK: the missing word/phrase goes in the answer, and the blank appears as "___" in the question.
 - THEORY: the answer is a short model answer (2-4 sentences) grounded in the material.
 - Always include a one-sentence explanation citing the material.
+- The "type" field MUST be exactly one of these uppercase tokens: "MCQ", "TRUE_FALSE", "FILL_BLANK", "THEORY". Never use any other value (not "Multiple Choice", not "true/False", not "Essay").
 - Output a JSON array only, like: [{"type":"MCQ","question":"...","options":["A","B","C","D"],"answer":"A","explanation":"..."}]`;
 
 function buildUserPrompt(text: string, formats: QuestionFormat[], countPerFormat: number): string {
@@ -109,11 +110,56 @@ function extractObjects(raw: string): GeneratedQuestion[] {
   return out;
 }
 
+const FORMAT_ALIASES: Record<string, QuestionFormat> = {
+  mcq: 'MCQ',
+  multiplechoice: 'MCQ',
+  multiple_choice: 'MCQ',
+  multiplechoicequestion: 'MCQ',
+  multiplechoicequestions: 'MCQ',
+  choice: 'MCQ',
+  'true_false': 'TRUE_FALSE',
+  truefalse: 'TRUE_FALSE',
+  true_false_question: 'TRUE_FALSE',
+  truefalsequestion: 'TRUE_FALSE',
+  'true_or_false': 'TRUE_FALSE',
+  'true/false': 'TRUE_FALSE',
+  boolean: 'TRUE_FALSE',
+  fill_blank: 'FILL_BLANK',
+  fillblank: 'FILL_BLANK',
+  fill_in_blank: 'FILL_BLANK',
+  fillintheblank: 'FILL_BLANK',
+  fill_in_the_blank: 'FILL_BLANK',
+  gapfill: 'FILL_BLANK',
+  gap_fill: 'FILL_BLANK',
+  fillintheblanks: 'FILL_BLANK',
+  'fill-in-the-blank': 'FILL_BLANK',
+  theory: 'THEORY',
+  theoryessay: 'THEORY',
+  essay: 'THEORY',
+  essaytheory: 'THEORY',
+  theory_essay: 'THEORY',
+  shortanswer: 'THEORY',
+  short_answer: 'THEORY',
+  'theory/essay': 'THEORY',
+  'theory / essay': 'THEORY',
+};
+
+function normalizeFormatType(raw: unknown): QuestionFormat {
+  if (typeof raw !== 'string') return 'MCQ';
+  const key = raw
+    .toLowerCase()
+    .replace(/[^\w\s/]/g, '')
+    .replace(/\s+/g, '');
+  const direct = raw.trim();
+  if (['MCQ', 'TRUE_FALSE', 'FILL_BLANK', 'THEORY'].includes(direct)) return direct as QuestionFormat;
+  return FORMAT_ALIASES[key] || 'MCQ';
+}
+
 function normalizeQuestions(items: any[]): GeneratedQuestion[] {
   return items
     .filter((q: any) => q && typeof q.question === 'string' && typeof q.answer === 'string')
     .map((q: any) => ({
-      type: (['MCQ', 'TRUE_FALSE', 'FILL_BLANK', 'THEORY'].includes(q.type) ? q.type : 'MCQ') as QuestionFormat,
+      type: normalizeFormatType(q.type),
       question: String(q.question),
       options: Array.isArray(q.options) ? q.options.map(String) : null,
       answer: String(q.answer),
@@ -193,8 +239,8 @@ async function callProvider(text: string, formats: QuestionFormat[], count: numb
     ],
     temperature: 0.4,
     maxTokens: Math.min(6000, count * 220 + 600),
-    timeoutMs: 25000,
-    retries: 0,
+    timeoutMs: 45000,
+    retries: 1,
   });
   return extractJsonArray(content);
 }
