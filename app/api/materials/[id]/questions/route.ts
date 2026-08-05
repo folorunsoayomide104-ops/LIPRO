@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { guard } from '@/lib/api-guard';
-import { generateQuestionsFromText, type QuestionFormat } from '@/lib/question-gen';
+import { generateQuestionsFromText, fallbackGenerate, type QuestionFormat } from '@/lib/question-gen';
 import { resolveAiProvider } from '@/lib/ai';
 
 export const maxDuration = 300;
@@ -40,10 +40,27 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
 
   const provider = await resolveAiProvider(user.userId);
-  const result = await generateQuestionsFromText(material.text, formats, perFormatTarget, provider);
+
+  // Vercel Hobby caps function execution at ~60s. Guard the whole generation so
+  // we always return a response (real questions, partial, or fallback) instead
+  // of letting the platform kill the request with a 504 after the client waits.
+  const result = await Promise.race([
+    generateQuestionsFromText(material.text, formats, perFormatTarget, provider),
+    new Promise<{ questions: any[]; usedFallback: boolean }>((resolve) =>
+      setTimeout(() => resolve({ questions: [], usedFallback: true }), 55000)
+    ),
+  ]);
   const generated = result.questions;
   if (!generated || generated.length === 0) {
-    return NextResponse.json({ error: 'No questions could be generated from this document.' }, { status: 422 });
+    // Time budget exhausted or provider empty — give the demo fallback so the
+    // user always gets a usable (clearly-labelled) set.
+    const fb = fallbackGenerate(material.text, formats, perFormatTarget);
+    return NextResponse.json({
+      questions: fb.map((q) => ({ type: q.type, question: q.question, options: q.options, answer: q.answer, explanation: q.explanation })),
+      count: fb.length,
+      saved: false,
+      usedFallback: true,
+    });
   }
 
   if (save) {

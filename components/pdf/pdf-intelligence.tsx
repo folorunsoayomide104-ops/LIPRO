@@ -118,7 +118,8 @@ export function PdfIntelligence({ initialMaterials }: { initialMaterials: Materi
         setMaterials((m) => m.map((x) => (x.id === activeMaterial.id ? { ...x, questionCount: x.questionCount + (data.questions?.length || 0) } : x)));
       }
     } catch (e: any) {
-      setGenerationError(e?.message || 'Generation failed');
+      const msg = e?.message || 'Generation failed';
+      setGenerationError(/Generation failed|Unexpected token|fetch failed/i.test(msg) ? 'Generation timed out. Try a smaller number of questions, or fewer formats.' : msg);
     } finally {
       setGenerating(false);
     }
@@ -140,7 +141,7 @@ export function PdfIntelligence({ initialMaterials }: { initialMaterials: Materi
   };
 
   return (
-    <div className="relative overflow-hidden">
+    <div className="relative">
       <AmbientBackground variant="mesh" />
       <div className="relative space-y-6">
       <div>

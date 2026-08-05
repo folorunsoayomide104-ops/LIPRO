@@ -49,7 +49,22 @@ export function extractJsonArray(raw: string): GeneratedQuestion[] {
   if (start === -1 || end === -1 || end <= start) {
     throw new Error('Model response did not contain a JSON array');
   }
-  const parsed = JSON.parse(cleaned.slice(start, end + 1));
+  let parsed: any;
+  try {
+    parsed = JSON.parse(cleaned.slice(start, end + 1));
+  } catch {
+    // Model occasionally emits trailing commas or quotes that break strict JSON.
+    const repaired = cleaned
+      .slice(start, end + 1)
+      .replace(/,\s*([}\]])/g, '$1')
+      .replace(/[\u201C\u201D]/g, '"')
+      .replace(/\u2019/g, "'");
+    try {
+      parsed = JSON.parse(repaired);
+    } catch {
+      throw new Error('Model response contained invalid JSON');
+    }
+  }
   if (!Array.isArray(parsed)) throw new Error('Expected a JSON array');
   return parsed
     .filter((q: any) => q && typeof q.question === 'string' && typeof q.answer === 'string')
@@ -89,6 +104,12 @@ export async function generateQuestionsFromText(
 
   try {
     const questions = await generateFromProvider(text, targets, countPerFormat, cfg);
+    if (questions.length === 0) {
+      // Provider succeeded but produced nothing usable — fall back so the user
+      // always gets a usable set instead of a hard error.
+      console.error('Question generation returned empty; using demo fallback.');
+      return { questions: fallbackGenerate(text, targets, countPerFormat), usedFallback: true };
+    }
     return { questions, usedFallback: false };
   } catch (err: any) {
     console.error('Question generation failed, using fallback:', err?.message || err);
@@ -148,12 +169,13 @@ function dedupe(list: GeneratedQuestion[]): GeneratedQuestion[] {
 
 async function generateFromProvider(text: string, formats: QuestionFormat[], countPerFormat: number, cfg: AiProviderConfig): Promise<GeneratedQuestion[]> {
   // Split the material into a few focused chunks so each call asks for a small,
-  // accurate number of questions. Per-format chunks run in parallel to stay fast.
-  const perCall = 6;
-  const numChunks = Math.max(1, Math.min(4, Math.ceil(countPerFormat / perCall)));
+  // accurate number of questions. Formats run in parallel to stay fast; the
+  // per-call timeout is short so the whole request finishes well within the
+  // serverless execution budget (Vercel Hobby clamps functions to ~60s).
+  const perCall = 8;
+  const numChunks = Math.max(1, Math.min(2, Math.ceil(countPerFormat / perCall)));
   const chunks = numChunks > 1 ? chunkText(text, Math.ceil(text.length / numChunks)) : [text];
 
-  // Generate each format concurrently, one "primary" ask per chunk.
   const formatResults = await Promise.all(
     formats.map(async (fmt) => {
       let need = countPerFormat;
@@ -162,23 +184,12 @@ async function generateFromProvider(text: string, formats: QuestionFormat[], cou
         const chunksLeft = chunks.length - ci;
         const ask = Math.min(Math.ceil(need / chunksLeft), perCall);
         if (ask <= 0) break;
-        let qs: GeneratedQuestion[] = [];
         try {
-          qs = await callProvider(chunks[ci], [fmt], ask, cfg);
+          const qs = await callProvider(chunks[ci], [fmt], ask, cfg);
+          out.push(...qs);
+          need -= qs.length;
         } catch (err: any) {
           console.error(`Generation failed for ${fmt}:`, err?.message || err);
-          qs = [];
-        }
-        out.push(...qs);
-        need -= qs.length;
-        // If we've made enough attempts, stop; a top-up below fills the gap.
-        if (ci === chunks.length - 1 && qs.length === 0) break;
-      }
-      if (need > 0) {
-        try {
-          out.push(...(await callProvider(text, [fmt], Math.min(need, perCall), cfg)));
-        } catch (err: any) {
-          console.error(`Top-up failed for ${fmt}:`, err?.message || err);
         }
       }
       return out;
@@ -189,7 +200,7 @@ async function generateFromProvider(text: string, formats: QuestionFormat[], cou
   return unique.slice(0, countPerFormat * formats.length + Math.ceil(countPerFormat * 0.2));
 }
 
-function fallbackGenerate(text: string, formats: QuestionFormat[], countPerFormat: number): GeneratedQuestion[] {
+export function fallbackGenerate(text: string, formats: QuestionFormat[], countPerFormat: number): GeneratedQuestion[] {
   const sentences = text
     .split(/[.\n]+/)
     .map((s) => s.replace(/\s+/g, ' ').trim())
