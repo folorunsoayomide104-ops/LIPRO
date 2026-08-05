@@ -53,7 +53,9 @@ export function extractJsonArray(raw: string): GeneratedQuestion[] {
   try {
     parsed = JSON.parse(cleaned.slice(start, end + 1));
   } catch {
-    // Model occasionally emits trailing commas or quotes that break strict JSON.
+    // Model occasionally emits trailing commas, smart quotes, or truncates the
+    // array. Repair what we can and fall back to object-by-object extraction
+    // so a single malformed item doesn't discard the whole batch.
     const repaired = cleaned
       .slice(start, end + 1)
       .replace(/,\s*([}\]])/g, '$1')
@@ -62,11 +64,53 @@ export function extractJsonArray(raw: string): GeneratedQuestion[] {
     try {
       parsed = JSON.parse(repaired);
     } catch {
+      const partial = extractObjects(repaired);
+      if (partial.length > 0) return partial;
       throw new Error('Model response contained invalid JSON');
     }
   }
   if (!Array.isArray(parsed)) throw new Error('Expected a JSON array');
-  return parsed
+  return normalizeQuestions(parsed);
+}
+
+/** Best-effort: pull complete {…} objects out of an unparseable response. */
+function extractObjects(raw: string): GeneratedQuestion[] {
+  const findObjects = (s: string): string[] => {
+    const objects: string[] = [];
+    let depth = 0;
+    let current = '';
+    let inStr = false;
+    for (let k = 0; k < s.length; k++) {
+      const ch = s[k];
+      if (ch === '"' && s[k - 1] !== '\\') inStr = !inStr;
+      if (!inStr) {
+        if (ch === '{') depth++;
+        else if (ch === '}') {
+          depth--;
+          if (depth === 0) {
+            objects.push(current + '}');
+            current = '';
+            continue;
+          }
+        }
+      }
+      if (depth > 0) current += ch;
+    }
+    return objects;
+  };
+  const out: GeneratedQuestion[] = [];
+  for (const obj of findObjects(raw)) {
+    try {
+      out.push(...normalizeQuestions([JSON.parse(obj)]));
+    } catch {
+      // skip malformed object
+    }
+  }
+  return out;
+}
+
+function normalizeQuestions(items: any[]): GeneratedQuestion[] {
+  return items
     .filter((q: any) => q && typeof q.question === 'string' && typeof q.answer === 'string')
     .map((q: any) => ({
       type: (['MCQ', 'TRUE_FALSE', 'FILL_BLANK', 'THEORY'].includes(q.type) ? q.type : 'MCQ') as QuestionFormat,
@@ -149,7 +193,7 @@ async function callProvider(text: string, formats: QuestionFormat[], count: numb
     ],
     temperature: 0.4,
     maxTokens: Math.min(6000, count * 220 + 600),
-    timeoutMs: 30000,
+    timeoutMs: 25000,
     retries: 0,
   });
   return extractJsonArray(content);
@@ -168,11 +212,11 @@ function dedupe(list: GeneratedQuestion[]): GeneratedQuestion[] {
 }
 
 async function generateFromProvider(text: string, formats: QuestionFormat[], countPerFormat: number, cfg: AiProviderConfig): Promise<GeneratedQuestion[]> {
-  // Split the material into a few focused chunks so each call asks for a small,
-  // accurate number of questions. Formats run in parallel to stay fast; the
-  // per-call timeout is short so the whole request finishes well within the
+  // Small, fast batches keep each call within the timeout and produce cleaner
+  // JSON from the default 8B model. Formats run in parallel; per-format calls
+  // are sequential but each is short, keeping the whole request well under the
   // serverless execution budget (Vercel Hobby clamps functions to ~60s).
-  const perCall = 8;
+  const perCall = 6;
   const numChunks = Math.max(1, Math.min(2, Math.ceil(countPerFormat / perCall)));
   const chunks = numChunks > 1 ? chunkText(text, Math.ceil(text.length / numChunks)) : [text];
 
