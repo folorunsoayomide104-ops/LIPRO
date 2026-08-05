@@ -276,7 +276,7 @@ async function generateFromProvider(text: string, formats: QuestionFormat[], cou
     }
   }
 
-  const results = await runWithConcurrency(jobs, Math.max(2, Math.min(8, jobs.length)), async (job) => {
+  const results = await runWithConcurrency(jobs, Math.max(2, Math.min(16, jobs.length)), async (job) => {
     try {
       return await callProvider(job.chunk, [job.fmt], job.ask, cfg);
     } catch (err: any) {
