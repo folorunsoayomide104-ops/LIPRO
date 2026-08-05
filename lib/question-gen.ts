@@ -48,6 +48,17 @@ export function extractJsonArray(raw: string): GeneratedQuestion[] {
   const start = cleaned.indexOf('[');
   const end = cleaned.lastIndexOf(']');
   if (start === -1 || end === -1 || end <= start) {
+    // No top-level array. Some models wrap the list in an object, e.g.
+    // {"questions": [...]}. Pull the array out before giving up.
+    const arrStart = cleaned.indexOf('[');
+    const arrEnd = cleaned.lastIndexOf(']');
+    if (arrStart !== -1 && arrEnd > arrStart) {
+      try {
+        return normalizeQuestions(JSON.parse(cleaned.slice(arrStart, arrEnd + 1)));
+      } catch {
+        // fall through to extraction below
+      }
+    }
     throw new Error('Model response did not contain a JSON array');
   }
   let parsed: any;
@@ -70,7 +81,13 @@ export function extractJsonArray(raw: string): GeneratedQuestion[] {
       throw new Error('Model response contained invalid JSON');
     }
   }
-  if (!Array.isArray(parsed)) throw new Error('Expected a JSON array');
+  if (!Array.isArray(parsed)) {
+    // {"questions": [...]} style wrapper.
+    if (parsed && Array.isArray(parsed.questions)) {
+      return normalizeQuestions(parsed.questions);
+    }
+    throw new Error('Expected a JSON array');
+  }
   return normalizeQuestions(parsed);
 }
 
@@ -241,6 +258,7 @@ async function callProvider(text: string, formats: QuestionFormat[], count: numb
     maxTokens: Math.min(6000, count * 220 + 600),
     timeoutMs: 45000,
     retries: 1,
+    responseFormat: { type: 'json_object' },
   });
   return extractJsonArray(content);
 }

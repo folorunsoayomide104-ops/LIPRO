@@ -130,8 +130,9 @@ export async function nvidiaChatCompletion(params: {
   maxTokens?: number;
   timeoutMs?: number;
   retries?: number;
+  responseFormat?: { type: 'json_object' | 'text' };
 }): Promise<string> {
-  const { apiKey, baseURL, model, label = 'AI provider', messages, temperature, maxTokens, timeoutMs = 60000, retries = 2 } = params;
+  const { apiKey, baseURL, model, label = 'AI provider', messages, temperature, maxTokens, timeoutMs = 60000, retries = 2, responseFormat } = params;
   const url = `${baseURL || process.env.NVIDIA_BASE_URL || 'https://integrate.api.nvidia.com/v1'}/chat/completions`;
   const mdl = model || process.env.NVIDIA_MODEL || 'meta/llama-3.1-8b-instruct';
 
@@ -148,6 +149,7 @@ export async function nvidiaChatCompletion(params: {
           messages,
           temperature: temperature ?? 0.7,
           max_tokens: maxTokens ?? 800,
+          ...(responseFormat ? { response_format: responseFormat } : {}),
         }),
         signal: controller.signal,
       });
