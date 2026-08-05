@@ -128,26 +128,10 @@ async function callProvider(text: string, formats: QuestionFormat[], count: numb
     ],
     temperature: 0.4,
     maxTokens: Math.min(6000, count * 220 + 600),
-    timeoutMs: 60000,
-    retries: 1,
+    timeoutMs: 30000,
+    retries: 0,
   });
   return extractJsonArray(content);
-}
-
-async function callWithRetry(text: string, fmt: QuestionFormat, count: number, cfg: AiProviderConfig): Promise<GeneratedQuestion[]> {
-  let qs: GeneratedQuestion[] = [];
-  try {
-    qs = await callProvider(text, [fmt], count, cfg);
-  } catch (err: any) {
-    console.error(`Generation failed for ${fmt}:`, err?.message || err);
-    return [];
-  }
-  if (qs.length === 0 && count > 1) {
-    try {
-      qs = await callProvider(text, [fmt], Math.min(3, count), cfg);
-    } catch { /* noop */ }
-  }
-  return qs;
 }
 
 function dedupe(list: GeneratedQuestion[]): GeneratedQuestion[] {
@@ -163,49 +147,46 @@ function dedupe(list: GeneratedQuestion[]): GeneratedQuestion[] {
 }
 
 async function generateFromProvider(text: string, formats: QuestionFormat[], countPerFormat: number, cfg: AiProviderConfig): Promise<GeneratedQuestion[]> {
-  // Split the material into enough chunks so each call only asks for a small,
-  // focused number of questions. This keeps answers accurate and lets us scale to 50+.
-  const numChunks = Math.min(6, Math.max(1, Math.ceil(countPerFormat / 8)));
+  // Split the material into a few focused chunks so each call asks for a small,
+  // accurate number of questions. Per-format chunks run in parallel to stay fast.
+  const perCall = 6;
+  const numChunks = Math.max(1, Math.min(4, Math.ceil(countPerFormat / perCall)));
   const chunks = numChunks > 1 ? chunkText(text, Math.ceil(text.length / numChunks)) : [text];
-  const collected: GeneratedQuestion[] = [];
 
-  for (const fmt of formats) {
-    let need = countPerFormat;
+  // Generate each format concurrently, one "primary" ask per chunk.
+  const formatResults = await Promise.all(
+    formats.map(async (fmt) => {
+      let need = countPerFormat;
+      const out: GeneratedQuestion[] = [];
+      for (let ci = 0; ci < chunks.length && need > 0; ci++) {
+        const chunksLeft = chunks.length - ci;
+        const ask = Math.min(Math.ceil(need / chunksLeft), perCall);
+        if (ask <= 0) break;
+        let qs: GeneratedQuestion[] = [];
+        try {
+          qs = await callProvider(chunks[ci], [fmt], ask, cfg);
+        } catch (err: any) {
+          console.error(`Generation failed for ${fmt}:`, err?.message || err);
+          qs = [];
+        }
+        out.push(...qs);
+        need -= qs.length;
+        // If we've made enough attempts, stop; a top-up below fills the gap.
+        if (ci === chunks.length - 1 && qs.length === 0) break;
+      }
+      if (need > 0) {
+        try {
+          out.push(...(await callProvider(text, [fmt], Math.min(need, perCall), cfg)));
+        } catch (err: any) {
+          console.error(`Top-up failed for ${fmt}:`, err?.message || err);
+        }
+      }
+      return out;
+    })
+  );
 
-    for (let ci = 0; ci < chunks.length && need > 0; ci++) {
-      const chunksLeft = chunks.length - ci;
-      const ask = Math.min(Math.ceil(need / chunksLeft), 8);
-      if (ask <= 0) break;
-      const qs = await callWithRetry(chunks[ci], fmt, ask, cfg);
-      collected.push(...qs);
-      need -= qs.length;
-    }
-
-    // Top-up: if the model underproduced for this format, ask again on the full text.
-    if (need > 0) {
-      const qs = await callWithRetry(text, fmt, need, cfg);
-      collected.push(...qs);
-    }
-  }
-
-  const unique = dedupe(collected);
-  const totalTarget = countPerFormat * formats.length;
-
-  // Deficit pass: any format that came up short gets one more focused ask on the full text.
-  if (unique.length < totalTarget) {
-    const countOf = (fmt: QuestionFormat) => unique.filter((q) => q.type === fmt).length;
-    for (const fmt of formats) {
-      const need = countPerFormat - countOf(fmt);
-      if (need <= 0) continue;
-      const qs = await callWithRetry(text, fmt, need, cfg);
-      unique.push(...qs);
-    }
-  }
-
-  const finalUnique = dedupe(unique);
-  const headroom = totalTarget + Math.ceil(totalTarget * 0.2);
-  if (finalUnique.length > 0) return finalUnique.slice(0, headroom);
-  return callProvider(text, formats, countPerFormat, cfg);
+  const unique = dedupe(formatResults.flat());
+  return unique.slice(0, countPerFormat * formats.length + Math.ceil(countPerFormat * 0.2));
 }
 
 function fallbackGenerate(text: string, formats: QuestionFormat[], countPerFormat: number): GeneratedQuestion[] {

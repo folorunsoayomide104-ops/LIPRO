@@ -30,7 +30,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (rawFormats.length > 0 && formats.length === 0) {
     return NextResponse.json({ error: 'Invalid formats. Use MCQ, TRUE_FALSE, FILL_BLANK or THEORY.' }, { status: 422 });
   }
-  const count = Math.min(Math.max(Number(body?.count) || 2, 1), 50);
+  const requested = Math.max(Number(body?.count) || 2, 1);
+  // Keep the total request within serverless limits: no more than 50 total questions.
+  const perFormatTarget = Math.min(requested, Math.ceil(50 / Math.max(formats.length, 1)));
   const save = body?.save === true;
 
   if (!material.text || material.text.trim().length === 0) {
@@ -38,17 +40,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
 
   const provider = await resolveAiProvider(user.userId);
-  let generated;
-  let usedFallback = false;
-  try {
-    const result = await generateQuestionsFromText(material.text, formats, count, provider);
-    generated = result.questions;
-    usedFallback = result.usedFallback;
-  } catch (err: any) {
-    usedFallback = true;
-    const result = await generateQuestionsFromText(material.text, formats, count, provider);
-    generated = result.questions;
-  }
+  const result = await generateQuestionsFromText(material.text, formats, perFormatTarget, provider);
+  const generated = result.questions;
   if (!generated || generated.length === 0) {
     return NextResponse.json({ error: 'No questions could be generated from this document.' }, { status: 422 });
   }
@@ -78,6 +71,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     })),
     count: generated.length,
     saved: save,
-    usedFallback,
+    usedFallback: result.usedFallback,
   });
 }
