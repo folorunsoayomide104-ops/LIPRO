@@ -12,6 +12,15 @@ const ALLOWED_TYPES = ['application/pdf', 'text/plain', 'text/markdown', 'text/c
 const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/bmp', 'image/tiff'];
 
 async function parseAndCreate(userId: string, buffer: Buffer, originalName: string, mimeType: string, sizeBytes: number) {
+  try {
+    return await parseAndCreateInner(userId, buffer, originalName, mimeType, sizeBytes);
+  } catch (err: any) {
+    console.error('parseAndCreate failed:', err?.message || err);
+    return { error: err?.message || 'Failed to save the uploaded file' };
+  }
+}
+
+async function parseAndCreateInner(userId: string, buffer: Buffer, originalName: string, mimeType: string, sizeBytes: number) {
   let text = '';
   try {
     if (IMAGE_TYPES.includes(mimeType) || /^image\//.test(mimeType)) {
