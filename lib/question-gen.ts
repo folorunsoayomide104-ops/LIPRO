@@ -212,36 +212,49 @@ function dedupe(list: GeneratedQuestion[]): GeneratedQuestion[] {
 }
 
 async function generateFromProvider(text: string, formats: QuestionFormat[], countPerFormat: number, cfg: AiProviderConfig): Promise<GeneratedQuestion[]> {
-  // Small, fast batches keep each call within the timeout and produce cleaner
-  // JSON from the default 8B model. Formats run in parallel; per-format calls
-  // are sequential but each is short, keeping the whole request well under the
-  // serverless execution budget (Vercel Hobby clamps functions to ~60s).
-  const perCall = 6;
-  const numChunks = Math.max(1, Math.min(2, Math.ceil(countPerFormat / perCall)));
+  // Run all (format × chunk) asks in parallel so we can generate large counts
+  // (e.g. 100) far more quickly than sequential chunk settling allowed.
+  const perCall = 10;
+  const numChunks = Math.max(1, Math.min(12, Math.ceil(countPerFormat / perCall)));
   const chunks = numChunks > 1 ? chunkText(text, Math.ceil(text.length / numChunks)) : [text];
 
-  const formatResults = await Promise.all(
-    formats.map(async (fmt) => {
-      let need = countPerFormat;
-      const out: GeneratedQuestion[] = [];
-      for (let ci = 0; ci < chunks.length && need > 0; ci++) {
-        const chunksLeft = chunks.length - ci;
-        const ask = Math.min(Math.ceil(need / chunksLeft), perCall);
-        if (ask <= 0) break;
-        try {
-          const qs = await callProvider(chunks[ci], [fmt], ask, cfg);
-          out.push(...qs);
-          need -= qs.length;
-        } catch (err: any) {
-          console.error(`Generation failed for ${fmt}:`, err?.message || err);
-        }
-      }
-      return out;
-    })
-  );
+  const jobs: Array<{ chunk: string; fmt: QuestionFormat; ask: number }> = [];
+  for (const fmt of formats) {
+    let need = countPerFormat;
+    for (let ci = 0; ci < chunks.length && need > 0; ci++) {
+      const chunksLeft = chunks.length - ci;
+      const ask = Math.min(Math.ceil(need / chunksLeft), perCall);
+      if (ask <= 0) break;
+      jobs.push({ chunk: chunks[ci], fmt, ask });
+      need -= ask;
+    }
+  }
 
-  const unique = dedupe(formatResults.flat());
+  const results = await runWithConcurrency(jobs, Math.max(2, Math.min(8, jobs.length)), async (job) => {
+    try {
+      return await callProvider(job.chunk, [job.fmt], job.ask, cfg);
+    } catch (err: any) {
+      console.error(`Generation failed for ${job.fmt}:`, err?.message || err);
+      return [] as GeneratedQuestion[];
+    }
+  });
+
+  const unique = dedupe(results.flat());
   return unique.slice(0, countPerFormat * formats.length + Math.ceil(countPerFormat * 0.2));
+}
+
+/** Run async tasks with a concurrency cap without pulling in a dependency. */
+async function runWithConcurrency<T>(items: T[], limit: number, worker: (item: T) => Promise<GeneratedQuestion[]>): Promise<GeneratedQuestion[][]> {
+  const out = new Array<GeneratedQuestion[]>(items.length);
+  let next = 0;
+  const pump = async () => {
+    while (next < items.length) {
+      const idx = next++;
+      out[idx] = await worker(items[idx]);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, () => pump()));
+  return out;
 }
 
 export function fallbackGenerate(text: string, formats: QuestionFormat[], countPerFormat: number): GeneratedQuestion[] {

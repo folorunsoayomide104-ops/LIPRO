@@ -31,8 +31,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: 'Invalid formats. Use MCQ, TRUE_FALSE, FILL_BLANK or THEORY.' }, { status: 422 });
   }
   const requested = Math.max(Number(body?.count) || 2, 1);
-  // Keep the total request within serverless limits: no more than 50 total questions.
-  const perFormatTarget = Math.min(requested, Math.ceil(50 / Math.max(formats.length, 1)));
+  // Use the per-format count the client already computed (target / formats).
+  // No arbitrary 50-question ceiling — generation is parallelized by format and
+  // chunk so it stays within the serverless time budget even at 100 questions.
+  const perFormatTarget = Math.min(requested, 100);
   const save = body?.save === true;
 
   if (!material.text || material.text.trim().length === 0) {
