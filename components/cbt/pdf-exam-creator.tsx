@@ -65,7 +65,7 @@ export function PdfExamCreator({ materials }: { materials: Doc[] }) {
       const gen = await fetch(`/api/materials/${materialId}/questions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ formats: ['MCQ', 'TRUE_FALSE', 'FILL_BLANK', 'THEORY'], count: Math.ceil(count / 4), save: true }),
+        body: JSON.stringify({ formats: ['MCQ'], count, save: true }),
       });
       const genData = await gen.json().catch(() => null);
       if (!gen.ok) throw new Error(genData?.error || 'Question generation failed');

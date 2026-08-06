@@ -28,8 +28,6 @@ type GeneratedQ = {
   explanation: string;
 };
 
-const FORMATS: QuestionFormat[] = ['MCQ', 'TRUE_FALSE', 'FILL_BLANK', 'THEORY'];
-
 const FORMAT_TONE: Record<QuestionFormat, 'purple' | 'indigo' | 'green' | 'amber'> = {
   MCQ: 'purple',
   TRUE_FALSE: 'indigo',
@@ -53,7 +51,6 @@ export function PdfIntelligence({ initialMaterials }: { initialMaterials: Materi
   const [error, setError] = useState('');
 
   const [activeMaterial, setActiveMaterial] = useState<Material | null>(null);
-  const [formats, setFormats] = useState<QuestionFormat[]>(FORMATS);
   const [target, setTarget] = useState(50);
   const [save, setSave] = useState(true);
   const [generating, setGenerating] = useState(false);
@@ -101,14 +98,13 @@ export function PdfIntelligence({ initialMaterials }: { initialMaterials: Materi
 
   const generate = async () => {
     if (!activeMaterial) return;
-    if (formats.length === 0) { setGenerationError('Select at least one format.'); return; }
-    const count = Math.max(1, Math.ceil(target / formats.length));
+    const count = Math.max(1, Math.ceil(target));
     setGenerating(true); setResults(null); setGenerationError(''); setUsedFallback(false);
     try {
       const res = await fetch(`/api/materials/${activeMaterial.id}/questions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ formats, count, save }),
+        body: JSON.stringify({ formats: ['MCQ'], count, save }),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) throw new Error(data?.error || 'Generation failed');
@@ -136,17 +132,13 @@ export function PdfIntelligence({ initialMaterials }: { initialMaterials: Materi
     }
   };
 
-  const toggleFormat = (f: QuestionFormat) => {
-    setFormats((prev) => (prev.includes(f) ? prev.filter((x) => x !== f) : [...prev, f]));
-  };
-
   return (
     <div className="relative">
       <AmbientBackground variant="mesh" />
       <div className="relative space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2"><LiproLogo className="h-6 w-6" /> PDF Intelligence</h1>
-        <p className="text-sm text-lipro-600/70 dark:text-lipro-200/70">Upload any PDF and generate accurate CBT questions in multiple formats.</p>
+        <p className="text-sm text-lipro-600/70 dark:text-lipro-200/70">Upload any PDF and generate accurate multiple choice CBT questions.</p>
       </div>
 
       <Card>
@@ -214,14 +206,11 @@ export function PdfIntelligence({ initialMaterials }: { initialMaterials: Materi
               </CardHeader>
               <CardContent>
                 <div>
-                  <Label>Formats</Label>
+                  <Label>Format</Label>
                   <div className="flex flex-wrap gap-2">
-                    {FORMATS.map((f) => (
-                      <button key={f} type="button" onClick={() => toggleFormat(f)} className={cn('rounded-full border px-3 py-1.5 text-xs font-medium transition-all', formats.includes(f) ? 'border-lipro-500 bg-lipro-600 text-white' : 'border-lipro-300/40 text-lipro-600/80 hover:bg-lipro-50 dark:text-lipro-200/80 dark:hover:bg-lipro-950/40')}>
-                        {FORMAT_LABELS[f]}
-                      </button>
-                    ))}
+                    <span className="rounded-full border border-lipro-500 bg-lipro-600 px-3 py-1.5 text-xs font-medium text-white">Multiple Choice</span>
                   </div>
+                  <p className="mt-1 text-xs text-lipro-600/60 dark:text-lipro-200/50">Questions are generated as multiple choice with 4 options and one correct answer.</p>
                 </div>
                 <div className="mt-4">
                   <Label>How many questions?</Label>
@@ -232,18 +221,18 @@ export function PdfIntelligence({ initialMaterials }: { initialMaterials: Materi
                       </button>
                     ))}
                   </div>
-                  <p className="mt-2 text-xs text-lipro-600/60 dark:text-lipro-200/50">~{Math.max(1, Math.ceil(target / formats.length))} per format × {formats.length} format{formats.length === 1 ? '' : 's'}. The AI reads the document in sections for accuracy.</p>
+                  <p className="mt-2 text-xs text-lipro-600/60 dark:text-lipro-200/50">Generate {target} multiple choice questions. The AI reads the document in sections for accuracy.</p>
                 </div>
                 <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm text-lipro-600/80 dark:text-lipro-200/80">
                   <input type="checkbox" checked={save} onChange={(e) => setSave(e.target.checked)} className="h-4 w-4 accent-lipro-600" />
                   Save to question bank
                 </label>
-                <Button onClick={generate} disabled={generating || formats.length === 0} className="mt-4">
+                <Button onClick={generate} disabled={generating} className="mt-4">
                   {generating ? <><Loader2 className="h-4 w-4 animate-spin" /> Generating {target} questions… (can take a minute)</> : <><Sparkles className="h-4 w-4" /> Generate {target} questions</>}
                 </Button>
 
                 {usedFallback && (
-                  <p className="mt-3 flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400"><AlertTriangle className="h-3.5 w-3.5" /> Demo questions — add your NVIDIA API key in Settings → AI API Key for real AI-generated questions.</p>
+                  <p className="mt-3 flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400"><AlertTriangle className="h-3.5 w-3.5" /> AI generation is unavailable right now — showing sample questions instead. Check your NVIDIA API key or try again.</p>
                 )}
                 {generationError && <p className="mt-3 text-sm text-rose-500">{generationError}</p>}
 
