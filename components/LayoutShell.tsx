@@ -3,7 +3,7 @@ import { ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  LayoutDashboard, BookOpen, StickyNote, Brain, Wallet as WalletIcon, Bell, Settings, LogOut, Menu, Home, ArrowRight, MoreHorizontal, GraduationCap, Smartphone, Monitor
+  LayoutDashboard, BookOpen, StickyNote, Brain, Wallet as WalletIcon, Bell, Settings, LogOut, Menu, Home, ArrowRight, MoreHorizontal, Smartphone, Monitor
 } from 'lucide-react';
 import { LiproLogo } from '@/components/LiproLogo';
 import { cn } from '@/lib/utils';
@@ -18,7 +18,6 @@ const NAV = [
   { label: 'Notes', href: '/notes', icon: StickyNote },
   { label: 'CBT Engine', href: '/cbt', icon: Brain },
   { label: 'LIPRO AI', href: '/lipro-ai', icon: LiproLogo, highlight: true },
-  { label: 'PDF Intelligence', href: '/pdf-intelligence', icon: GraduationCap, highlight: true },
   { label: 'Wallet', href: '/wallet', icon: WalletIcon },
   { label: 'Settings', href: '/settings', icon: Settings },
 ];

@@ -18,7 +18,6 @@ const QUICK_LINKS = [
   { label: 'Notes', path: '/notes' },
   { label: 'CBT', path: '/cbt' },
   { label: 'LIPRO AI', path: '/lipro-ai' },
-  { label: 'PDF Intelligence', path: '/pdf-intelligence' },
   { label: 'Wallet', path: '/wallet' },
   { label: 'Settings', path: '/settings' },
 ];

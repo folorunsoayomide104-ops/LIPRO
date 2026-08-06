@@ -31,9 +31,9 @@ export default async function CbtIndexPage() {
 
   return (
     <div className="space-y-6">
-      <div><h1 className="text-2xl font-bold tracking-tight">CBT Engine</h1><p className="text-sm text-lipro-600/70 dark:text-lipro-200/70">Practice, timed exams and timed exams from your own documents</p></div>
+      <div><h1 className="text-2xl font-bold tracking-tight">CBT Engine</h1><p className="text-sm text-lipro-600/70 dark:text-lipro-200/70">Practice with instant feedback or take timed exams — from your courses or your own documents</p></div>
       <div className="grid gap-4 md:grid-cols-2">
-        <Card><CardHeader><CardTitle>Timed exam from a document</CardTitle><CardDescription>Upload a PDF, generate questions and start a countdown exam</CardDescription></CardHeader><CardContent>
+        <Card><CardHeader><CardTitle>Timed exam from a document</CardTitle><CardDescription>Upload a PDF, generate MCQ questions and start a countdown exam</CardDescription></CardHeader><CardContent>
           <PdfExamCreator materials={docs} />
         </CardContent></Card>
         <Card><CardHeader><CardTitle>Recent attempts</CardTitle><CardDescription>Your last 10 sessions</CardDescription></CardHeader><CardContent>
@@ -48,7 +48,7 @@ export default async function CbtIndexPage() {
           </div>
         </CardContent></Card>
       </div>
-      <Card><CardHeader><CardTitle>Start a session from a course</CardTitle><CardDescription>Pick a course and mode</CardDescription></CardHeader><CardContent>
+      <Card><CardHeader><CardTitle>Start a session from a course</CardTitle><CardDescription>Pick a course, choose practice or exam mode, and set the number of questions</CardDescription></CardHeader><CardContent>
         <div className="space-y-2">
           {courses.map((c) => (
             <div key={c.id} className="rounded-xl p-3 glass-hover">

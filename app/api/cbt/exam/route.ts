@@ -18,7 +18,7 @@ export async function POST(req: Request) {
   };
   if (!mode || !['practice', 'exam'].includes(mode)) return NextResponse.json({ error: 'mode required (practice or exam)' }, { status: 422 });
   if (!courseId && !materialId) return NextResponse.json({ error: 'courseId or materialId required' }, { status: 422 });
-  const num = Math.max(1, Math.min(50, count || 10));
+  const num = Math.max(1, Math.min(100, count || 10));
 
   let title = '';
   let courseIdToStore: string | null = null;
