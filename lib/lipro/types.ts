@@ -29,6 +29,8 @@ export interface PipelineInput {
   ragContext: string;
   /** Optional live semantic-search callback provided by the route. */
   runtimeRagSearch?: (query: string) => Promise<string>;
+  /** When set, the reasoning stage streams its final-answer tokens through this callback instead of returning them all at once. */
+  onDelta?: (text: string) => void;
 }
 
 export type Intent = 'chitchat' | 'study_help' | 'document_qa' | 'current_info' | 'calculation' | 'complex';

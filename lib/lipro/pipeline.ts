@@ -1,6 +1,7 @@
 import type { AiProviderConfig } from '@/lib/ai';
-import { chatCompletionWithTools, runAgenticLoop, type ToolDefinition } from '@/lib/nvidia';
-import { buildToolExecutor, WEB_SEARCH_TOOL, RAG_SEARCH_TOOL, DOCUMENT_SEARCH_TOOL, CALCULATOR_TOOL } from './tools';import type { Intent, PipelineInput, PipelineResult, TaskPlan } from './types';
+import { chatCompletionWithTools, streamChatCompletionWithTools, runAgenticLoop, type ToolDefinition } from '@/lib/nvidia';
+import { buildToolExecutor, WEB_SEARCH_TOOL, RAG_SEARCH_TOOL, DOCUMENT_SEARCH_TOOL, CALCULATOR_TOOL } from './tools';
+import type { Intent, PipelineInput, PipelineResult, TaskPlan } from './types';
 
 /* ------------------------------------------------------------------ *
  * MODEL LAYER — distinct model slots, all defaulting to the active
@@ -169,9 +170,12 @@ function toolsForPlan(plan: TaskPlan): ToolDefinition[] {
 }
 
 async function reason(input: PipelineInput, plan: TaskPlan): Promise<{ content: string; usedTools: string[] }> {
-  const { provider } = input;
+  const { provider, onDelta } = input;
   if (plan.intent === 'chitchat') {
-    const r = await chatCompletionWithTools({
+    const call = onDelta
+      ? (p: Parameters<typeof chatCompletionWithTools>[0]) => streamChatCompletionWithTools({ ...p, onDelta })
+      : chatCompletionWithTools;
+    const r = await call({
       apiKey: provider.apiKey,
       baseURL: provider.baseURL,
       model: modelFor(provider, 'reasoning'),
@@ -203,6 +207,7 @@ async function reason(input: PipelineInput, plan: TaskPlan): Promise<{ content: 
     temperature: 0.5,
     maxTokens: 1400,
     maxIterations: 3,
+    onDelta,
   });
   return { content: result.content, usedTools: executor.calls };
 }
@@ -275,45 +280,30 @@ async function selfEvaluate(input: PipelineInput, question: string, draft: strin
 }
 
 /* ------------------------------------------------------------------ *
- * RESPONSE ENGINE — final polish (light, skipped for chitchat).
- * ------------------------------------------------------------------ */
-const RESPONSE_PROMPT = `You are the Response Engine of the LIPRO AI pipeline. You receive a verified draft answer. Lightly format it into clean, readable markdown for a student:
-- Keep the content and meaning identical. Do not add facts or tools.
-- Break long walls of text into short paragraphs; bold key terms; keep lists concise.
-- If there are citations, keep them.
-- Return only the polished markdown, no commentary.`;
-
-async function polish(provider: AiProviderConfig, draft: string): Promise<string> {
-  try {
-    const result = await chatCompletionWithTools({
-      apiKey: provider.apiKey,
-      baseURL: provider.baseURL,
-      model: modelFor(provider, 'response'),
-      label: labelFor(provider, 'response'),
-      messages: [
-        { role: 'system', content: RESPONSE_PROMPT },
-        { role: 'user', content: draft },
-      ],
-      temperature: 0.2,
-      maxTokens: 1400,
-      timeoutMs: 12000,
-    });
-    return result.content.trim() || draft;
-  } catch {
-    return draft;
-  }
-}
-
-/* ------------------------------------------------------------------ *
  * PUBLIC ENTRY — runs the full pipeline and returns a final answer.
+ *
+ * Formatting used to be a separate "Response Engine" pass after
+ * self-evaluation. It added a full extra round-trip to every non-chitchat
+ * reply for a purely cosmetic rewrite, so its instructions now live directly
+ * in the reasoning-stage system prompt (see buildReasoningMessages) and the
+ * reasoning draft is the final answer.
+ *
+ * When input.onDelta is set (an interactive streaming request), the
+ * reasoning stage streams tokens live to the caller as they're generated.
+ * Self-evaluation still runs afterward for quality tracking, but by the time
+ * it finishes the draft is already fully visible to the user, so its
+ * correction is not applied retroactively — only surfaced via `confidence`
+ * for logging. Non-streaming callers (e.g. non-stream API responses) keep
+ * the old behavior of applying the correction before returning.
  * ------------------------------------------------------------------ */
 export async function runLiproAiPipeline(input: PipelineInput): Promise<PipelineResult> {
   const userMessage = input.messages[input.messages.length - 1]?.content ?? '';
+  const isStreaming = !!input.onDelta;
 
   // TASK PLANNER
   const plan = await planTask(input);
 
-  // REASONING ENGINE
+  // REASONING ENGINE (final answer — streamed live when input.onDelta is set)
   const { content: raw, usedTools } = await reason(input, plan);
 
   // SELF-EVALUATION
@@ -324,15 +314,13 @@ export async function runLiproAiPipeline(input: PipelineInput): Promise<Pipeline
     if (verdict) {
       confidence = verdict.score / 100;
       if (verdict.verdict === 'fix' && verdict.correction) {
-        reply = verdict.correction;
+        if (isStreaming) {
+          console.warn('LIPRO AI self-eval flagged a streamed reply (not corrected retroactively):', verdict.issues);
+        } else {
+          reply = verdict.correction;
+        }
       }
     }
-  }
-
-  // RESPONSE ENGINE
-  if (plan.intent !== 'chitchat') {
-    const polished = await polish(input.provider, reply);
-    if (polished.trim()) reply = polished;
   }
 
   return { reply, confidence, usedTools, usedFallback: false };

@@ -334,35 +334,42 @@ async function handleStream(
     await linkMaterialToConversation(convId, mid);
   }
 
-  // Run the full pipeline (planner → reasoning → self-eval → response) to get
-  // the final answer, then stream it back chunk-by-chunk to preserve UX.
-  let finalText: string;
-  let usedFallback = false;
-  try {
-    const result = await runLiproAiPipeline(pipelineInput);
-    finalText = result.reply;
-  } catch (err: any) {
-    console.error('LIPRO AI stream error:', err?.message || err);
-    finalText = nvidiaDownReply(firstUserMsg, docs[0]?.name);
-    usedFallback = true;
-  }
-
-  history.push({ role: 'assistant', content: finalText });
-  try {
-    await prisma.aiConversation.update({ where: { id: convId }, data: { messages: JSON.stringify(history) } });
-  } catch (err: any) {
-    console.error('Persist conversation (post) failed:', err?.message || err);
-  }
-
+  // Run the pipeline (planner → reasoning → self-eval) with the reasoning
+  // stage's tokens streamed live to the client as they're generated, instead
+  // of waiting for the full pipeline and fake-chunking the result after.
   const encoder2 = new TextEncoder();
   const stream = new ReadableStream({
     async start(controller) {
       controller.enqueue(encoder2.encode(`data: ${JSON.stringify({ conversationId: convId })}\n\n`));
-      const chunks = finalText.length > 0 ? finalText.match(/.{1,24}/g) || [finalText] : [finalText];
-      for (const chunk of chunks) {
-        controller.enqueue(encoder2.encode(`data: ${JSON.stringify({ text: chunk })}\n\n`));
-        await new Promise((r) => setTimeout(r, 18));
+
+      let finalText = '';
+      let usedFallback = false;
+      try {
+        const result = await runLiproAiPipeline({
+          ...pipelineInput,
+          onDelta: (text) => {
+            finalText += text;
+            controller.enqueue(encoder2.encode(`data: ${JSON.stringify({ text })}\n\n`));
+          },
+        });
+        // The reasoning stage streamed the draft above; if self-eval didn't
+        // touch it (streaming replies aren't corrected retroactively, see
+        // runLiproAiPipeline), result.reply already equals finalText.
+        finalText = result.reply || finalText;
+      } catch (err: any) {
+        console.error('LIPRO AI stream error:', err?.message || err);
+        finalText = nvidiaDownReply(firstUserMsg, docs[0]?.name);
+        usedFallback = true;
+        controller.enqueue(encoder2.encode(`data: ${JSON.stringify({ text: finalText })}\n\n`));
       }
+
+      history.push({ role: 'assistant', content: finalText });
+      try {
+        await prisma.aiConversation.update({ where: { id: convId }, data: { messages: JSON.stringify(history) } });
+      } catch (err: any) {
+        console.error('Persist conversation (post) failed:', err?.message || err);
+      }
+
       if (usedFallback) {
         controller.enqueue(encoder2.encode(`data: ${JSON.stringify({ fallback: true })}\n\n`));
       }
