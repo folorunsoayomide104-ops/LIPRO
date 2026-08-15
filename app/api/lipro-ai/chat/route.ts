@@ -76,23 +76,33 @@ export async function POST(req: Request) {
 
   const allDocContexts: DocContext[] = [];
   const materialIds: string[] = [];
+  const failedFiles: Array<{ name: string; reason: string }> = [];
 
   // Handle multiple files from the new format
   if (files && files.length > 0) {
     const validFiles = files.filter((f): f is { url: string; name: string } => !!f.url && !!f.name);
     for (const fileInfo of validFiles) {
+      const name = fileInfo.name || 'document.pdf';
       try {
         const head = await fetch(fileInfo.url, { method: 'HEAD' }).catch(() => null);
         const len = Number(head?.headers.get('content-length') || 0);
-        if (len > MAX_UPLOAD_BYTES) continue;
+        if (len > MAX_UPLOAD_BYTES) {
+          failedFiles.push({ name, reason: 'File is too large (max 100MB).' });
+          continue;
+        }
 
         const blobRes = await fetch(fileInfo.url).catch(() => null);
-        if (!blobRes || !blobRes.ok) continue;
+        if (!blobRes || !blobRes.ok) {
+          failedFiles.push({ name, reason: 'Could not download the uploaded file.' });
+          continue;
+        }
 
         const buffer = Buffer.from(await blobRes.arrayBuffer());
-        if (buffer.length === 0) continue;
+        if (buffer.length === 0) {
+          failedFiles.push({ name, reason: 'The file is empty.' });
+          continue;
+        }
 
-        const name = fileInfo.name || 'document.pdf';
         const looksLikePdf = name.toLowerCase().endsWith('.pdf');
         const looksLikeImage = /^image\//.test(head?.headers.get('content-type') || '') || /\.(jpg|jpeg|png|gif|webp|bmp|tiff|svg)$/i.test(name);
         const looksLikeDocx = isDocxName(name);
@@ -114,14 +124,18 @@ export async function POST(req: Request) {
           });
           materialIds.push(material.id);
         } else {
-          console.error(`No text extracted from file ${fileInfo.name}`);
+          failedFiles.push({ name, reason: 'No readable text found in this file.' });
         }
       } catch (err: any) {
         console.error(`Failed to process file ${fileInfo.name}:`, err?.message || err);
+        failedFiles.push({ name, reason: err?.message || 'Failed to read this file.' });
       }
     }
     if (validFiles.length > 0 && allDocContexts.length === 0) {
-      return NextResponse.json({ error: 'Could not read any text from your uploaded files. Make sure images are clear and documents contain text.' }, { status: 422 });
+      return NextResponse.json({
+        error: 'Could not read any text from your uploaded files. Make sure images are clear and documents contain text.',
+        failedFiles,
+      }, { status: 422 });
     }
   }
   // Handle single blobUrl (legacy format)
@@ -273,7 +287,7 @@ export async function POST(req: Request) {
   const shouldStream = wantStream && apiKey.trim().length > 0;
 
   if (shouldStream) {
-    return handleStream(user.userId, conversation, history, message, docs, materialIds, pipelineInput);
+    return handleStream(user.userId, conversation, history, message, docs, materialIds, failedFiles, pipelineInput);
   }
   let replyText: string;
   let usedFallback = false;
@@ -298,7 +312,7 @@ export async function POST(req: Request) {
     await linkMaterialToConversation(convId, mid);
   }
 
-  return NextResponse.json({ reply: replyText, conversationId: convId, fallback: usedFallback, materialIds });
+  return NextResponse.json({ reply: replyText, conversationId: convId, fallback: usedFallback, materialIds, failedFiles });
 }
 
 async function handleStream(
@@ -308,6 +322,7 @@ async function handleStream(
   firstUserMsg: string,
   docs: DocContext[] = [],
   materialIds: string[] = [],
+  failedFiles: Array<{ name: string; reason: string }> = [],
   pipelineInput: PipelineInput
 ): Promise<Response> {
   // Persist the thread up-front (user message only) so we have a conversationId for the client.
@@ -343,7 +358,7 @@ async function handleStream(
   const encoder2 = new TextEncoder();
   const stream = new ReadableStream({
     async start(controller) {
-      controller.enqueue(encoder2.encode(`data: ${JSON.stringify({ conversationId: convId })}\n\n`));
+      controller.enqueue(encoder2.encode(`data: ${JSON.stringify({ conversationId: convId, materialIds, failedFiles })}\n\n`));
 
       let finalText = '';
       let usedFallback = false;

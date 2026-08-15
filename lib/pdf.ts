@@ -25,10 +25,13 @@ export function isDocxName(name: string): boolean {
   return /\.docx$/i.test(name);
 }
 
-function looksLikeDocx(buffer: Buffer, mimeType: string): boolean {
-  if (mimeType === DOCX_MIME) return true;
-  // DOCX is a ZIP archive ("PK\x03\x04" signature); plain-text buffers never start this way.
+function isZipSignature(buffer: Buffer): boolean {
+  // DOCX/PPTX/XLSX are all ZIP archives ("PK\x03\x04" signature); plain-text buffers never start this way.
   return buffer.subarray(0, 4).toString('latin1') === 'PK\x03\x04';
+}
+
+function looksLikeDocx(buffer: Buffer, mimeType: string): boolean {
+  return mimeType === DOCX_MIME || isZipSignature(buffer);
 }
 
 export async function extractText(buffer: Buffer, mimeType: string): Promise<ExtractResult> {
@@ -50,8 +53,15 @@ export async function extractText(buffer: Buffer, mimeType: string): Promise<Ext
       const mammoth = await import('mammoth');
       const result = await mammoth.extractRawText({ buffer });
       raw = result.value || '';
-    } catch (err: any) {
-      throw new Error(`Could not read this Word document: ${err?.message || 'unknown error'}`);
+    } catch {
+      // Any ZIP-shaped file (PPTX, XLSX, plain ZIP, corrupt DOCX) that mammoth
+      // can't parse as a Word document lands here — give a user-facing answer
+      // instead of leaking mammoth's internal "main document part" wording.
+      throw new Error(
+        mimeType === DOCX_MIME
+          ? 'Could not read this Word document — it may be corrupted.'
+          : 'This looks like a PowerPoint, Excel, or other non-Word file. Only PDF and Word (.docx) documents are supported right now.'
+      );
     }
   } else if (mimeType.startsWith('text/')) {
     raw = buffer.toString('utf8');

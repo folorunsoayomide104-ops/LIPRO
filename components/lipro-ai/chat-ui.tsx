@@ -232,11 +232,24 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
     setFallback(false);
     const fileNames = attached.map((a) => a.name);
     setMessages((m) => [...m, { role: 'user', content: text }, { role: 'assistant', content: '' }]);
-    if (fileNames.length > 0) {
-      setDocs((d) => [...d.filter((x) => !fileNames.includes(x.name)), ...fileNames.map((name) => ({ id: '', name }))]);
-      setSavedNote(true);
-      window.setTimeout(() => setSavedNote(false), 5000);
-    }
+
+    // Docs are only marked "attached" once the server confirms it actually
+    // extracted text and saved a Material — never optimistically, so this
+    // stays a trustworthy signal instead of a fake checkmark that shows
+    // even when the upload or extraction silently failed.
+    const confirmAttached = (materialIds: string[], failedFiles?: Array<{ name: string; reason: string }>) => {
+      if (materialIds.length > 0) {
+        setDocs((d) => [
+          ...d.filter((x) => !fileNames.includes(x.name)),
+          ...materialIds.map((id, i) => ({ id, name: fileNames[i] || `document ${i + 1}` })),
+        ]);
+        setSavedNote(true);
+        window.setTimeout(() => setSavedNote(false), 5000);
+      }
+      if (failedFiles && failedFiles.length > 0) {
+        setAttachError(failedFiles.map((f) => `${f.name}: ${f.reason}`).join(' · '));
+      }
+    };
 
     const appendReply = (content: string) => {
       setMessages((prev) => {
@@ -251,6 +264,8 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
       });
     };
 
+    const attachedSnapshot = attached;
+    let clearedAttachments = false;
     try {
       let body;
       if (attached.length > 0) {
@@ -279,6 +294,7 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
         body = JSON.stringify({ message: text, conversationId, stream: true });
       }
       setAttached([]);
+      clearedAttachments = true;
       const res = await fetch('/api/lipro-ai/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -299,6 +315,7 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
           setConversationId(data.conversationId);
           setActiveId(data.conversationId);
         }
+        confirmAttached(data.materialIds || [], data.failedFiles);
         setFallback(!!data.fallback);
         refreshList();
         return;
@@ -334,6 +351,7 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
             });
           }
           if (json.conversationId) streamConversationId = json.conversationId;
+          if (Array.isArray(json.materialIds)) confirmAttached(json.materialIds, json.failedFiles);
           if (json.fallback === true) setFallback(true);
         }
       }
@@ -349,6 +367,10 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
     } catch (err: any) {
       setUploading(false);
       setUploadProgress('');
+      if (hasFiles) {
+        setAttachError(err?.message || 'Could not upload your file(s). Please try again.');
+        if (clearedAttachments) setAttached(attachedSnapshot);
+      }
       appendReply('Sorry, something went wrong. Try again.');
     } finally {
       setLoading(false);
