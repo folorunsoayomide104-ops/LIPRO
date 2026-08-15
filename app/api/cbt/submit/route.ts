@@ -1,81 +1,70 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { guard } from '@/lib/api-guard';
+import { finalizeAttempt, loadOwnedAttempt } from '@/lib/cbt/attempt';
+import { percentage } from '@/lib/cbt/serialize';
 
+export const dynamic = 'force-dynamic';
+
+/**
+ * @deprecated Superseded by POST /api/cbt/attempts/[id]/submit. Kept as a thin
+ * wrapper for one release: maps the old {sessionId, answers} shape onto the
+ * new attempt, applies posted answers as a final flush, and grades it exactly
+ * as before — including running AI grading synchronously here (the old route
+ * had no separate grading step, and a stale client won't poll one).
+ */
 export async function POST(req: Request) {
   const { ok, user, response } = await guard();
   if (!ok || !user) return response!;
   const body = await req.json().catch(() => null);
   if (!body) return NextResponse.json({ error: 'Invalid body' }, { status: 400 });
-  const { sessionId, answers } = body as { sessionId: string; answers: Record<string, string> };
+  const { sessionId, answers } = body as { sessionId?: string; answers?: Record<string, string> };
   if (!sessionId || !answers) return NextResponse.json({ error: 'sessionId and answers required' }, { status: 422 });
 
-  const session = await prisma.examSession.findUnique({
-    where: { id: sessionId },
-    include: { course: true },
-  });
-  if (!session || session.userId !== user.userId) return NextResponse.json({ error: 'Session not found' }, { status: 404 });
-  if (session.status === 'completed') return NextResponse.json({ error: 'Session already submitted' }, { status: 422 });
+  const attempt = await loadOwnedAttempt(sessionId, user.userId);
+  if (!attempt) return NextResponse.json({ error: 'Session not found' }, { status: 404 });
 
-  let questionIds: string[] = [];
-  try {
-    questionIds = JSON.parse(session.questionIds || '[]');
-  } catch {}
-  const gradedQuestions =
-    questionIds.length > 0
-      ? await prisma.question.findMany({ where: { id: { in: questionIds } } })
-      : session.courseId
-        ? await prisma.question.findMany({ where: { courseId: session.courseId } })
-        : [];
-
-  let score = 0;
-  let earned = 0;
-  const breakdown: any[] = [];
-  for (const q of gradedQuestions) {
-    const ans = (answers[q.id] || '').trim().toLowerCase();
-    const correct = (q.answer || '').trim().toLowerCase();
-    const isCorrect = ans.length > 0 && ans === correct;
-    score += q.points;
-    if (isCorrect) earned += q.points;
-    breakdown.push({
-      questionId: q.id,
-      question: q.question,
-      type: q.type,
-      options: q.options,
-      yourAnswer: answers[q.id] || '',
-      correctAnswer: q.answer,
-      isCorrect,
-      explanation: q.explanation,
-      points: q.points,
-    });
+  if (attempt.status === 'in_progress') {
+    const now = new Date();
+    for (const item of attempt.items) {
+      const value = item.questionId ? answers[item.questionId] : undefined;
+      if (value === undefined) continue;
+      await prisma.examAnswer.updateMany({
+        where: { id: item.id, attemptId: attempt.id },
+        data: { response: value, answeredAt: value.trim() ? now : null },
+      });
+    }
   }
 
-  const percentage = score > 0 ? Math.round((earned / score) * 100) : 0;
+  const finalized = await finalizeAttempt(attempt.id);
+  if (!finalized) return NextResponse.json({ error: 'Could not submit attempt' }, { status: 500 });
 
-  const completed = await prisma.examSession.update({
-    where: { id: sessionId },
-    data: {
-      status: 'completed',
-      score: earned,
-      completedAt: new Date(),
-      answers: JSON.stringify(answers),
-    },
-  });
+  // Old callers expect grading to be finished by the time this responds.
+  const { runGrading } = await import('@/lib/cbt/grade-runner');
+  const hasFreeText = finalized.items.some((i) => !i.isGraded);
+  const graded = hasFreeText ? await runGrading(finalized.id) : null;
 
-  await prisma.notification.create({
-    data: {
-      userId: user.userId,
-      type: 'ACADEMIC',
-      title: 'CBT session completed',
-      message: `You scored ${earned} / ${score} (${percentage}%) in ${session.course?.title ?? 'your document exam'}.`,
-    },
-  });
+  const items = graded
+    ? await prisma.examAnswer.findMany({ where: { attemptId: finalized.id }, orderBy: { orderIndex: 'asc' } })
+    : finalized.items;
 
-  return NextResponse.json({
-    sessionId: completed.id,
-    score: earned,
-    totalPoints: score,
-    percentage,
-    breakdown,
-  });
+  const score = graded?.score ?? finalized.score ?? 0;
+  const totalPoints = graded?.totalPoints ?? finalized.totalPoints ?? 0;
+
+  const breakdown = items.map((item) => ({
+    questionId: item.questionId,
+    question: item.prompt,
+    type: item.type,
+    options: item.optionsJson,
+    yourAnswer: item.response ?? '',
+    correctAnswer: item.correctAnswer,
+    isCorrect: item.isCorrect,
+    explanation: item.explanation,
+    points: item.points,
+  }));
+
+  return NextResponse.json(
+    { sessionId: finalized.id, score, totalPoints, percentage: percentage(score, totalPoints), breakdown },
+    { headers: { Deprecation: 'true', Link: '</api/cbt/attempts>; rel="successor-version"' } }
+  );
 }

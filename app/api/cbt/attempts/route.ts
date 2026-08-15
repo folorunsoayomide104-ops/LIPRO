@@ -8,11 +8,11 @@ import { MAX_OPEN_ATTEMPTS, MIN_DURATION_SEC, MAX_DURATION_SEC } from '@/lib/cbt
 export const dynamic = 'force-dynamic';
 
 /**
- * @deprecated Superseded by POST /api/cbt/attempts, which returns a
- * server-authoritative, resumable attempt instead of a sessionStorage payload.
- * Kept as a thin wrapper for one release so a stale client bundle still works.
- * Unlike the old route, this no longer includes `answer`/`explanation` even in
- * practice mode — that leak is closed here too.
+ * Create an exam attempt.
+ *
+ * Deliberately returns identifiers only — the client immediately calls
+ * GET /api/cbt/attempts/[id] to fetch the paper, so "just started" and "resumed"
+ * share exactly one code path (and one leak boundary).
  */
 export async function POST(req: Request) {
   const { ok, user, response } = await guard();
@@ -20,30 +20,51 @@ export async function POST(req: Request) {
 
   const body = await req.json().catch(() => null);
   if (!body) return NextResponse.json({ error: 'Invalid body' }, { status: 400 });
-  const parsed = examStartSchema.safeParse(body);
-  if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message }, { status: 422 });
-  const { courseId, materialId, mode, count, durationSec } = parsed.data;
 
-  const open = await prisma.examSession.count({ where: { userId: user.userId, status: 'in_progress' } });
+  const parsed = examStartSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.issues[0]?.message }, { status: 422 });
+  }
+  const { courseId, materialId, mode, count, durationSec, types } = parsed.data;
+
+  const open = await prisma.examSession.count({
+    where: { userId: user.userId, status: 'in_progress' },
+  });
   if (open >= MAX_OPEN_ATTEMPTS) {
-    return NextResponse.json({ error: `You have ${open} unfinished exams. Finish or abandon one before starting another.` }, { status: 429 });
+    return NextResponse.json(
+      { error: `You have ${open} unfinished exams. Finish or abandon one before starting another.` },
+      { status: 429 }
+    );
   }
 
   let sourceTitle = '';
   if (materialId) {
-    const material = await prisma.material.findFirst({ where: { id: materialId, userId: user.userId }, select: { originalName: true } });
+    // Materials are private, so ownership is enforced here.
+    const material = await prisma.material.findFirst({
+      where: { id: materialId, userId: user.userId },
+      select: { id: true, originalName: true },
+    });
     if (!material) return NextResponse.json({ error: 'Document not found' }, { status: 404 });
     sourceTitle = material.originalName;
   } else {
-    const course = await prisma.course.findUnique({ where: { id: courseId }, select: { title: true } });
+    // Courses are a public catalogue in this app — any signed-in user may practise.
+    const course = await prisma.course.findUnique({
+      where: { id: courseId },
+      select: { id: true, title: true },
+    });
     if (!course) return NextResponse.json({ error: 'Course not found' }, { status: 404 });
     sourceTitle = course.title;
   }
 
   const where: Record<string, unknown> = materialId ? { sourceId: materialId } : { courseId };
+  if (types?.length) where.type = { in: types };
+
   const sampled = await sampleQuestions(where, count);
   if (sampled.length === 0) {
-    return NextResponse.json({ error: 'No questions available' }, { status: 422 });
+    return NextResponse.json(
+      { error: 'No questions available for this selection yet. Generate some questions first.' },
+      { status: 422 }
+    );
   }
 
   const totalPoints = sampled.reduce((sum, q) => sum + q.points, 0);
@@ -52,6 +73,7 @@ export async function POST(req: Request) {
     mode === 'exam'
       ? Math.max(MIN_DURATION_SEC, Math.min(MAX_DURATION_SEC, durationSec ?? defaultDuration ?? 600))
       : null;
+
   const startedAt = new Date();
   const deadlineAt = resolvedDuration ? new Date(startedAt.getTime() + resolvedDuration * 1000) : null;
 
@@ -69,9 +91,11 @@ export async function POST(req: Request) {
         startedAt,
         deadlineAt,
         schemaVersion: 2,
+        // Kept in sync for any legacy reader still looking at these columns.
         questionIds: JSON.stringify(sampled.map((q) => q.id)),
       },
     });
+
     await tx.examAnswer.createMany({
       data: sampled.map((q, i) => ({
         attemptId: created.id,
@@ -86,22 +110,20 @@ export async function POST(req: Request) {
         explanation: q.explanation,
       })),
     });
+
     return created;
   });
 
-  // Old shape, minus answer/explanation — a stale client can still render the
-  // paper and let the equally-deprecated submit route grade it.
-  const questions = sampled.map((q, i) => ({
-    id: q.id,
-    type: q.type,
-    question: q.question,
-    options: q.options,
-    imageUrl: q.imageUrl,
-    points: q.points,
-  }));
-
   return NextResponse.json(
-    { sessionId: attempt.id, questions, totalPoints, durationSec: resolvedDuration, sourceTitle },
-    { headers: { Deprecation: 'true', Link: '</api/cbt/attempts>; rel="successor-version"' } }
+    {
+      attemptId: attempt.id,
+      mode,
+      count: sampled.length,
+      totalPoints,
+      durationSec: resolvedDuration,
+      deadlineAt: deadlineAt?.toISOString() ?? null,
+      sourceTitle,
+    },
+    { status: 201 }
   );
 }

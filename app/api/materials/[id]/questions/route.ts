@@ -1,19 +1,26 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { guard } from '@/lib/api-guard';
-import { generateQuestionsFromText, fallbackGenerate, type QuestionFormat } from '@/lib/question-gen';
+import { generateQuestionsFromText, fallbackGenerate, type QuestionFormat, type GeneratedQuestion } from '@/lib/question-gen';
 import { resolveAiProvider } from '@/lib/ai';
+import { pointsFor } from '@/lib/cbt/constants';
 
 export const maxDuration = 300;
 
 const ALLOWED: QuestionFormat[] = ['MCQ', 'TRUE_FALSE', 'FILL_BLANK', 'THEORY'];
 
-const POINTS: Record<QuestionFormat, number> = {
-  MCQ: 2,
-  TRUE_FALSE: 1,
-  FILL_BLANK: 2,
-  THEORY: 10,
-};
+function toRow(q: GeneratedQuestion, materialId: string, authorId: string, demo: boolean) {
+  return {
+    type: q.type,
+    question: q.question,
+    options: q.options ? JSON.stringify(q.options) : null,
+    answer: q.answer,
+    explanation: demo ? `[demo] ${q.explanation ?? ''}`.trim() : q.explanation || null,
+    points: pointsFor(q.type),
+    sourceId: materialId,
+    authorId,
+  };
+}
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { ok, user, response } = await guard();
@@ -44,44 +51,44 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const provider = await resolveAiProvider(user.userId);
 
   // Vercel Hobby caps function execution at ~60s. Guard the whole generation so
-  // we always return a response (real questions, partial, or fallback) instead
-  // of letting the platform kill the request with a 504 after the client waits.
+  // we always return a response (real questions or a fallback) instead of
+  // letting the platform kill the request with a 504 after the client waits.
+  //
+  // Previously, hitting this timeout returned `saved: false` even when the
+  // caller asked to save — so a caller like the PDF exam creator would then
+  // try to start an exam against zero saved questions and fail with
+  // "No questions have been generated". The fallback set is now persisted
+  // (flagged `[demo]` in its explanation) whenever `save` was requested, so
+  // `saved` always reflects what's actually in the database.
   const result = await Promise.race([
     generateQuestionsFromText(material.text, formats, perFormatTarget, provider),
-    new Promise<{ questions: any[]; usedFallback: boolean }>((resolve) =>
+    new Promise<{ questions: GeneratedQuestion[]; usedFallback: boolean }>((resolve) =>
       setTimeout(() => resolve({ questions: [], usedFallback: true }), 55000)
     ),
   ]);
-  const generated = result.questions;
-  if (!generated || generated.length === 0) {
-    // Time budget exhausted or provider empty — give the demo fallback so the
-    // user always gets a usable (clearly-labelled) set.
-    const fb = fallbackGenerate(material.text, formats, perFormatTarget);
-    return NextResponse.json({
-      questions: fb.map((q) => ({ type: q.type, question: q.question, options: q.options, answer: q.answer, explanation: q.explanation })),
-      count: fb.length,
-      saved: false,
-      usedFallback: true,
-    });
+
+  // generateQuestionsFromText already falls back internally (no key, provider
+  // error, empty result) and returns usable questions in that case — only
+  // regenerate here if the race timed out and truly nothing came back.
+  const usedFallback = result.usedFallback;
+  const generated = result.questions.length > 0 ? result.questions : fallbackGenerate(material.text, formats, perFormatTarget);
+
+  if (generated.length === 0) {
+    return NextResponse.json({ error: 'Could not generate any questions from this document.' }, { status: 422 });
   }
 
+  let savedIds: string[] = [];
   if (save) {
-    await prisma.question.createMany({
-      data: generated.map((q) => ({
-        type: q.type,
-        question: q.question,
-        options: q.options ? JSON.stringify(q.options) : null,
-        answer: q.answer,
-        explanation: q.explanation || null,
-        points: POINTS[q.type] ?? 2,
-        sourceId: material.id,
-        authorId: user.userId,
-      })),
+    const created = await prisma.question.createManyAndReturn({
+      data: generated.map((q) => toRow(q, material.id, user.userId, usedFallback)),
+      select: { id: true },
     });
+    savedIds = created.map((c) => c.id);
   }
 
   return NextResponse.json({
-    questions: generated.map((q) => ({
+    questions: generated.map((q, i) => ({
+      id: savedIds[i],
       type: q.type,
       question: q.question,
       options: q.options,
@@ -89,7 +96,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       explanation: q.explanation,
     })),
     count: generated.length,
-    saved: save,
-    usedFallback: result.usedFallback,
+    saved: save && savedIds.length === generated.length,
+    usedFallback,
   });
 }

@@ -18,7 +18,12 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
     include: {
       lecturer: { select: { fullName: true } },
       notes: { orderBy: { updatedAt: 'desc' }, include: { user: { select: { fullName: true } } } },
-      questions: { orderBy: { createdAt: 'desc' } },
+      // Only the fields the page renders — answer/explanation must not ship to
+      // the client for a student browsing the question bank before an exam.
+      questions: {
+        orderBy: { createdAt: 'desc' },
+        select: { id: true, type: true, question: true, points: true, imageUrl: true, createdAt: true },
+      },
       _count: { select: { questions: true, notes: true } },
     },
   });

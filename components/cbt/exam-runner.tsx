@@ -1,201 +1,119 @@
 'use client';
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useCallback, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Clock, Send, ChevronLeft, ChevronRight, CheckCircle2, XCircle, LayoutGrid } from 'lucide-react';
+import { Clock, Send, ChevronLeft, ChevronRight, CheckCircle2, XCircle, LayoutGrid, Loader2, RefreshCw, LogOut, Cloud, CloudOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAttempt, type AttemptItem } from '@/lib/cbt/use-attempt';
 
-type Q = { id: string; type: string; question: string; options: string | null; imageUrl: string | null; points: number; answer?: string; explanation?: string | null };
+function fmtTime(s: number): string {
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  return `${m}:${sec.toString().padStart(2, '0')}`;
+}
 
-export function ExamRunner({ sessionId }: { sessionId: string }) {
+/** Timer urgency scales with remaining time, not a permanent red badge. */
+function timerTone(remaining: number, durationSec: number | null): 'green' | 'amber' | 'rose' {
+  if (!durationSec) return 'amber';
+  const ratio = remaining / durationSec;
+  if (ratio > 0.5) return 'green';
+  if (ratio > 0.2) return 'amber';
+  return 'rose';
+}
+
+export function ExamRunner({ attemptId }: { attemptId: string }) {
   const router = useRouter();
-  const search = useSearchParams();
-  const mode = (search.get('mode') as 'practice' | 'exam') || 'exam';
-  const stored = useMemo(() => {
-    if (typeof window === 'undefined') return null;
-    return JSON.parse(sessionStorage.getItem('cbt_session') || 'null');
-  }, []);
-  const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [submitting, setSubmitting] = useState(false);
-  const [result, setResult] = useState<any>(null);
-  const remainingSec = mode === 'exam' && stored?.durationSec ? stored.durationSec : 0;
-  const [timeLeft, setTimeLeft] = useState(remainingSec);
-  const questions: Q[] = stored?.questions || [];
+  const { attempt, items, loading, error, remaining, saveState, submitting, setAnswer, submit, check, abandon, reload } = useAttempt(attemptId);
+
   const [current, setCurrent] = useState(0);
   const [showNav, setShowNav] = useState(false);
-  const [checked, setChecked] = useState<Record<string, boolean>>({});
+  const [checking, setChecking] = useState<string | null>(null);
+  const [confirmSubmit, setConfirmSubmit] = useState(false);
 
-  const answersRef = useRef<Record<string, string>>(answers);
-  const submittedRef = useRef(false);
-  const submitRef = useRef<() => void>(() => {});
+  const answeredCount = useMemo(() => items.filter((i) => (i.response ?? '').trim().length > 0).length, [items]);
+  const unansweredCount = items.length - answeredCount;
 
-  useEffect(() => {
-    answersRef.current = answers;
-  }, [answers]);
+  const parseOptions = useCallback((item: AttemptItem): string[] => item.options ?? [], []);
 
-  const parseOptions = useCallback((s: string | null): string[] => {
-    if (!s) return [];
+  const doCheck = async (item: AttemptItem) => {
+    setChecking(item.itemId);
     try {
-      const v = JSON.parse(s);
-      return Array.isArray(v) ? v : [];
+      await check(item.itemId, item.response ?? '');
     } catch {
-      return [];
-    }
-  }, []);
-
-  const submit = useCallback(async () => {
-    if (submittedRef.current) return;
-    submittedRef.current = true;
-    setSubmitting(true);
-    try {
-      const res = await fetch('/api/cbt/submit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId, answers: answersRef.current }) });
-      const data = await res.json().catch(() => null);
-      if (res.ok) {
-        setResult(data);
-        sessionStorage.removeItem('cbt_session');
-      } else {
-        submittedRef.current = false;
-        alert(data?.error || 'Submit failed');
-      }
-    } catch {
-      submittedRef.current = false;
-      alert('Submit failed. Check your connection and try again.');
+      // check() already surfaces nothing fatal — a failed check just leaves the item unrevealed.
     } finally {
-      setSubmitting(false);
+      setChecking(null);
     }
-  }, [sessionId]);
-
-  useEffect(() => {
-    submitRef.current = submit;
-  }, [submit]);
-
-  useEffect(() => {
-    if (mode !== 'exam' || !remainingSec || submittedRef.current) return;
-    const t = setInterval(() => {
-      setTimeLeft((s) => {
-        if (s <= 1) {
-          clearInterval(t);
-          submitRef.current();
-          return 0;
-        }
-        return s - 1;
-      });
-    }, 1000);
-    return () => clearInterval(t);
-  }, [mode, remainingSec]);
-
-  if (!stored) return (
-    <div className="p-8">
-      <Card><CardContent><p className="text-sm">Session not found. Please start again from the CBT page.</p>
-      <Button className="mt-3" onClick={() => router.push('/cbt')}>Back to CBT</Button></CardContent></Card>
-    </div>
-  );
-
-  if (result) return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader><h3 className="text-lg font-semibold">Session result — {result.percentage}%</h3><p className="text-sm text-lipro-600/70">Score: {result.score} / {result.totalPoints} points</p></CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {result.breakdown?.map((b: any, i: number) => (
-              <div key={i} className="rounded-xl p-3 glass-hover">
-                <div className="flex items-center gap-2"><Badge tone={b.isCorrect ? 'green' : 'rose'}>{b.isCorrect ? 'Correct' : 'Incorrect'}</Badge><span className="text-xs">{b.points} pts</span></div>
-                <div className="mt-1 text-sm">{b.question}</div>
-                <div className="mt-2 text-xs"><div><strong>Your answer:</strong> {b.yourAnswer || '—'}</div><div className="mt-1"><strong>Correct:</strong> {b.correctAnswer || '—'}</div></div>
-                {b.explanation && <p className="mt-2 text-xs text-lipro-600/70 dark:text-lipro-200/70">{b.explanation}</p>}
-              </div>
-            ))}
-          </div>
-          <Button className="mt-4" onClick={() => router.push('/cbt')}>Back to CBT</Button>
-        </CardContent>
-      </Card>
-    </div>
-  );
-
-  const fmt = (s: number) => `${Math.floor(s/60)}:${(s%60).toString().padStart(2,'0')}`;
-  const answeredCount = Object.keys(answers).length;
-
-  const markChecked = (qid: string) => {
-    setChecked((c) => ({ ...c, [qid]: true }));
   };
 
-  const renderQuestion = (q: Q, index: number) => {
-    const opts = parseOptions(q.options);
-    const isPractice = mode === 'practice';
-    const done = checked[q.id];
-    const selected = answers[q.id];
-    const isCorrect = isPractice && done && q.answer != null && selected === q.answer;
-
+  if (loading) {
     return (
-      <Card key={q.id}>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Badge tone="amber">{q.type}</Badge>
-            <span className="text-xs">{q.points} pts</span>
-            {isPractice && done && (isCorrect
-              ? <Badge tone="green"><CheckCircle2 className="h-3 w-3" /> Correct</Badge>
-              : <Badge tone="rose"><XCircle className="h-3 w-3" /> Incorrect</Badge>)}
-          </div>
-          <h3 className="text-base mt-2 font-medium">{index + 1}. {q.question}</h3>
-        </CardHeader>
-        <CardContent>
-          {opts.length > 0 ? (
-            <div className="space-y-2">
-              {opts.map((opt: string, idx: number) => {
-                const isAnswer = isPractice && done && q.answer != null && opt === q.answer;
-                const isPicked = opt === selected;
-                return (
-                  <label key={idx} className={cn('tap flex items-center gap-3 rounded-xl border p-3.5 cursor-pointer transition-all',
-                    isPractice && done && isAnswer ? 'border-green-400/70 bg-green-50/70 dark:bg-green-950/30'
-                    : isPractice && done && isPicked && !isAnswer ? 'border-rose-400/70 bg-rose-50/70 dark:bg-rose-950/30'
-                    : 'border-lipro-200/50 hover:bg-lipro-50/50 dark:border-lipro-700/40 dark:hover:bg-lipro-950/30')}>
-                    <input type="radio" name={q.id} value={opt} checked={isPicked} disabled={isPractice && done} onChange={(e) => setAnswers((a) => ({ ...a, [q.id]: e.target.value }))} className="h-5 w-5 shrink-0 accent-lipro-600" />
-                    <span className="text-sm leading-snug">{opt}</span>
-                    {isPractice && done && isAnswer && <CheckCircle2 className="ml-auto h-4 w-4 shrink-0 text-green-500" />}
-                  </label>
-                );
-              })}
-            </div>
-          ) : (
-            <textarea
-              className="input min-h-24"
-              placeholder="Type your answer…"
-              value={answers[q.id] || ''}
-              disabled={isPractice && done}
-              onChange={(e) => setAnswers((a) => ({ ...a, [q.id]: e.target.value }))}
-            />
-          )}
-
-          {isPractice && done && (
-            <div className="mt-3 rounded-xl border border-lipro-200/50 bg-lipro-50/40 p-3 text-xs dark:border-lipro-700/40 dark:bg-lipro-950/30">
-              <div><strong>Answer:</strong> {q.answer || '—'}</div>
-              {q.explanation && <p className="mt-1 text-lipro-600/80 dark:text-lipro-200/70">{q.explanation}</p>}
-            </div>
-          )}
-          {isPractice && !done && (
-            <Button size="sm" variant="outline" className="mt-3" onClick={() => markChecked(q.id)} disabled={!selected}>
-              Check answer
-            </Button>
-          )}
-        </CardContent>
-      </Card>
+      <div className="flex h-64 items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-lipro-500" />
+      </div>
     );
-  };
+  }
 
-  const answered = new Set(Object.keys(answers));
+  if (error || !attempt) {
+    return (
+      <div className="p-8">
+        <Card>
+          <CardContent>
+            <p className="text-sm">{error || 'Could not load this attempt.'}</p>
+            <div className="mt-3 flex gap-2">
+              <Button onClick={reload}><RefreshCw className="h-4 w-4" /> Retry</Button>
+              <Button variant="outline" onClick={() => router.push('/cbt')}>Back to CBT</Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const isPractice = attempt.mode === 'practice';
+  const item = items[current];
+  const answered = new Set(items.filter((i) => (i.response ?? '').trim()).map((i) => i.itemId));
+
+  const saveLabel =
+    saveState === 'saving' ? 'Saving…' :
+    saveState === 'saved' ? 'Saved' :
+    saveState === 'offline' ? 'Offline — retrying' :
+    saveState === 'error' ? 'Could not save' : null;
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold">{mode === 'exam' ? 'Exam' : 'Practice'} mode</h2>
-          <p className="text-xs text-lipro-600/60">{stored.sourceTitle ? `${stored.sourceTitle} · ` : ''}{questions.length} questions · {answeredCount} answered</p>
+          <h2 className="text-lg font-semibold">{isPractice ? 'Practice' : 'Exam'} mode</h2>
+          <p className="flex flex-wrap items-center gap-x-2 text-xs text-lipro-600/60">
+            <span>{attempt.sourceTitle ? `${attempt.sourceTitle} · ` : ''}{items.length} questions · {answeredCount} answered</span>
+            {saveLabel && (
+              <span className="inline-flex items-center gap-1">
+                {saveState === 'offline' || saveState === 'error' ? <CloudOff className="h-3 w-3" /> : <Cloud className="h-3 w-3" />}
+                {saveLabel}
+              </span>
+            )}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <Button size="sm" variant="outline" onClick={() => setShowNav((s) => !s)}><LayoutGrid className="h-4 w-4" /> Questions</Button>
-          {mode === 'exam' && <Badge tone="rose" className="text-sm"><Clock className="h-3 w-3" /> {fmt(timeLeft)}</Badge>}
+          {!isPractice && remaining != null && (
+            <Badge tone={timerTone(remaining, attempt.durationSec)} className={cn('text-sm', remaining <= 60 && 'animate-pulse')}>
+              <Clock className="h-3 w-3" /> {fmtTime(remaining)}
+            </Badge>
+          )}
+          <Button
+            size="sm"
+            variant="ghost"
+            title="Abandon this attempt"
+            onClick={() => {
+              if (confirm('Abandon this attempt? Your progress will not be graded.')) abandon();
+            }}
+          >
+            <LogOut className="h-4 w-4" />
+          </Button>
         </div>
       </div>
 
@@ -203,14 +121,14 @@ export function ExamRunner({ sessionId }: { sessionId: string }) {
         <Card>
           <CardContent>
             <div className="flex flex-wrap gap-2">
-              {questions.map((q, i) => (
+              {items.map((it, i) => (
                 <button
-                  key={q.id}
+                  key={it.itemId}
                   type="button"
                   onClick={() => { setCurrent(i); setShowNav(false); }}
                   className={cn('grid h-9 w-9 place-items-center rounded-lg border text-xs font-medium transition-all',
                     i === current ? 'border-lipro-500 bg-lipro-600 text-white'
-                    : answered.has(q.id) ? 'border-green-400/60 bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-300'
+                    : answered.has(it.itemId) ? 'border-green-400/60 bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-300'
                     : 'border-lipro-200/60 text-lipro-600/70 hover:bg-lipro-50 dark:border-lipro-700/40 dark:text-lipro-200/70')}
                 >
                   {i + 1}
@@ -221,23 +139,182 @@ export function ExamRunner({ sessionId }: { sessionId: string }) {
         </Card>
       )}
 
-      {renderQuestion(questions[current], current)}
+      {!item ? (
+        <Card><CardContent><p className="text-sm text-lipro-600/70">No questions in this attempt.</p></CardContent></Card>
+      ) : (
+        <QuestionCard
+          item={item}
+          index={current}
+          isPractice={isPractice}
+          checking={checking === item.itemId}
+          onAnswer={(v) => setAnswer(item.itemId, v)}
+          onCheck={() => doCheck(item)}
+        />
+      )}
 
       <div className="flex items-center justify-between gap-3">
-        <Button variant="outline" onClick={() => setCurrent((c) => Math.max(0, c - 1))} disabled={current === 0}><ChevronLeft className="h-4 w-4" /> Previous</Button>
-        {current < questions.length - 1 ? (
-          <Button onClick={() => setCurrent((c) => Math.min(questions.length - 1, c + 1))}>Next <ChevronRight className="h-4 w-4" /></Button>
+        <Button variant="outline" onClick={() => setCurrent((c) => Math.max(0, c - 1))} disabled={current === 0}>
+          <ChevronLeft className="h-4 w-4" /> Previous
+        </Button>
+        {current < items.length - 1 ? (
+          <Button onClick={() => setCurrent((c) => Math.min(items.length - 1, c + 1))}>Next <ChevronRight className="h-4 w-4" /></Button>
         ) : (
-          <Button onClick={submit} disabled={submitting}><Send className="h-4 w-4" /> {submitting ? 'Submitting…' : 'Submit answers'}</Button>
+          <SubmitControl
+            unansweredCount={unansweredCount}
+            confirmOpen={confirmSubmit}
+            submitting={submitting}
+            onRequestSubmit={() => (unansweredCount > 0 ? setConfirmSubmit(true) : submit())}
+            onConfirm={() => { setConfirmSubmit(false); submit(); }}
+            onCancel={() => setConfirmSubmit(false)}
+          />
         )}
       </div>
 
-      <div className="lg:hidden sticky bottom-0 z-10 -mx-4 mt-6 border-t border-lipro-100/60 bg-[rgb(var(--bg))]/90 px-4 py-3 backdrop-blur-xl dark:border-lipro-500/10" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0.75rem)' }}>
-        <Button onClick={submit} disabled={submitting} size="lg" className="w-full"><Send className="h-4 w-4" /> {submitting ? 'Submitting…' : `Submit answers (${answeredCount}/${questions.length})`}</Button>
+      <div
+        className="lg:hidden sticky bottom-0 z-10 -mx-4 mt-6 border-t border-lipro-100/60 bg-[rgb(var(--bg))]/90 px-4 py-3 backdrop-blur-xl dark:border-lipro-500/10"
+        style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0.75rem)' }}
+      >
+        <Button
+          onClick={() => (unansweredCount > 0 ? setConfirmSubmit(true) : submit())}
+          disabled={submitting}
+          size="lg"
+          className="w-full"
+        >
+          <Send className="h-4 w-4" /> {submitting ? 'Submitting…' : `Submit answers (${answeredCount}/${items.length})`}
+        </Button>
       </div>
-      <div className="hidden lg:block">
-        <Button onClick={submit} disabled={submitting} size="lg"><Send className="h-4 w-4" /> {submitting ? 'Submitting…' : `Submit answers (${answeredCount}/${questions.length})`}</Button>
-      </div>
+
+      {confirmSubmit && (
+        <div className="fixed inset-0 z-20 grid place-items-center bg-black/40 p-4" onClick={() => setConfirmSubmit(false)}>
+          <Card className="max-w-sm" onClick={(e) => e.stopPropagation()}>
+            <CardHeader><h3 className="text-base font-semibold">Submit with {unansweredCount} unanswered?</h3></CardHeader>
+            <CardContent>
+              <p className="text-sm text-lipro-600/70">
+                {unansweredCount} of {items.length} question{unansweredCount === 1 ? '' : 's'} still {unansweredCount === 1 ? 'has' : 'have'} no answer. Unanswered questions score zero.
+              </p>
+              <div className="mt-4 flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setConfirmSubmit(false)}>Keep answering</Button>
+                <Button onClick={() => { setConfirmSubmit(false); submit(); }} disabled={submitting}>
+                  {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Submit anyway
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
+  );
+}
+
+function SubmitControl(props: {
+  unansweredCount: number;
+  confirmOpen: boolean;
+  submitting: boolean;
+  onRequestSubmit: () => void;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  const { unansweredCount, submitting, onRequestSubmit } = props;
+  return (
+    <Button onClick={onRequestSubmit} disabled={submitting}>
+      {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+      {submitting ? 'Submitting…' : unansweredCount > 0 ? `Submit (${unansweredCount} unanswered)` : 'Submit answers'}
+    </Button>
+  );
+}
+
+function QuestionCard({
+  item, index, isPractice, checking, onAnswer, onCheck,
+}: {
+  item: AttemptItem;
+  index: number;
+  isPractice: boolean;
+  checking: boolean;
+  onAnswer: (v: string) => void;
+  onCheck: () => void;
+}) {
+  const opts = item.options ?? [];
+  const done = item.revealed;
+  const selected = item.response ?? '';
+  const isFreeText = opts.length === 0;
+  const wordCount = isFreeText ? (selected.trim() ? selected.trim().split(/\s+/).length : 0) : 0;
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge tone="amber">{item.type}</Badge>
+          <span className="text-xs">{item.points} pts</span>
+          {isPractice && done && (
+            item.isCorrect
+              ? <Badge tone="green"><CheckCircle2 className="h-3 w-3" /> Correct{typeof item.awarded === 'number' && item.awarded > 0 && item.awarded < item.points ? ` (${item.awarded}/${item.points})` : ''}</Badge>
+              : <Badge tone="rose"><XCircle className="h-3 w-3" /> {item.awarded ? `Partial (${item.awarded}/${item.points})` : 'Incorrect'}</Badge>
+          )}
+        </div>
+        <h3 className="mt-2 text-base font-medium">{index + 1}. {item.prompt}</h3>
+      </CardHeader>
+      <CardContent>
+        {item.imageUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={item.imageUrl} alt="Question illustration" className="mb-3 max-h-72 w-auto rounded-xl border border-lipro-200/50 object-contain dark:border-lipro-700/40" />
+        )}
+
+        {!isFreeText ? (
+          <div className="space-y-2">
+            {opts.map((opt, idx) => {
+              const isAnswer = isPractice && done && item.correctAnswer != null && opt === item.correctAnswer;
+              const isPicked = opt === selected;
+              return (
+                <label
+                  key={idx}
+                  className={cn(
+                    'tap flex items-center gap-3 rounded-xl border p-3.5 cursor-pointer transition-all',
+                    isPractice && done && isAnswer ? 'border-green-400/70 bg-green-50/70 dark:bg-green-950/30'
+                    : isPractice && done && isPicked && !isAnswer ? 'border-rose-400/70 bg-rose-50/70 dark:bg-rose-950/30'
+                    : 'border-lipro-200/50 hover:bg-lipro-50/50 dark:border-lipro-700/40 dark:hover:bg-lipro-950/30'
+                  )}
+                >
+                  <input
+                    type="radio"
+                    name={item.itemId}
+                    value={opt}
+                    checked={isPicked}
+                    disabled={isPractice && done}
+                    onChange={(e) => onAnswer(e.target.value)}
+                    className="h-5 w-5 shrink-0 accent-lipro-600"
+                  />
+                  <span className="text-sm leading-snug">{opt}</span>
+                  {isPractice && done && isAnswer && <CheckCircle2 className="ml-auto h-4 w-4 shrink-0 text-green-500" />}
+                </label>
+              );
+            })}
+          </div>
+        ) : (
+          <div>
+            <textarea
+              className="input min-h-24"
+              placeholder="Type your answer…"
+              value={selected}
+              disabled={isPractice && done}
+              onChange={(e) => onAnswer(e.target.value)}
+            />
+            <div className="mt-1 text-right text-xs text-lipro-600/50">{wordCount} word{wordCount === 1 ? '' : 's'}</div>
+          </div>
+        )}
+
+        {isPractice && done && (
+          <div className="mt-3 rounded-xl border border-lipro-200/50 bg-lipro-50/40 p-3 text-xs dark:border-lipro-700/40 dark:bg-lipro-950/30">
+            <div><strong>Answer:</strong> {item.correctAnswer || '—'}</div>
+            {item.explanation && <p className="mt-1 text-lipro-600/80 dark:text-lipro-200/70">{item.explanation}</p>}
+            {item.feedback && <p className="mt-1 italic text-lipro-600/70 dark:text-lipro-200/60">{item.feedback}</p>}
+          </div>
+        )}
+        {isPractice && !done && (
+          <Button size="sm" variant="outline" className="mt-3" onClick={onCheck} disabled={!selected.trim() || checking}>
+            {checking ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null} Check answer
+          </Button>
+        )}
+      </CardContent>
+    </Card>
   );
 }

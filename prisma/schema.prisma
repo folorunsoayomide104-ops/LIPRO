@@ -34,6 +34,7 @@ model User {
   courses           Course[]
   notes             Note[]
   examSessions      ExamSession[]
+  examAnswerOverrides ExamAnswer[] @relation("ExamAnswerOverrider")
   questionsAuthored Question[]
   walletTxns        WalletTxn[]
   notifications     Notification[]
@@ -102,9 +103,14 @@ model Question {
   author      User     @relation(fields: [authorId], references: [id])
   createdAt   DateTime @default(now())
 
+  examAnswers ExamAnswer[]
+
   @@index([courseId])
   @@index([authorId])
   @@index([sourceId])
+  @@index([type])
+  @@index([courseId, type])
+  @@index([sourceId, type])
 }
 
 model Material {
@@ -123,6 +129,7 @@ model Material {
   questions Question[]
   aiConversations AiConversationMaterial[]
   documentChunks DocumentChunk[]
+  examSessions ExamSession[]
 
   @@index([userId])
   @@index([courseId])
@@ -151,17 +158,76 @@ model ExamSession {
   courseId    String?
   course      Course?   @relation(fields: [courseId], references: [id])
   mode        String
-  status      String    @default("in_progress")
+  status      String    @default("in_progress") // in_progress | completed | abandoned
   score       Float?
   totalPoints Float?
+  // LEGACY (schemaVersion 1 rows only): JSON-in-string. New attempts use ExamAnswer rows.
   answers     String?
   questionIds String?
   durationSec Int?
   startedAt   DateTime  @default(now())
   completedAt DateTime?
 
+  materialId    String?
+  material      Material? @relation(fields: [materialId], references: [id], onDelete: SetNull)
+  sourceTitle   String?
+  deadlineAt    DateTime?
+  autoSubmitted Boolean   @default(false)
+  gradingStatus String    @default("none") // none | pending | grading | complete | degraded | failed
+  gradedAt      DateTime?
+  aiFeedback    String?
+  lastSeenAt    DateTime?
+  schemaVersion Int       @default(2) // 1 = legacy JSON row, 2 = has ExamAnswer children
+
+  items ExamAnswer[]
+
   @@index([userId])
   @@index([courseId])
+  @@index([userId, startedAt(sort: Desc)])
+  @@index([userId, status])
+  @@index([materialId])
+}
+
+model ExamAnswer {
+  id         String      @id @default(cuid())
+  attemptId  String
+  attempt    ExamSession @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  questionId String?
+  question   Question?   @relation(fields: [questionId], references: [id], onDelete: SetNull)
+  orderIndex Int
+
+  // Snapshot of the question, taken when the attempt is created. Keeps the paper
+  // (and the graded result) intact even if the source question is later edited or deleted.
+  type          String
+  prompt        String
+  optionsJson   String?
+  imageUrl      String?
+  points        Float     @default(1)
+  correctAnswer String
+  explanation   String?
+
+  response   String?
+  answeredAt DateTime?
+
+  isGraded    Boolean  @default(false)
+  isCorrect   Boolean?
+  awarded     Float    @default(0)
+  gradeMethod String? // exact | ai | heuristic | override | ungraded
+  feedback    String?
+  confidence  Float?
+  revealed    Boolean  @default(false) // practice mode: student used "Check answer"
+
+  overriddenBy String?
+  overrider    User?     @relation("ExamAnswerOverrider", fields: [overriddenBy], references: [id])
+  overrideNote String?
+  overriddenAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([attemptId, orderIndex])
+  @@index([attemptId])
+  @@index([questionId])
 }
 
 model WalletTxn {

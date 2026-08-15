@@ -5,11 +5,10 @@ import { upload as blobUpload } from '@vercel/blob/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { FileUp, FileText, Loader2, Play, Zap } from 'lucide-react';
+import { createAttempt } from '@/lib/cbt/client';
+import { QUESTION_COUNTS, DURATION_MINUTES } from '@/lib/cbt/constants';
 
 type Doc = { id: string; originalName: string; sizeBytes: number; questionCount: number; createdAt: string };
-
-const COUNTS = [10, 25, 50];
-const DURATIONS = [15, 30, 60];
 
 export function PdfExamCreator({ materials }: { materials: Doc[] }) {
   const router = useRouter();
@@ -22,15 +21,8 @@ export function PdfExamCreator({ materials }: { materials: Doc[] }) {
   const [error, setError] = useState('');
 
   const startExam = async (materialId: string, durationSec: number) => {
-    const res = await fetch('/api/cbt/exam', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ materialId, mode: 'exam', count, durationSec }),
-    });
-    const data = await res.json().catch(() => null);
-    if (!res.ok) throw new Error(data?.error || 'Could not start exam');
-    sessionStorage.setItem('cbt_session', JSON.stringify(data));
-    router.push(`/cbt/${data.sessionId}?mode=exam`);
+    const result = await createAttempt({ source: { kind: 'material', id: materialId }, mode: 'exam', count, durationSec });
+    router.push(`/cbt/${result.attemptId}`);
   };
 
   const generateAndStart = async () => {
@@ -100,7 +92,7 @@ export function PdfExamCreator({ materials }: { materials: Doc[] }) {
         <input
           ref={inputRef}
           type="file"
-          accept="application/pdf,text/plain,text/markdown"
+          accept="application/pdf,.docx,text/plain,text/markdown"
           className="hidden"
           onChange={(e) => setFile(e.target.files?.[0] || null)}
         />
@@ -112,7 +104,7 @@ export function PdfExamCreator({ materials }: { materials: Doc[] }) {
           </div>
         ) : (
           <div className="flex items-center justify-center gap-2 text-sm text-lipro-600/70">
-            <FileUp className="h-4 w-4" /> Drop a PDF, TXT or MD here, or click to choose
+            <FileUp className="h-4 w-4" /> Drop a PDF, Word, TXT or MD file here, or click to choose
           </div>
         )}
       </div>
@@ -121,13 +113,13 @@ export function PdfExamCreator({ materials }: { materials: Doc[] }) {
         <div>
           <label className="label">Questions</label>
           <select className="input" value={count} onChange={(e) => setCount(Number(e.target.value))}>
-            {COUNTS.map((c) => <option key={c} value={c}>{c} questions</option>)}
+            {QUESTION_COUNTS.map((c) => <option key={c} value={c}>{c} questions</option>)}
           </select>
         </div>
         <div>
           <label className="label">Exam duration</label>
           <select className="input" value={durationMin} onChange={(e) => setDurationMin(Number(e.target.value))}>
-            {DURATIONS.map((d) => <option key={d} value={d}>{d} minutes</option>)}
+            {DURATION_MINUTES.map((d) => <option key={d} value={d}>{d} minutes</option>)}
           </select>
         </div>
       </div>
