@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
 import { guard } from '@/lib/api-guard';
-import { MAX_UPLOAD_BYTES } from '@/lib/pdf';
+import { MAX_UPLOAD_BYTES, DOCX_MIME } from '@/lib/pdf';
 
 export const maxDuration = 120;
 
@@ -23,6 +23,7 @@ export async function POST(request: Request) {
         return {
           allowedContentTypes: [
             'application/pdf',
+            DOCX_MIME,
             'text/plain',
             'text/markdown',
             'text/csv',

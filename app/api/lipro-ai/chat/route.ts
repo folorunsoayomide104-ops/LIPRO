@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { guard } from '@/lib/api-guard';
 import { chatSchema } from '@/lib/validators';
 import { resolveAiProvider } from '@/lib/ai';
-import { extractText, MAX_UPLOAD_BYTES } from '@/lib/pdf';
+import { extractText, isDocxName, DOCX_MIME, MAX_UPLOAD_BYTES } from '@/lib/pdf';
 import { extractTextFromImage } from '@/lib/ocr';
 import { fetchRelevantChunks, buildRagContext } from '@/lib/rag';
 import { runLiproAiPipeline } from '@/lib/lipro/pipeline';
@@ -95,7 +95,8 @@ export async function POST(req: Request) {
         const name = fileInfo.name || 'document.pdf';
         const looksLikePdf = name.toLowerCase().endsWith('.pdf');
         const looksLikeImage = /^image\//.test(head?.headers.get('content-type') || '') || /\.(jpg|jpeg|png|gif|webp|bmp|tiff|svg)$/i.test(name);
-        const mimeType = looksLikePdf ? 'application/pdf' : looksLikeImage ? (head?.headers.get('content-type') || 'image/jpeg') : 'text/plain';
+        const looksLikeDocx = isDocxName(name);
+        const mimeType = looksLikePdf ? 'application/pdf' : looksLikeDocx ? DOCX_MIME : looksLikeImage ? (head?.headers.get('content-type') || 'image/jpeg') : 'text/plain';
 
         let text = '';
         if (looksLikeImage) {
@@ -144,7 +145,8 @@ export async function POST(req: Request) {
     const name = originalName || 'document.pdf';
     const looksLikePdf = name.toLowerCase().endsWith('.pdf');
     const looksLikeImage = /\.(jpg|jpeg|png|gif|webp|bmp|tiff|svg)$/i.test(name);
-    const mimeType = looksLikePdf ? 'application/pdf' : looksLikeImage ? 'image/jpeg' : 'text/plain';
+    const looksLikeDocx = isDocxName(name);
+    const mimeType = looksLikePdf ? 'application/pdf' : looksLikeDocx ? DOCX_MIME : looksLikeImage ? 'image/jpeg' : 'text/plain';
     let text = '';
     try {
       if (looksLikeImage) {
@@ -174,12 +176,13 @@ export async function POST(req: Request) {
     }
     const looksLikePdf = file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf';
     const looksLikeImage = /^image\/(jpeg|png|gif|webp|bmp|tiff|svg\+xml)$/.test(file.type) || /\.(jpg|jpeg|png|gif|webp|bmp|tiff|svg)$/.test(file.name.toLowerCase());
+    const looksLikeDocx = isDocxName(file.name) || file.type === DOCX_MIME;
     const allowedTypes = ['application/pdf', 'text/plain', 'text/markdown', 'text/csv'];
-    if (!looksLikePdf && !looksLikeImage && !allowedTypes.includes(file.type) && !/\.(txt|md|markdown|csv)$/.test(file.name.toLowerCase())) {
-      return NextResponse.json({ error: 'Unsupported file type. Upload a PDF, image (JPG, PNG, etc.), TXT or MD file.' }, { status: 415 });
+    if (!looksLikePdf && !looksLikeImage && !looksLikeDocx && !allowedTypes.includes(file.type) && !/\.(txt|md|markdown|csv)$/.test(file.name.toLowerCase())) {
+      return NextResponse.json({ error: 'Unsupported file type. Upload a PDF, Word (.docx), image (JPG, PNG, etc.), TXT or MD file.' }, { status: 415 });
     }
     const buffer = Buffer.from(await file.arrayBuffer());
-    const mimeType = looksLikePdf ? 'application/pdf' : looksLikeImage ? file.type : (file.type || 'text/plain');
+    const mimeType = looksLikePdf ? 'application/pdf' : looksLikeDocx ? DOCX_MIME : looksLikeImage ? file.type : (file.type || 'text/plain');
     let text = '';
     try {
       if (looksLikeImage) {

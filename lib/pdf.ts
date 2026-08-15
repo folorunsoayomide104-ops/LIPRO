@@ -19,6 +19,18 @@ export type ExtractResult = {
   truncated: boolean;
 };
 
+export const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+
+export function isDocxName(name: string): boolean {
+  return /\.docx$/i.test(name);
+}
+
+function looksLikeDocx(buffer: Buffer, mimeType: string): boolean {
+  if (mimeType === DOCX_MIME) return true;
+  // DOCX is a ZIP archive ("PK\x03\x04" signature); plain-text buffers never start this way.
+  return buffer.subarray(0, 4).toString('latin1') === 'PK\x03\x04';
+}
+
 export async function extractText(buffer: Buffer, mimeType: string): Promise<ExtractResult> {
   let raw = '';
 
@@ -32,6 +44,14 @@ export async function extractText(buffer: Buffer, mimeType: string): Promise<Ext
       await parser.destroy().catch(() => undefined);
     } catch (err: any) {
       throw new Error(`Could not read this PDF: ${err?.message || 'unknown error'}`);
+    }
+  } else if (looksLikeDocx(buffer, mimeType)) {
+    try {
+      const mammoth = await import('mammoth');
+      const result = await mammoth.extractRawText({ buffer });
+      raw = result.value || '';
+    } catch (err: any) {
+      throw new Error(`Could not read this Word document: ${err?.message || 'unknown error'}`);
     }
   } else if (mimeType.startsWith('text/')) {
     raw = buffer.toString('utf8');

@@ -125,10 +125,11 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
         return;
       }
       const looksPdf = f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf');
+      const looksDocx = f.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || /\.docx$/i.test(f.name);
       const looksText = f.type.startsWith('text/') || /\.(txt|md|markdown)$/i.test(f.name);
       const looksImage = /^image\//.test(f.type) || /\.(jpg|jpeg|png|gif|webp|bmp|tiff|svg)$/i.test(f.name);
-      if (!looksPdf && !looksText && !looksImage) {
-        setAttachError(`${f.name} is unsupported. Upload a PDF, image (JPG, PNG, etc.), TXT or Markdown file.`);
+      if (!looksPdf && !looksDocx && !looksText && !looksImage) {
+        setAttachError(`${f.name} is unsupported. Upload a PDF, Word (.docx), image (JPG, PNG, etc.), TXT or Markdown file.`);
         return;
       }
       const file = looksImage ? await compressImage(f) : f;
@@ -221,8 +222,10 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
     setDocs((d) => d.filter((x) => x.id !== id));
   };
 
-  const send = async (text: string) => {
-    if (!text.trim() || loading || loadingConversation) return;
+  const send = async (rawText: string) => {
+    const hasFiles = attached.length > 0;
+    if ((!rawText.trim() && !hasFiles) || loading || loadingConversation) return;
+    const text = rawText.trim() || `Please review ${attached.length === 1 ? 'this document' : 'these documents'} and summarize the key points.`;
     setInput('');
     if (textareaRef.current) textareaRef.current.style.height = 'auto';
     setLoading(true);
@@ -571,7 +574,7 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
             type="button"
             onClick={() => fileInputRef.current?.click()}
             className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-lipro-200/60 bg-white/50 text-lipro-500 transition-colors hover:border-lipro-400 hover:text-lipro-600 dark:border-lipro-700/40 dark:bg-surface-dark/60 dark:text-lipro-300"
-            title="Attach a PDF or text file"
+            title="Attach a PDF, Word, image, or text file"
             aria-label="Attach a file"
           >
             <Paperclip className="h-4 w-4" />

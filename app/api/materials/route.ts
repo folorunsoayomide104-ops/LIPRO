@@ -1,14 +1,14 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { guard } from '@/lib/api-guard';
-import { extractText, MAX_UPLOAD_BYTES } from '@/lib/pdf';
+import { extractText, isDocxName, DOCX_MIME, MAX_UPLOAD_BYTES } from '@/lib/pdf';
 import { chunkText } from '@/lib/chunkText';
 import { generateEmbeddings } from '@/lib/embeddings';
 import { extractTextFromImage } from '@/lib/ocr';
 
 export const maxDuration = 120;
 
-const ALLOWED_TYPES = ['application/pdf', 'text/plain', 'text/markdown', 'text/csv', 'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/bmp', 'image/tiff'];
+const ALLOWED_TYPES = ['application/pdf', DOCX_MIME, 'text/plain', 'text/markdown', 'text/csv', 'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/bmp', 'image/tiff'];
 const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/bmp', 'image/tiff'];
 
 async function parseAndCreate(userId: string, buffer: Buffer, originalName: string, mimeType: string, sizeBytes: number) {
@@ -117,7 +117,8 @@ export async function POST(req: Request) {
 
     const looksLikePdf = /\.pdf$/i.test(originalName) || body.mimeType === 'application/pdf';
     const looksLikeImage = /^image\//.test(body.mimeType || '') || /\.(jpg|jpeg|png|gif|webp|bmp|tiff|svg)$/i.test(originalName);
-    const mimeType = looksLikePdf ? 'application/pdf' : looksLikeImage ? (body.mimeType || 'image/jpeg') : (body.mimeType || 'text/plain');
+    const looksLikeDocx = isDocxName(originalName) || body.mimeType === DOCX_MIME;
+    const mimeType = looksLikePdf ? 'application/pdf' : looksLikeDocx ? DOCX_MIME : looksLikeImage ? (body.mimeType || 'image/jpeg') : (body.mimeType || 'text/plain');
     const result = await parseAndCreate(user.userId, buffer, originalName, mimeType, sizeBytes || buffer.length);
     if (result.error) return NextResponse.json({ error: result.error }, { status: 422 });
     return NextResponse.json({ material: result.material }, { status: 201 });
@@ -138,12 +139,13 @@ export async function POST(req: Request) {
 
   const looksLikePdf = file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf';
   const looksLikeImage = /^image\//.test(file.type) || /\.(jpg|jpeg|png|gif|webp|bmp|tiff|svg)$/.test(file.name.toLowerCase());
-  if (!looksLikePdf && !looksLikeImage && !ALLOWED_TYPES.includes(file.type) && !/\.(txt|md|markdown|csv)$/.test(file.name.toLowerCase())) {
-    return NextResponse.json({ error: 'Unsupported file type. Upload a PDF, image (JPG, PNG, etc.), TXT or MD file.' }, { status: 415 });
+  const looksLikeDocx = isDocxName(file.name) || file.type === DOCX_MIME;
+  if (!looksLikePdf && !looksLikeImage && !looksLikeDocx && !ALLOWED_TYPES.includes(file.type) && !/\.(txt|md|markdown|csv)$/.test(file.name.toLowerCase())) {
+    return NextResponse.json({ error: 'Unsupported file type. Upload a PDF, Word (.docx), image (JPG, PNG, etc.), TXT or MD file.' }, { status: 415 });
   }
 
   const buffer = Buffer.from(await file.arrayBuffer());
-  const mimeType = looksLikePdf ? 'application/pdf' : looksLikeImage ? (file.type || 'image/jpeg') : (file.type || 'text/plain');
+  const mimeType = looksLikePdf ? 'application/pdf' : looksLikeDocx ? DOCX_MIME : looksLikeImage ? (file.type || 'image/jpeg') : (file.type || 'text/plain');
 
   const result = await parseAndCreate(user.userId, buffer, file.name, mimeType, file.size);
   if (result.error) return NextResponse.json({ error: result.error }, { status: 422 });
