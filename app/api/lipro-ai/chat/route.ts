@@ -3,8 +3,8 @@ import { prisma } from '@/lib/prisma';
 import { guard } from '@/lib/api-guard';
 import { chatSchema } from '@/lib/validators';
 import { resolveAiProvider } from '@/lib/ai';
-import { extractText, isDocxName, DOCX_MIME, MAX_UPLOAD_BYTES } from '@/lib/pdf';
-import { extractTextFromImage } from '@/lib/ocr';
+import { MAX_UPLOAD_BYTES } from '@/lib/pdf';
+import { ingestMaterial } from '@/lib/materials/ingest';
 import { fetchRelevantChunks, buildRagContext } from '@/lib/rag';
 import { runLiproAiPipeline } from '@/lib/lipro/pipeline';
 import type { PipelineInput } from '@/lib/lipro/types';
@@ -41,44 +41,23 @@ export async function POST(req: Request) {
   const { ok, user, response } = await guard();
   if (!ok || !user) return response!;
 
-  const contentType = req.headers.get('content-type') || '';
-  let message = '';
-  let conversationId: string | undefined;
-  let wantStream = false;
-  let file: File | undefined;
-  let blobUrl: string | undefined;
-  let originalName: string | undefined;
-  let files: Array<{ url: string; name: string }> | undefined;
-
-  if (contentType.includes('multipart/form-data')) {
-    const form = await req.formData().catch(() => null);
-    if (!form) return NextResponse.json({ error: 'Expected multipart form data' }, { status: 400 });
-    message = String(form.get('message') || '');
-    const conv = String(form.get('conversationId') || '');
-    if (conv) conversationId = conv;
-    wantStream = form.get('stream') === 'true';
-    const f = form.get('file');
-    if (f instanceof File) file = f;
-  } else {
-    const body = await req.json().catch(() => null);
-    if (!body) return NextResponse.json({ error: 'Invalid body' }, { status: 400 });
-    const parsed = chatSchema.safeParse(body);
-    if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message }, { status: 422 });
-    message = parsed.data.message;
-    conversationId = parsed.data.conversationId;
-    wantStream = parsed.data.stream === true;
-    blobUrl = parsed.data.blobUrl;
-    originalName = parsed.data.originalName;
-    files = parsed.data.files as Array<{ url: string; name: string }> | undefined;
-  }
+  const body = await req.json().catch(() => null);
+  if (!body) return NextResponse.json({ error: 'Invalid body' }, { status: 400 });
+  const parsed = chatSchema.safeParse(body);
+  if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message }, { status: 422 });
+  const { message, conversationId, files } = parsed.data;
+  const wantStream = parsed.data.stream === true;
 
   if (!message.trim()) return NextResponse.json({ error: 'Message is required' }, { status: 422 });
+
+  // Resolved once and reused both for ingestion (so uploads embed with the same
+  // provider that will answer the message) and the pipeline call below.
+  const provider = await resolveAiProvider(user.userId);
 
   const allDocContexts: DocContext[] = [];
   const materialIds: string[] = [];
   const failedFiles: Array<{ name: string; reason: string }> = [];
 
-  // Handle multiple files from the new format
   if (files && files.length > 0) {
     const validFiles = files.filter((f): f is { url: string; name: string } => !!f.url && !!f.name);
     for (const fileInfo of validFiles) {
@@ -98,34 +77,23 @@ export async function POST(req: Request) {
         }
 
         const buffer = Buffer.from(await blobRes.arrayBuffer());
-        if (buffer.length === 0) {
-          failedFiles.push({ name, reason: 'The file is empty.' });
+        // Chunked + embedded synchronously here — same request, before the AI
+        // replies — so the document is RAG-searchable for the very message
+        // that attached it, not just future turns.
+        const result = await ingestMaterial({
+          userId: user.userId,
+          buffer,
+          originalName: name,
+          declaredMimeType: head?.headers.get('content-type') ?? undefined,
+          provider,
+        });
+        if ('error' in result) {
+          failedFiles.push({ name, reason: result.error });
           continue;
         }
 
-        const looksLikePdf = name.toLowerCase().endsWith('.pdf');
-        const looksLikeImage = /^image\//.test(head?.headers.get('content-type') || '') || /\.(jpg|jpeg|png|gif|webp|bmp|tiff|svg)$/i.test(name);
-        const looksLikeDocx = isDocxName(name);
-        const mimeType = looksLikePdf ? 'application/pdf' : looksLikeDocx ? DOCX_MIME : looksLikeImage ? (head?.headers.get('content-type') || 'image/jpeg') : 'text/plain';
-
-        let text = '';
-        if (looksLikeImage) {
-          text = await extractTextFromImage(buffer, user.userId);
-        } else {
-          const result = await extractText(buffer, mimeType);
-          text = result.text;
-        }
-
-        if (text) {
-          allDocContexts.push({ name, text: text.slice(0, 24000) });
-          const material = await prisma.material.create({
-            data: { userId: user.userId, originalName: name, mimeType, sizeBytes: buffer.length, status: 'ready', text },
-            select: { id: true },
-          });
-          materialIds.push(material.id);
-        } else {
-          failedFiles.push({ name, reason: 'No readable text found in this file.' });
-        }
+        allDocContexts.push({ name, text: result.material.text.slice(0, 24000) });
+        materialIds.push(result.material.id);
       } catch (err: any) {
         console.error(`Failed to process file ${fileInfo.name}:`, err?.message || err);
         failedFiles.push({ name, reason: err?.message || 'Failed to read this file.' });
@@ -138,88 +106,7 @@ export async function POST(req: Request) {
       }, { status: 422 });
     }
   }
-  // Handle single blobUrl (legacy format)
-  else if (blobUrl) {
-    const sizeCheck = await (async () => {
-      const head = await fetch(blobUrl!, { method: 'HEAD' }).catch(() => null);
-      const len = Number(head?.headers.get('content-length') || 0);
-      return len;
-    })();
-    if (sizeCheck > MAX_UPLOAD_BYTES) {
-      return NextResponse.json({ error: 'File is too large. Max size is 100MB.' }, { status: 413 });
-    }
-    const blobRes = await fetch(blobUrl).catch(() => null);
-    if (!blobRes || !blobRes.ok) {
-      return NextResponse.json({ error: 'Could not download the uploaded file' }, { status: 422 });
-    }
-    const buffer = Buffer.from(await blobRes.arrayBuffer());
-    if (buffer.length === 0) {
-      return NextResponse.json({ error: 'The file is empty.' }, { status: 422 });
-    }
-    const name = originalName || 'document.pdf';
-    const looksLikePdf = name.toLowerCase().endsWith('.pdf');
-    const looksLikeImage = /\.(jpg|jpeg|png|gif|webp|bmp|tiff|svg)$/i.test(name);
-    const looksLikeDocx = isDocxName(name);
-    const mimeType = looksLikePdf ? 'application/pdf' : looksLikeDocx ? DOCX_MIME : looksLikeImage ? 'image/jpeg' : 'text/plain';
-    let text = '';
-    try {
-      if (looksLikeImage) {
-        text = await extractTextFromImage(buffer, user.userId);
-        if (!text) {
-          return NextResponse.json({ error: 'Could not read any text from this image. Try uploading a clearer image.' }, { status: 422 });
-        }
-      } else {
-        const result = await extractText(buffer, mimeType);
-        text = result.text;
-      }
-    } catch (err: any) {
-      return NextResponse.json({ error: err?.message || 'Failed to read the document' }, { status: 422 });
-    }
-    allDocContexts.push({ name, text: text.slice(0, 24000) });
-    const material = await prisma.material.create({
-      data: { userId: user.userId, originalName: name, mimeType, sizeBytes: buffer.length, status: 'ready', text },
-      select: { id: true },
-    });
-    materialIds.push(material.id);
-  } else if (file) {
-    if (file.size > MAX_UPLOAD_BYTES) {
-      return NextResponse.json({ error: 'File is too large. Max size is 100MB.' }, { status: 413 });
-    }
-    if (file.size === 0) {
-      return NextResponse.json({ error: 'The file is empty.' }, { status: 422 });
-    }
-    const looksLikePdf = file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf';
-    const looksLikeImage = /^image\/(jpeg|png|gif|webp|bmp|tiff|svg\+xml)$/.test(file.type) || /\.(jpg|jpeg|png|gif|webp|bmp|tiff|svg)$/.test(file.name.toLowerCase());
-    const looksLikeDocx = isDocxName(file.name) || file.type === DOCX_MIME;
-    const allowedTypes = ['application/pdf', 'text/plain', 'text/markdown', 'text/csv'];
-    if (!looksLikePdf && !looksLikeImage && !looksLikeDocx && !allowedTypes.includes(file.type) && !/\.(txt|md|markdown|csv)$/.test(file.name.toLowerCase())) {
-      return NextResponse.json({ error: 'Unsupported file type. Upload a PDF, Word (.docx), image (JPG, PNG, etc.), TXT or MD file.' }, { status: 415 });
-    }
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const mimeType = looksLikePdf ? 'application/pdf' : looksLikeDocx ? DOCX_MIME : looksLikeImage ? file.type : (file.type || 'text/plain');
-    let text = '';
-    try {
-      if (looksLikeImage) {
-        text = await extractTextFromImage(buffer, user.userId);
-        if (!text) {
-          return NextResponse.json({ error: 'Could not read any text from this image. Try uploading a clearer image.' }, { status: 422 });
-        }
-      } else {
-        const result = await extractText(buffer, mimeType);
-        text = result.text;
-      }
-    } catch (err: any) {
-      return NextResponse.json({ error: err?.message || 'Failed to read the file' }, { status: 422 });
-    }
-    allDocContexts.push({ name: file.name, text: text.slice(0, 24000) });
-    const material = await prisma.material.create({
-      data: { userId: user.userId, originalName: file.name, mimeType, sizeBytes: file.size, status: 'ready', text },
-      select: { id: true },
-    });
-    materialIds.push(material.id);
-  }
 
-  const provider = await resolveAiProvider(user.userId);
   const apiKey = provider.apiKey;
 
   const profile = await prisma.user.findUnique({

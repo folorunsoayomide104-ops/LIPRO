@@ -127,8 +127,6 @@ export const chatSchema = z.object({
   message: z.string().min(1),
   conversationId: z.string().optional(),
   stream: z.boolean().optional(),
-  blobUrl: z.string().optional(),
-  originalName: z.string().optional(),
   files: z.array(z.object({
     url: z.string().min(1),
     name: z.string().min(1),

@@ -7,12 +7,11 @@ import type { Intent, PipelineInput, PipelineResult, TaskPlan } from './types';
  * MODEL LAYER — distinct model slots, all defaulting to the active
  * provider model but overridable per stage via environment variables.
  * ------------------------------------------------------------------ */
-function modelFor(provider: AiProviderConfig, stage: 'planner' | 'reasoning' | 'eval' | 'response'): string {
+function modelFor(provider: AiProviderConfig, stage: 'planner' | 'reasoning' | 'eval'): string {
   const envMap: Record<string, string | undefined> = {
     planner: process.env.LIPRO_PLANNER_MODEL,
     reasoning: process.env.LIPRO_REASONING_MODEL,
     eval: process.env.LIPRO_EVAL_MODEL,
-    response: process.env.LIPRO_RESPONSE_MODEL,
   };
   return envMap[stage]?.trim() || provider.model;
 }
@@ -323,5 +322,5 @@ export async function runLiproAiPipeline(input: PipelineInput): Promise<Pipeline
     }
   }
 
-  return { reply, confidence, usedTools, usedFallback: false };
+  return { reply, confidence, usedTools };
 }

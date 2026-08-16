@@ -5,7 +5,7 @@ export type ChunkResult = { id: string; content: string; chunkIndex: number };
 
 export async function fetchRelevantChunks(userId: string, query: string, limit: number = 5): Promise<ChunkResult[]> {
   try {
-    const queryEmbedding = Array.from(await generateEmbedding(query, userId));
+    const queryEmbedding = Array.from(await generateEmbedding(query, userId, 'query'));
     if (queryEmbedding.every((v) => v === 0)) return [];
     const embeddingArray = queryEmbedding.map((v) => v.toFixed(6));
     const rows = await prisma.$queryRaw<

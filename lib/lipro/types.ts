@@ -48,5 +48,4 @@ export interface PipelineResult {
   reply: string;
   confidence: number;
   usedTools: string[];
-  usedFallback: boolean;
 }

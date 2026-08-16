@@ -2,14 +2,15 @@
 import { useState, useRef, useEffect } from 'react';
 import { upload as blobUpload } from '@vercel/blob/client';
 import { Button } from '@/components/ui/button';
-import { Send, Bot, User, Loader2, Plus, Trash2, MessageSquare, Maximize2, Minimize2, Paperclip, X, FileText, CheckCircle2, Edit2, Check, RotateCcw, List, ChevronLeft } from 'lucide-react';
+import { Send, Bot, User, Loader2, Plus, Maximize2, Minimize2, Paperclip, X, FileText, CheckCircle2, Edit2, Check, RotateCcw, List, ChevronLeft, Square, AlertTriangle } from 'lucide-react';
 import { LiproLogo } from '@/components/LiproLogo';
 import AmbientBackground from '@/components/dashboard/ambient-bg';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { ConversationList, type ConversationListEntry } from './conversation-list-item';
 
-type Msg = { role: 'user' | 'assistant'; content: string };
-type Conversation = { id: string; title: string; updatedAt: string };
+type Msg = { role: 'user' | 'assistant'; content: string; isError?: boolean };
+type Conversation = ConversationListEntry;
 
 const SUGGESTIONS = [
   'Explain Big-O notation with an example',
@@ -88,6 +89,7 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
   const endRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
   const [attached, setAttached] = useState<Array<{ name: string; file: File; preview?: string }>>([]);
   const [attachError, setAttachError] = useState('');
   const [uploading, setUploading] = useState(false);
@@ -105,7 +107,7 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
   };
 
   const handleComposerKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey && window.innerWidth >= 768) {
+    if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       send(input);
     }
@@ -118,24 +120,26 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
     if (!files || files.length === 0) return;
 
     const newFiles: Array<{ name: string; file: File; preview?: string }> = [];
+    const errors: string[] = [];
     for (let i = 0; i < files.length; i++) {
       const f = files[i];
       if (f.size > 100 * 1024 * 1024) {
-        setAttachError(`${f.name} is too large — max 100MB.`);
-        return;
+        errors.push(`${f.name} is too large — max 100MB.`);
+        continue;
       }
       const looksPdf = f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf');
       const looksDocx = f.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || /\.docx$/i.test(f.name);
       const looksText = f.type.startsWith('text/') || /\.(txt|md|markdown)$/i.test(f.name);
       const looksImage = /^image\//.test(f.type) || /\.(jpg|jpeg|png|gif|webp|bmp|tiff|svg)$/i.test(f.name);
       if (!looksPdf && !looksDocx && !looksText && !looksImage) {
-        setAttachError(`${f.name} is unsupported. Upload a PDF, Word (.docx), image (JPG, PNG, etc.), TXT or Markdown file.`);
-        return;
+        errors.push(`${f.name} is unsupported. Upload a PDF, Word (.docx), image (JPG, PNG, etc.), TXT or Markdown file.`);
+        continue;
       }
       const file = looksImage ? await compressImage(f) : f;
       newFiles.push({ name: file.name, file, preview: looksImage ? objectUrlFor(file) : undefined });
     }
-    setAttached((prev) => [...prev, ...newFiles]);
+    if (newFiles.length > 0) setAttached((prev) => [...prev, ...newFiles]);
+    if (errors.length > 0) setAttachError(errors.join(' · '));
   };
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, loadingConversation]);
@@ -160,6 +164,8 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
     setActiveId(id);
     setLoadingConversation(true);
     setFallback(false);
+    setEditingIndex(null);
+    setEditInput('');
     try {
       const res = await fetch(`/api/lipro-ai/conversations/${id}`);
       if (!res.ok) throw new Error();
@@ -168,7 +174,7 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
       setDocs(data.materials ?? []);
       setConversationId(data.id);
     } catch {
-      setMessages([{ role: 'assistant', content: 'Could not load this conversation.' }]);
+      setMessages([{ role: 'assistant', content: 'Could not load this conversation.', isError: true }]);
     } finally {
       setLoadingConversation(false);
     }
@@ -180,6 +186,8 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
     setMessages([GREETING]);
     setFallback(false);
     setDocs([]);
+    setEditingIndex(null);
+    setEditInput('');
   };
 
   const deleteConversation = async (id: string) => {
@@ -202,36 +210,39 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
   const saveEdit = async () => {
     if (editingIndex === null || !editInput.trim() || loading) return;
     const newContent = editInput.trim();
+    const idx = editingIndex;
     setMessages((prev) => {
-      const next = prev.slice(0, editingIndex + 1);
-      next[editingIndex] = { role: 'user', content: newContent };
+      const next = prev.slice(0, idx + 1);
+      next[idx] = { role: 'user', content: newContent };
+      next.push({ role: 'assistant', content: '' });
       return next;
     });
     setEditingIndex(null);
     setEditInput('');
-    // Regenerate AI response from this point
-    await send(newContent);
+    await runRequest(newContent);
   };
 
   const removeDoc = async (id: string) => {
-    if (id && conversationId) {
-      try {
-        await fetch(`/api/lipro-ai/conversations/${conversationId}/materials/${id}`, { method: 'DELETE' });
-      } catch { /* keep local removal */ }
-    }
+    const prevDocs = docs;
     setDocs((d) => d.filter((x) => x.id !== id));
+    if (!id || !conversationId) return;
+    try {
+      const res = await fetch(`/api/lipro-ai/conversations/${conversationId}/materials/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error();
+    } catch {
+      setDocs(prevDocs);
+      setAttachError('Could not remove that document. Please try again.');
+    }
   };
 
-  const send = async (rawText: string) => {
+  // Shared by a fresh send, an edit-and-resubmit, and a regenerate — all three
+  // just need to run the request against whatever's already in `messages`
+  // (an empty assistant placeholder at the end) and fill it in.
+  const runRequest = async (text: string) => {
     const hasFiles = attached.length > 0;
-    if ((!rawText.trim() && !hasFiles) || loading || loadingConversation) return;
-    const text = rawText.trim() || `Please review ${attached.length === 1 ? 'this document' : 'these documents'} and summarize the key points.`;
-    setInput('');
-    if (textareaRef.current) textareaRef.current.style.height = 'auto';
     setLoading(true);
     setFallback(false);
     const fileNames = attached.map((a) => a.name);
-    setMessages((m) => [...m, { role: 'user', content: text }, { role: 'assistant', content: '' }]);
 
     // Docs are only marked "attached" once the server confirms it actually
     // extracted text and saved a Material — never optimistically, so this
@@ -251,14 +262,14 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
       }
     };
 
-    const appendReply = (content: string) => {
+    const appendReply = (content: string, isError = false) => {
       setMessages((prev) => {
         const next = [...prev];
         const last = next[next.length - 1];
         if (last && last.role === 'assistant' && last.content === '') {
-          next[next.length - 1] = { role: 'assistant', content };
+          next[next.length - 1] = { role: 'assistant', content, isError };
         } else {
-          next.push({ role: 'assistant', content });
+          next.push({ role: 'assistant', content, isError });
         }
         return next;
       });
@@ -266,6 +277,8 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
 
     const attachedSnapshot = attached;
     let clearedAttachments = false;
+    const controller = new AbortController();
+    abortRef.current = controller;
     try {
       let body;
       if (attached.length > 0) {
@@ -299,6 +312,7 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body,
+        signal: controller.signal,
       });
 
       if (!res.ok) {
@@ -310,7 +324,7 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
 
       if (contentType.includes('application/json')) {
         const data = await res.json();
-        appendReply(data.reply || 'Sorry, something went wrong. Try again.');
+        appendReply(data.reply || 'Sorry, something went wrong. Try again.', !data.reply);
         if (data.conversationId) {
           setConversationId(data.conversationId);
           setActiveId(data.conversationId);
@@ -357,7 +371,7 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
       }
 
       if (assistant.trim().length === 0) {
-        appendReply('Sorry, something went wrong. Try again.');
+        appendReply('Sorry, something went wrong. Try again.', true);
       }
       if (streamConversationId && streamConversationId !== conversationId) {
         setConversationId(streamConversationId);
@@ -365,25 +379,43 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
       }
       refreshList();
     } catch (err: any) {
+      if (err?.name === 'AbortError') {
+        // Stopped by the user — leave whatever partial text already streamed in place.
+        return;
+      }
       setUploading(false);
       setUploadProgress('');
       if (hasFiles) {
         setAttachError(err?.message || 'Could not upload your file(s). Please try again.');
         if (clearedAttachments) setAttached(attachedSnapshot);
       }
-      appendReply('Sorry, something went wrong. Try again.');
+      appendReply('Sorry, something went wrong. Try again.', true);
     } finally {
       setLoading(false);
+      abortRef.current = null;
     }
   };
 
-  const fmt = (iso: string) => {
-    const d = new Date(iso);
-    const today = new Date();
-    const sameDay = d.toDateString() === today.toDateString();
-    return sameDay
-      ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      : d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  const send = async (rawText: string) => {
+    const hasFiles = attached.length > 0;
+    if ((!rawText.trim() && !hasFiles) || loading || loadingConversation) return;
+    const text = rawText.trim() || `Please review ${attached.length === 1 ? 'this document' : 'these documents'} and summarize the key points.`;
+    setInput('');
+    if (textareaRef.current) textareaRef.current.style.height = 'auto';
+    setMessages((m) => [...m, { role: 'user', content: text }, { role: 'assistant', content: '' }]);
+    await runRequest(text);
+  };
+
+  const regenerate = async () => {
+    if (loading || loadingConversation) return;
+    let idx: number | undefined;
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === 'user') { idx = i; break; }
+    }
+    if (idx === undefined) return;
+    const text = messages[idx].content;
+    setMessages((prev) => [...prev.slice(0, idx + 1), { role: 'assistant', content: '' }]);
+    await runRequest(text);
   };
 
   return (
@@ -393,19 +425,7 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
         <aside className="glass relative hidden w-64 shrink-0 flex-col rounded-2xl p-3 md:flex">
           <Button onClick={newChat} className="mb-3 w-full" size="sm"><Plus className="h-4 w-4" /> New chat</Button>
           <div className="flex-1 space-y-1 overflow-y-auto">
-            {conversations.length === 0 && <p className="px-2 py-4 text-center text-xs text-lipro-600/60">No chats yet. Start a new one.</p>}
-            {conversations.map((c) => (
-              <div key={c.id} className={cn('group flex items-center gap-2 rounded-xl px-2.5 py-2 text-sm transition-all', activeId === c.id ? 'glass font-medium text-lipro-700 dark:text-white' : 'text-lipro-600/70 hover:bg-lipro-50 dark:text-lipro-200/70 dark:hover:bg-lipro-950/40')}>
-                <button onClick={() => openConversation(c.id)} className="flex min-w-0 flex-1 items-center gap-2 text-left">
-                  <MessageSquare className="h-3.5 w-3.5 shrink-0 opacity-70" />
-                  <span className="truncate">{c.title}</span>
-                </button>
-                <span className="shrink-0 text-[10px] opacity-60">{fmt(c.updatedAt)}</span>
-                <button onClick={() => deleteConversation(c.id)} className="shrink-0 rounded p-1 opacity-0 transition-opacity hover:bg-rose-50 hover:text-rose-500 group-hover:opacity-100 dark:hover:bg-rose-950/30" title="Delete chat">
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            ))}
+            <ConversationList conversations={conversations} activeId={activeId} onOpen={openConversation} onDelete={deleteConversation} />
           </div>
         </aside>
       )}
@@ -439,19 +459,12 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
                 <Button onClick={newChat} size="sm" className="shrink-0"><Plus className="h-4 w-4" /> New</Button>
               </div>
               <div className="flex-1 overflow-y-auto p-3 space-y-1">
-                {conversations.length === 0 && <p className="px-2 py-4 text-center text-xs text-lipro-600/60">No chats yet. Start a new one.</p>}
-                {conversations.map((c) => (
-                  <div key={c.id} className={cn('group flex items-center gap-2 rounded-xl px-2.5 py-2 text-sm transition-all', activeId === c.id ? 'glass font-medium text-lipro-700 dark:text-white' : 'text-lipro-600/70 hover:bg-lipro-50 dark:text-lipro-200/70 dark:hover:bg-lipro-950/40')}>
-                    <button onClick={() => { openConversation(c.id); setShowConvoDrawer(false); }} className="flex min-w-0 flex-1 items-center gap-2 text-left">
-                      <MessageSquare className="h-3.5 w-3.5 shrink-0 opacity-70" />
-                      <span className="truncate">{c.title}</span>
-                    </button>
-                    <span className="shrink-0 text-[10px] opacity-60">{fmt(c.updatedAt)}</span>
-                    <button onClick={() => deleteConversation(c.id)} className="shrink-0 rounded p-1 opacity-0 transition-opacity hover:bg-rose-50 hover:text-rose-500 group-hover:opacity-100 dark:hover:bg-rose-950/30" title="Delete chat">
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                ))}
+                <ConversationList
+                  conversations={conversations}
+                  activeId={activeId}
+                  onOpen={(id) => { openConversation(id); setShowConvoDrawer(false); }}
+                  onDelete={deleteConversation}
+                />
               </div>
             </div>
           </div>
@@ -482,7 +495,19 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
                   </div>
                 </div>
               ) : (
-                <div className={`max-w-[80%] whitespace-pre-wrap rounded-2xl p-3 text-sm ${m.role === 'user' ? 'bg-gradient-to-r from-lipro-600 to-lipro-500 text-white' : 'glass'}`}>
+                <div
+                  className={cn(
+                    'max-w-[80%] whitespace-pre-wrap rounded-2xl p-3 text-sm',
+                    m.role === 'user'
+                      ? 'bg-gradient-to-r from-lipro-600 to-lipro-500 text-white'
+                      : m.isError
+                        ? 'glass border border-rose-300/50 bg-rose-50/40 text-rose-700 dark:border-rose-800/40 dark:bg-rose-950/20 dark:text-rose-200'
+                        : 'glass'
+                  )}
+                >
+                  {m.role === 'assistant' && m.isError && (
+                    <span className="mb-1 flex items-center gap-1 text-xs font-medium opacity-80"><AlertTriangle className="h-3.5 w-3.5" /> Something went wrong</span>
+                  )}
                   {m.content || (
                     <span className="inline-flex items-center gap-1">
                       <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-lipro-500" />
@@ -509,10 +534,11 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
                 <div className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-lipro-200 text-lipro-700 relative">
                   <Bot className="h-4 w-4" />
                   <button
-                    onClick={() => { if (i > 0 && messages[i-1].role === 'user') startEdit(i-1); }}
-                    className="absolute -top-1 -right-1 rounded-full p-0.5 text-lipro-400 opacity-0 transition-opacity hover:text-lipro-600 group-hover:opacity-100"
-                    title="Edit previous message"
-                    aria-label="Edit previous message"
+                    onClick={regenerate}
+                    disabled={loading || loadingConversation}
+                    className="absolute -top-1 -right-1 rounded-full p-0.5 text-lipro-400 opacity-0 transition-opacity hover:text-lipro-600 group-hover:opacity-100 disabled:pointer-events-none"
+                    title="Regenerate response"
+                    aria-label="Regenerate response"
                   >
                     <RotateCcw className="h-3.5 w-3.5" />
                   </button>
@@ -614,7 +640,13 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
             enterKeyHint="send"
             className="max-h-[200px] min-h-11 flex-1 resize-none rounded-xl border border-lipro-200/60 bg-white/70 px-4 py-2.5 text-base leading-6 outline-none transition-all placeholder:text-lipro-300/70 focus:border-lipro-400 focus:ring-4 focus:ring-lipro-400/15 dark:border-lipro-700/40 dark:bg-surface-dark/60 dark:placeholder:text-lipro-300/40"
           />
-          <Button type="submit" disabled={loading || loadingConversation}><Send className="h-4 w-4" /></Button>
+          {loading ? (
+            <Button type="button" variant="outline" onClick={() => abortRef.current?.abort()} title="Stop generating" aria-label="Stop generating">
+              <Square className="h-4 w-4" />
+            </Button>
+          ) : (
+            <Button type="submit" disabled={loadingConversation}><Send className="h-4 w-4" /></Button>
+          )}
         </form>
         <div className="h-2" style={{ height: 'max(env(safe-area-inset-bottom), 0.5rem)' }} />
       </div>

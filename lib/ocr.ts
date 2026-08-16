@@ -63,6 +63,5 @@ function sniffMimeType(buffer: Buffer): string {
   if (buffer[0] === 0x47 && buffer[1] === 0x49 && buffer[2] === 0x46) return 'image/gif';
   if (buffer[0] === 0x52 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x46) return 'image/webp';
   if (buffer[0] === 0x42 && buffer[1] === 0x4d) return 'image/bmp';
-  if (buffer.toString('ascii', 0, 5) === '%PDF-') return 'image/tiff';
   return 'image/png';
 }
