@@ -15,27 +15,35 @@
   <script src="vendor/gsap.min.js"></script>
   <script src="vendor/ScrollTrigger.min.js"></script>
   <script src="vendor/ScrollToPlugin.min.js"></script>
+  <script src="vendor/three.min.js"></script>
 
   <style>
     /* =========================================================
        DESIGN TOKENS — Ethereal Glass (OLED Dark)
        ========================================================= */
     :root {
-      --bg-deep: #050506;
-      --bg-surface: #0a0a0b;
-      --bg-card: #0d0d0f;
-      --bg-card-raise: #141416;
-      --fg-primary: #f5f5f2;
-      --fg-secondary: #a6a6a0;
-      --fg-muted: #6b6b66;
-      --accent: #c8ff3e;
-      --accent-deep: #9fe01c;
+      /* Frozen/glacial palette — off-black base kept (never pure #000), single
+         desaturated icy-cyan accent replaces the old lime as the ONE accent
+         used across UI (buttons, focus, links). Lime survives only as a rare,
+         low-opacity "borealis" glint inside the WebGL background — it never
+         competes with the cyan on interactive elements. */
+      --bg-deep: #050608;
+      --bg-surface: #090b0f;
+      --bg-card: #0b0e13;
+      --bg-card-raise: #121620;
+      --fg-primary: #f2f6f8;
+      --fg-secondary: #a7b3bc;
+      --fg-muted: #6c7680;
+      --accent: #7fe0ff;
+      --accent-deep: #4fc7ec;
       --accent-2: #ff4d6d;
-      --accent-3: #4dc9ff;
-      --glass-border: rgba(255, 255, 255, 0.07);
-      --glass-border-strong: rgba(255, 255, 255, 0.14);
-      --glass-bg: rgba(255, 255, 255, 0.03);
-      --glass-bg-strong: rgba(255, 255, 255, 0.06);
+      --accent-3: #b7f2ff;
+      --borealis: #9dffb0;
+      --glass-border: rgba(190, 225, 235, 0.08);
+      --glass-border-strong: rgba(190, 225, 235, 0.16);
+      --glass-bg: rgba(160, 210, 230, 0.035);
+      --glass-bg-strong: rgba(160, 210, 230, 0.07);
+      --ice-highlight: rgba(220, 245, 255, 0.14);
 
       --radius-sm: 12px;
       --radius-md: 18px;
@@ -653,13 +661,107 @@
     .footer__back { display: inline-flex; align-items: center; gap: 10px; color: var(--fg-secondary); font-size: 0.82rem; letter-spacing: 0.14em; text-transform: uppercase; }
     .footer__back .up { width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--glass-border-strong); display: flex; align-items: center; justify-content: center; transition: background 0.3s, transform 0.4s var(--ease-spring); }
     .footer__back:hover .up { background: var(--accent); color: #050506; transform: translateY(-4px); }
+
+    /* =========================================================
+       ICE-BLOCK CARDS — double-bezel: a frosted outer shell around
+       each card's existing inner content, simulating a chunk of ice
+       with a light-catching top edge. Additive layer on top of the
+       cards' original rules above (background/border/shadow only —
+       layout, padding and radius are untouched).
+       ========================================================= */
+    .feature-card, .why__card, .pricing__card, .testi__card,
+    .contact__form-wrap, .social-link {
+      background:
+        linear-gradient(155deg, var(--ice-highlight), transparent 40%),
+        var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      box-shadow:
+        inset 0 1px 0 var(--ice-highlight),
+        inset 0 0 40px -28px rgba(180, 230, 255, 0.5);
+    }
+    .feature-card:hover, .why__card:hover, .pricing__card:hover,
+    .testi__card:hover, .social-link:hover {
+      border-color: var(--glass-border-strong);
+      box-shadow:
+        inset 0 1px 0 var(--ice-highlight),
+        inset 0 0 50px -24px rgba(190, 235, 255, 0.6);
+    }
+    .pricing__card--featured {
+      background:
+        linear-gradient(155deg, rgba(220, 248, 255, 0.16), transparent 45%),
+        linear-gradient(170deg, rgba(127, 224, 255, 0.09), rgba(255, 255, 255, 0.02));
+      border-color: rgba(127, 224, 255, 0.4);
+    }
+
+    /* =========================================================
+       WEBGL BACKGROUND — frozen landscape, fixed behind everything.
+       Falls back to the existing static bg-deep colour (no canvas) if
+       WebGL is unavailable — nothing above depends on it rendering.
+       ========================================================= */
+    #webgl-bg {
+      position: fixed; inset: 0; z-index: var(--z-bg);
+      width: 100%; height: 100%; pointer-events: none;
+      opacity: 0; transition: opacity 1.2s var(--ease-quart);
+    }
+    #webgl-bg.is-ready { opacity: 1; }
+    @media (prefers-reduced-motion: reduce), (prefers-reduced-transparency: reduce) {
+      #webgl-bg { display: none; }
+    }
+
+    /* =========================================================
+       SOUND TOGGLE — floating, off by default, never autoplays.
+       ========================================================= */
+    .sound-toggle {
+      position: fixed; right: 20px; bottom: 20px; z-index: var(--z-nav);
+      width: 46px; height: 46px; border-radius: 50%;
+      border: 1px solid var(--glass-border-strong);
+      background: rgba(9, 11, 15, 0.6);
+      -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+      box-shadow: inset 0 1px 0 var(--ice-highlight), var(--shadow-lg);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--fg-secondary);
+      transition: transform 0.16s var(--ease-out, ease-out), color 0.3s var(--ease-quart), border-color 0.3s var(--ease-quart);
+    }
+    .sound-toggle:hover { color: var(--fg-primary); border-color: var(--glass-border-strong); }
+    .sound-toggle:active { transform: scale(0.96); }
+    .sound-toggle svg { width: 19px; height: 19px; }
+    .sound-toggle .icon-on { display: none; }
+    .sound-toggle.is-on { color: var(--accent); border-color: rgba(127, 224, 255, 0.35); }
+    .sound-toggle.is-on .icon-off { display: none; }
+    .sound-toggle.is-on .icon-on { display: block; }
+
+    /* =========================================================
+       FOOTER PARTICLES — ambient drift by default; on hover (fine
+       pointer only) the particles are re-targeted to the graduation
+       cap silhouette via JS. Purely decorative, sits behind footer
+       content, never intercepts clicks.
+       ========================================================= */
+    .footer { position: relative; }
+    #footer-particles {
+      position: absolute; inset: 0; z-index: 0; pointer-events: none;
+      opacity: 0.55;
+    }
+    .footer__grid, .footer__bottom { position: relative; z-index: 1; }
+    @media (prefers-reduced-motion: reduce) {
+      #footer-particles { display: none; }
+    }
   </style>
 </head>
 
 <body>
 
+  <!-- FROZEN LANDSCAPE — fixed WebGL background, camera drifts with scroll.
+       Everything else on this page reads fine with this canvas absent. -->
+  <canvas id="webgl-bg" aria-hidden="true"></canvas>
+
   <!-- GRAIN -->
   <div class="grain" aria-hidden="true"></div>
+
+  <!-- AMBIENT SOUND TOGGLE — off by default, never autoplays -->
+  <button class="sound-toggle" id="soundToggle" type="button" aria-pressed="false" aria-label="Toggle ambient sound" data-cursor="hover">
+    <svg class="icon-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4z"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+    <svg class="icon-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 6a9 9 0 0 1 0 12"/></svg>
+  </button>
 
   <!-- CURSOR -->
   <div class="cursor" aria-hidden="true"></div>
@@ -1416,6 +1518,7 @@
 
   <!-- FOOTER -->
   <footer class="footer section">
+    <canvas id="footer-particles" aria-hidden="true"></canvas>
     <div class="footer__grid">
       <div class="footer__brand">
         <div class="logo">LIPRO<em>/ACADEMY</em></div>
@@ -1752,6 +1855,339 @@
     });
 
     window.__motionInit = true;
+  </script>
+
+  <!-- FROZEN LANDSCAPE, FOOTER PARTICLES, AMBIENT SOUND -->
+  <script>
+  (function () {
+    'use strict';
+    // prefersReduced / isTouch are declared with const in the script above —
+    // classic <script> tags share one top-level lexical scope, so they're
+    // already available here without redeclaring them.
+
+    /* ============================================================
+       FROZEN LANDSCAPE — Three.js background, camera drift + a
+       hand-rolled chromatic-aberration pass. The classic/UMD Three.js
+       build has no EffectComposer/ShaderPass (those are ES-module-only
+       addons), so the post-process is done by hand with a
+       WebGLRenderTarget + a fullscreen quad — no addon files needed.
+       ============================================================ */
+    const bgCanvas = document.getElementById('webgl-bg');
+    const canWebGL = (function () {
+      try {
+        const c = document.createElement('canvas');
+        return !!(window.WebGLRenderingContext && (c.getContext('webgl') || c.getContext('experimental-webgl')));
+      } catch (e) { return false; }
+    })();
+
+    if (bgCanvas && canWebGL && !prefersReduced && typeof THREE !== 'undefined') {
+      initFrozenLandscape(bgCanvas);
+    }
+
+    function initFrozenLandscape(canvas) {
+      const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, powerPreference: 'low-power' });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setClearColor(0x050608, 1);
+
+      const scene = new THREE.Scene();
+      scene.fog = new THREE.FogExp2(0x0a1018, 0.045);
+
+      const camera = new THREE.PerspectiveCamera(52, window.innerWidth / window.innerHeight, 0.1, 200);
+      camera.position.set(0, 3.4, 10);
+      camera.lookAt(0, 0, 0);
+
+      scene.add(new THREE.HemisphereLight(0x9fd8ff, 0x0a0e14, 0.9));
+      const key = new THREE.DirectionalLight(0xbfeeff, 0.6);
+      key.position.set(-6, 8, 4);
+      scene.add(key);
+      const rim = new THREE.PointLight(0x9dffb0, 0.35, 40);
+      rim.position.set(4, 2, -6);
+      scene.add(rim);
+
+      // Procedural icy terrain — layered sine displacement, no external
+      // noise library, so this stays a dependency-free single file.
+      const terrainGeo = new THREE.PlaneGeometry(60, 60, 90, 90);
+      terrainGeo.rotateX(-Math.PI / 2);
+      const tpos = terrainGeo.attributes.position;
+      for (let i = 0; i < tpos.count; i++) {
+        const x = tpos.getX(i), z = tpos.getZ(i);
+        const hgt = Math.sin(x * 0.18 + z * 0.12) * 1.1 + Math.sin(x * 0.4 - z * 0.3) * 0.5 + Math.sin((x + z) * 0.6) * 0.25;
+        tpos.setY(i, hgt);
+      }
+      terrainGeo.computeVertexNormals();
+      const terrain = new THREE.Mesh(
+        terrainGeo,
+        new THREE.MeshStandardMaterial({ color: 0x0d1620, roughness: 0.35, metalness: 0.15, emissive: 0x081018, emissiveIntensity: 0.4 })
+      );
+      terrain.position.y = -3.2;
+      scene.add(terrain);
+
+      const terrainEdges = new THREE.Mesh(
+        terrainGeo,
+        new THREE.MeshBasicMaterial({ color: 0x7fe0ff, wireframe: true, transparent: true, opacity: 0.06 })
+      );
+      terrainEdges.position.copy(terrain.position);
+      scene.add(terrainEdges);
+
+      // Drifting ice-shard particles.
+      const PARTICLE_COUNT = window.innerWidth < 768 ? 500 : 1100;
+      const particleGeo = new THREE.BufferGeometry();
+      const particlePos = new Float32Array(PARTICLE_COUNT * 3);
+      const particleSpeed = new Float32Array(PARTICLE_COUNT);
+      for (let i = 0; i < PARTICLE_COUNT; i++) {
+        particlePos[i * 3] = (Math.random() - 0.5) * 46;
+        particlePos[i * 3 + 1] = Math.random() * 20 - 4;
+        particlePos[i * 3 + 2] = (Math.random() - 0.5) * 46;
+        particleSpeed[i] = 0.15 + Math.random() * 0.35;
+      }
+      particleGeo.setAttribute('position', new THREE.BufferAttribute(particlePos, 3));
+      const particles = new THREE.Points(
+        particleGeo,
+        new THREE.PointsMaterial({ color: 0xdff6ff, size: 0.05, transparent: true, opacity: 0.55, sizeAttenuation: true, depthWrite: false })
+      );
+      scene.add(particles);
+
+      // Hand-rolled chromatic-aberration post pass.
+      let rt = new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight);
+      const postScene = new THREE.Scene();
+      const postCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+      const postMat = new THREE.ShaderMaterial({
+        uniforms: { tDiffuse: { value: rt.texture }, uAberration: { value: 0 } },
+        vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position, 1.0); }',
+        fragmentShader: [
+          'uniform sampler2D tDiffuse;',
+          'uniform float uAberration;',
+          'varying vec2 vUv;',
+          'void main() {',
+          '  vec2 dir = vUv - 0.5;',
+          '  float r = texture2D(tDiffuse, vUv - dir * uAberration).r;',
+          '  float g = texture2D(tDiffuse, vUv).g;',
+          '  float b = texture2D(tDiffuse, vUv + dir * uAberration).b;',
+          '  gl_FragColor = vec4(r, g, b, 1.0);',
+          '}',
+        ].join('\n'),
+      });
+      postScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), postMat));
+
+      // Scroll-driven camera drift — damped, not a rigid 1:1 scrollbar
+      // mapping, so it reads as momentum rather than a mechanism.
+      let scrollProgress = 0, smoothProgress = 0, lastScrollY = window.scrollY, scrollVelocity = 0, smoothAberration = 0;
+
+      function onScroll() {
+        const max = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+        scrollProgress = window.scrollY / max;
+      }
+      window.addEventListener('scroll', onScroll, { passive: true });
+      onScroll();
+
+      window.addEventListener('resize', () => {
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        rt.setSize(window.innerWidth, window.innerHeight);
+      });
+
+      let paused = document.hidden;
+      document.addEventListener('visibilitychange', () => { paused = document.hidden; });
+
+      const clock = new THREE.Clock();
+      canvas.classList.add('is-ready');
+
+      (function tick() {
+        requestAnimationFrame(tick);
+        if (paused) return;
+        const t = clock.getElapsedTime();
+
+        smoothProgress += (scrollProgress - smoothProgress) * 0.06;
+
+        const rawVelocity = window.scrollY - lastScrollY;
+        lastScrollY = window.scrollY;
+        scrollVelocity += (Math.abs(rawVelocity) - scrollVelocity) * 0.15;
+
+        camera.position.x = Math.sin(t * 0.05) * 1.4 + smoothProgress * 3.5;
+        camera.position.y = 3.4 + Math.sin(t * 0.08) * 0.3 - smoothProgress * 1.6;
+        camera.rotation.z = Math.sin(t * 0.04) * 0.01;
+        camera.lookAt(smoothProgress * 1.2, 0.4, 0);
+
+        const pArr = particleGeo.attributes.position.array;
+        for (let i = 0; i < PARTICLE_COUNT; i++) {
+          pArr[i * 3 + 1] += particleSpeed[i] * 0.01;
+          if (pArr[i * 3 + 1] > 16) pArr[i * 3 + 1] = -4;
+        }
+        particleGeo.attributes.position.needsUpdate = true;
+
+        // Near-zero at rest, rises only with fast scroll, decays back down —
+        // a signature flourish during a flick, invisible while just reading.
+        const targetAberration = Math.min(scrollVelocity * 0.00035, 0.006);
+        smoothAberration += (targetAberration - smoothAberration) * 0.12;
+        postMat.uniforms.uAberration.value = smoothAberration;
+
+        renderer.setRenderTarget(rt);
+        renderer.render(scene, camera);
+        renderer.setRenderTarget(null);
+        renderer.render(postScene, postCamera);
+      })();
+    }
+
+    /* ============================================================
+       FOOTER PARTICLES — ambient drift; converges into LIPRO's own
+       graduation-cap mark on hover (fine pointer only — touch devices
+       keep the gentle idle drift with no interaction required).
+       ============================================================ */
+    const footerCanvas = document.getElementById('footer-particles');
+    if (footerCanvas && !prefersReduced) initFooterParticles(footerCanvas);
+
+    function initFooterParticles(canvas) {
+      const ctx = canvas.getContext('2d');
+      const footer = canvas.closest('.footer');
+      const supportsHover = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+      let w, h, dpr, hovering = false;
+
+      const COUNT = 140;
+      const particles = [];
+      for (let i = 0; i < COUNT; i++) {
+        particles.push({ x: Math.random() * 400, y: Math.random() * 200, tx: 0, ty: 0, r: 1 + Math.random() * 1.6 });
+      }
+
+      function buildShapeTargets() {
+        const cx = w * 0.5, cy = h * 0.42, s = Math.min(w, h) * 0.22;
+        const pts = [];
+        for (let i = 0; i < 70; i++) {
+          const a = (i / 70) * Math.PI * 2;
+          pts.push([cx + Math.cos(a) * s, cy + Math.sin(a) * s * 0.42]);
+        }
+        for (let i = 0; i < 20; i++) pts.push([cx, cy + (i / 20) * s * 0.9]);
+        for (let i = 0; i < 50; i++) {
+          const a = (i / 50) * Math.PI;
+          pts.push([cx - s * 0.55 + (i / 50) * s * 1.1, cy + s * 0.55 + Math.sin(a) * 6]);
+        }
+        for (let i = 0; i < particles.length; i++) {
+          const p = pts[i % pts.length];
+          particles[i].tx = p[0];
+          particles[i].ty = p[1];
+        }
+      }
+
+      function resize() {
+        const rect = footer.getBoundingClientRect();
+        dpr = Math.min(window.devicePixelRatio || 1, 2);
+        w = rect.width; h = rect.height;
+        canvas.width = w * dpr; canvas.height = h * dpr;
+        canvas.style.width = w + 'px'; canvas.style.height = h + 'px';
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        buildShapeTargets();
+      }
+
+      if (supportsHover) {
+        footer.addEventListener('pointerenter', () => { hovering = true; });
+        footer.addEventListener('pointerleave', () => { hovering = false; });
+      }
+
+      window.addEventListener('resize', resize);
+      resize();
+
+      (function loop() {
+        requestAnimationFrame(loop);
+        ctx.clearRect(0, 0, w, h);
+        ctx.fillStyle = 'rgba(180, 225, 245, 0.7)';
+        for (const p of particles) {
+          if (hovering) {
+            p.x += (p.tx - p.x) * 0.08;
+            p.y += (p.ty - p.y) * 0.08;
+          } else {
+            p.x += Math.sin((p.y + p.x) * 0.01) * 0.15;
+            p.y -= 0.06;
+            if (p.y < -4) p.y = h + 4;
+          }
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      })();
+    }
+
+    /* ============================================================
+       AMBIENT SOUND — synthesized (no audio file, stays offline-
+       friendly like the rest of this page), off by default, never
+       autoplays. A soft wind drone while toggled on, plus a one-shot
+       chime tied to a real, non-navigating state change (the FAQ
+       accordion) rather than a link click that would cut the sound
+       off mid-way through page navigation.
+       ============================================================ */
+    const soundToggle = document.getElementById('soundToggle');
+    let audioCtx = null, soundOn = false, droneNodes = null;
+
+    function ensureAudioCtx() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      return audioCtx;
+    }
+
+    function startDrone() {
+      const ctx = ensureAudioCtx();
+      const master = ctx.createGain();
+      master.gain.value = 0;
+      master.connect(ctx.destination);
+      master.gain.linearRampToValueAtTime(0.05, ctx.currentTime + 1.2);
+
+      const osc1 = ctx.createOscillator();
+      osc1.type = 'sine'; osc1.frequency.value = 82;
+      const osc2 = ctx.createOscillator();
+      osc2.type = 'sine'; osc2.frequency.value = 123.5;
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'lowpass'; filter.frequency.value = 400;
+      osc1.connect(filter); osc2.connect(filter); filter.connect(master);
+      osc1.start(); osc2.start();
+
+      const bufferSize = 2 * ctx.sampleRate;
+      const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = noiseBuffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1) * 0.3;
+      const noise = ctx.createBufferSource();
+      noise.buffer = noiseBuffer; noise.loop = true;
+      const noiseFilter = ctx.createBiquadFilter();
+      noiseFilter.type = 'highpass'; noiseFilter.frequency.value = 2200;
+      const noiseGain = ctx.createGain();
+      noiseGain.gain.value = 0.4;
+      noise.connect(noiseFilter); noiseFilter.connect(noiseGain); noiseGain.connect(master);
+      noise.start();
+
+      droneNodes = { master, osc1, osc2, noise };
+    }
+
+    function stopDrone() {
+      if (!droneNodes) return;
+      const ctx = ensureAudioCtx();
+      droneNodes.master.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.6);
+      const nodes = droneNodes;
+      setTimeout(() => { try { nodes.osc1.stop(); nodes.osc2.stop(); nodes.noise.stop(); } catch (e) {} }, 700);
+      droneNodes = null;
+    }
+
+    function playChime() {
+      if (!soundOn) return;
+      const ctx = ensureAudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine'; osc.frequency.value = 880;
+      gain.gain.value = 0.0001;
+      osc.connect(gain); gain.connect(ctx.destination);
+      const now = ctx.currentTime;
+      gain.gain.exponentialRampToValueAtTime(0.06, now + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.9);
+      osc.start(now); osc.stop(now + 0.9);
+    }
+
+    if (soundToggle) {
+      soundToggle.addEventListener('click', () => {
+        soundOn = !soundOn;
+        soundToggle.classList.toggle('is-on', soundOn);
+        soundToggle.setAttribute('aria-pressed', String(soundOn));
+        if (soundOn) startDrone(); else stopDrone();
+      });
+      document.querySelectorAll('.faq__q').forEach((btn) => btn.addEventListener('click', playChime));
+    }
+  })();
   </script>
 
   <!-- FAILSAFE: never let the preloader trap the page -->
