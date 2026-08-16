@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { upload as blobUpload } from '@vercel/blob/client';
 import { Button } from '@/components/ui/button';
-import { Send, Bot, User, Loader2, Plus, Maximize2, Minimize2, Paperclip, X, FileText, CheckCircle2, Edit2, Check, RotateCcw, List, ChevronLeft, Square, AlertTriangle } from 'lucide-react';
+import { Send, Bot, User, Loader2, Plus, Maximize2, Minimize2, X, FileText, CheckCircle2, Edit2, Check, RotateCcw, List, ChevronLeft, Square, AlertTriangle } from 'lucide-react';
 import { LiproLogo } from '@/components/LiproLogo';
 import AmbientBackground from '@/components/dashboard/ambient-bg';
 import { Badge } from '@/components/ui/badge';
@@ -429,7 +429,10 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
       <AmbientBackground variant="aurora" />
       {!fullscreen && (
         <aside className="glass relative hidden w-64 shrink-0 flex-col rounded-2xl p-3 md:flex">
-          <Button onClick={newChat} className="mb-3 w-full" size="sm"><Plus className="h-4 w-4" /> New chat</Button>
+          <Button onClick={newChat} className="mb-4 w-full rounded-full" size="sm"><Plus className="h-4 w-4" /> New chat</Button>
+          {conversations.length > 0 && (
+            <p className="mb-1.5 px-2 text-[11px] font-semibold uppercase tracking-wider text-lipro-500/70">Recents</p>
+          )}
           <div className="flex-1 space-y-1 overflow-y-auto">
             <ConversationList conversations={conversations} activeId={activeId} onOpen={openConversation} onDelete={deleteConversation} />
           </div>
@@ -617,7 +620,10 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
           </p>
         )}
         {attachError && <p className="mt-2 text-xs font-medium text-rose-500">{attachError}</p>}
-        <form className="mt-3 flex items-end gap-2" onSubmit={(e) => { e.preventDefault(); send(input); }}>
+        <form
+          className="mt-3 flex items-end gap-1.5 rounded-3xl border border-lipro-200/60 bg-white/70 p-1.5 pl-2 shadow-sm transition-all focus-within:border-lipro-400 focus-within:ring-4 focus-within:ring-lipro-400/15 dark:border-lipro-700/40 dark:bg-surface-dark/60"
+          onSubmit={(e) => { e.preventDefault(); send(input); }}
+        >
           <input
             ref={fileInputRef}
             type="file"
@@ -627,11 +633,11 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-lipro-200/60 bg-white/50 text-lipro-500 transition-colors hover:border-lipro-400 hover:text-lipro-600 dark:border-lipro-700/40 dark:bg-surface-dark/60 dark:text-lipro-300"
+            className="grid h-9 w-9 shrink-0 place-items-center self-end rounded-full text-lipro-500 transition-colors hover:bg-lipro-100 hover:text-lipro-600 dark:text-lipro-300 dark:hover:bg-lipro-950/60"
             title="Attach a PDF, Word, image, or text file"
             aria-label="Attach a file"
           >
-            <Paperclip className="h-4 w-4" />
+            <Plus className="h-5 w-5" />
           </button>
           <textarea
             ref={textareaRef}
@@ -644,14 +650,27 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
             autoCorrect="on"
             spellCheck={true}
             enterKeyHint="send"
-            className="max-h-[200px] min-h-11 flex-1 resize-none rounded-xl border border-lipro-200/60 bg-white/70 px-4 py-2.5 text-base leading-6 outline-none transition-all placeholder:text-lipro-300/70 focus:border-lipro-400 focus:ring-4 focus:ring-lipro-400/15 dark:border-lipro-700/40 dark:bg-surface-dark/60 dark:placeholder:text-lipro-300/40"
+            className="max-h-[200px] min-h-9 flex-1 resize-none self-center bg-transparent px-1.5 py-1.5 text-base leading-6 outline-none placeholder:text-lipro-300/70 dark:placeholder:text-lipro-300/40"
           />
           {loading ? (
-            <Button type="button" variant="outline" onClick={() => abortRef.current?.abort()} title="Stop generating" aria-label="Stop generating">
+            <button
+              type="button"
+              onClick={() => abortRef.current?.abort()}
+              className="grid h-9 w-9 shrink-0 place-items-center self-end rounded-full border border-lipro-300/50 text-lipro-600 transition-colors hover:bg-lipro-100 dark:border-lipro-700/40 dark:text-lipro-200 dark:hover:bg-lipro-950/60"
+              title="Stop generating"
+              aria-label="Stop generating"
+            >
               <Square className="h-4 w-4" />
-            </Button>
+            </button>
           ) : (
-            <Button type="submit" disabled={loadingConversation}><Send className="h-4 w-4" /></Button>
+            <button
+              type="submit"
+              disabled={loadingConversation}
+              className="grid h-9 w-9 shrink-0 place-items-center self-end rounded-full bg-gradient-to-br from-lipro-600 to-lipro-500 text-white transition-all active:scale-95 disabled:opacity-50"
+              aria-label="Send message"
+            >
+              <Send className="h-4 w-4" />
+            </button>
           )}
         </form>
         <div className="h-2" style={{ height: 'max(env(safe-area-inset-bottom), 0.5rem)' }} />
