@@ -94,6 +94,7 @@ module.exports = {
         'slide-down': 'slideDown 0.3s ease-out',
         'scale-in': 'scaleIn 0.2s ease-out',
         'pulse-soft': 'pulseSoft 2s ease-in-out infinite',
+        'message-in': 'messageIn 0.25s ease-out',
       },
       keyframes: {
         fadeIn: {
@@ -102,6 +103,10 @@ module.exports = {
         },
         slideUp: {
           '0%': { opacity: '0', transform: 'translateY(20px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        messageIn: {
+          '0%': { opacity: '0', transform: 'translateY(8px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
         },
         slideDown: {

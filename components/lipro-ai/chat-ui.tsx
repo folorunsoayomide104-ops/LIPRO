@@ -8,6 +8,7 @@ import AmbientBackground from '@/components/dashboard/ambient-bg';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { ConversationList, type ConversationListEntry } from './conversation-list-item';
+import { MarkdownMessage } from './markdown-message';
 
 type Msg = { role: 'user' | 'assistant'; content: string; isError?: boolean };
 type Conversation = ConversationListEntry;
@@ -147,6 +148,15 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
     if (newFiles.length > 0) setAttached((prev) => [...prev, ...newFiles]);
     if (errors.length > 0) setAttachError(errors.join(' · '));
   };
+
+  // On mobile there's no separate "fullscreen" concept — the chat should
+  // just natively fill the screen edge-to-edge like a real messaging app,
+  // with no toggle to find or tap. Fullscreen mode already implements
+  // exactly that (fixed inset-0 overlay), so default to it on small
+  // viewports instead of building a second layout.
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) setFullscreen(true);
+  }, []);
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, loadingConversation]);
 
@@ -425,7 +435,7 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
   };
 
   return (
-    <div className={cn('relative flex gap-4 overflow-hidden', fullscreen ? 'fixed inset-0 z-[100] h-screen bg-[rgb(var(--bg))] p-4 sm:p-6' : 'h-[calc(100dvh-13.5rem)] md:h-[calc(100vh-9rem)]')}>
+    <div className={cn('relative flex gap-4 overflow-hidden', fullscreen ? 'fixed inset-0 z-[100] h-screen bg-[rgb(var(--bg))] max-md:p-0 sm:p-4 md:p-6' : 'h-[calc(100dvh-13.5rem)] md:h-[calc(100vh-9rem)]')}>
       <AmbientBackground variant="aurora" />
       {!fullscreen && (
         <aside className="glass relative hidden w-64 shrink-0 flex-col rounded-2xl p-3 md:flex">
@@ -440,16 +450,16 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
       )}
 
       <div className="relative flex min-w-0 flex-1 flex-col">
-        <div className="mb-3 flex items-center justify-between gap-2">
+        <div className="mb-3 flex items-center justify-between gap-2 max-md:mb-1.5 max-md:border-b max-md:border-lipro-200/60 max-md:px-3 max-md:py-2.5 max-md:dark:border-lipro-700/40">
           <div className="min-w-0">
-            <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight"><LiproLogo className="h-6 w-6" /> LIPRO AI</h1>
-            <p className="text-sm text-lipro-600/70 dark:text-lipro-200/70">Your AI tutor with conversation memory</p>
+            <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight max-md:text-base"><LiproLogo className="h-6 w-6 max-md:h-5 max-md:w-5" /> LIPRO AI</h1>
+            <p className="text-sm text-lipro-600/70 max-md:hidden dark:text-lipro-200/70">Your AI tutor with conversation memory</p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            {fallback && <Badge tone="amber">Demo mode — add API key in Settings</Badge>}
+            {fallback && <Badge tone="amber" className="max-md:hidden">Demo mode — add API key in Settings</Badge>}
             <Button variant="outline" size="sm" className="md:hidden" onClick={() => setShowConvoDrawer(true)}><List className="h-4 w-4" /></Button>
-            <Button variant="outline" size="sm" className="md:hidden" onClick={newChat}><Plus className="h-4 w-4" /> New</Button>
-            <Button variant="outline" size="sm" onClick={() => setFullscreen((f) => !f)} title={fullscreen ? 'Exit fullscreen (Esc)' : 'Fullscreen'} aria-label={fullscreen ? 'Exit fullscreen' : 'Fullscreen'}>
+            <Button variant="outline" size="sm" className="md:hidden" onClick={newChat}><Plus className="h-4 w-4" /></Button>
+            <Button variant="outline" size="sm" className="max-md:hidden" onClick={() => setFullscreen((f) => !f)} title={fullscreen ? 'Exit fullscreen (Esc)' : 'Fullscreen'} aria-label={fullscreen ? 'Exit fullscreen' : 'Fullscreen'}>
               {fullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
             </Button>
           </div>
@@ -479,12 +489,12 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
           </div>
         )}
 
-        <div className="glass flex-1 overflow-y-auto rounded-2xl p-4 space-y-4">
+        <div className="glass flex-1 overflow-y-auto rounded-2xl p-4 space-y-4 max-md:space-y-3 max-md:rounded-none max-md:border-0 max-md:bg-transparent max-md:p-3 max-md:shadow-none max-md:backdrop-blur-none">
           {loadingConversation && (
             <div className="flex gap-3"><div className="grid h-8 w-8 place-items-center rounded-xl bg-gradient-to-br from-lipro-500 to-lipro-700 text-white"><Bot className="h-4 w-4" /></div><div className="glass rounded-2xl p-3"><Loader2 className="h-4 w-4 animate-spin" /></div></div>
           )}
           {messages.map((m, i) => (
-            <div key={i} className={`flex gap-3 ${m.role === 'user' ? 'justify-end' : ''}`}>
+            <div key={i} className={cn('flex gap-3 animate-message-in', m.role === 'user' ? 'justify-end' : '')}>
               {m.role === 'assistant' && <div className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-lipro-500 to-lipro-700 text-white"><Bot className="h-4 w-4" /></div>}
               {editingIndex === i && m.role === 'user' ? (
                 <div className="max-w-[80%] w-full flex gap-2">
@@ -506,18 +516,20 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
               ) : (
                 <div
                   className={cn(
-                    'min-w-0 flex-1 whitespace-pre-wrap text-sm',
+                    'min-w-0 flex-1 text-sm',
                     m.role === 'user'
-                      ? 'max-w-[80%] flex-none rounded-2xl bg-gradient-to-r from-lipro-600 to-lipro-500 p-3 text-white'
+                      ? 'max-w-[80%] flex-none whitespace-pre-wrap rounded-2xl bg-gradient-to-r from-lipro-600 to-lipro-500 p-3 text-white'
                       : m.isError
-                        ? 'glass rounded-2xl border border-rose-300/50 bg-rose-50/40 p-3 text-rose-700 dark:border-rose-800/40 dark:bg-rose-950/20 dark:text-rose-200'
+                        ? 'glass whitespace-pre-wrap rounded-2xl border border-rose-300/50 bg-rose-50/40 p-3 text-rose-700 dark:border-rose-800/40 dark:bg-rose-950/20 dark:text-rose-200'
                         : 'py-1'
                   )}
                 >
                   {m.role === 'assistant' && m.isError && (
                     <span className="mb-1 flex items-center gap-1 text-xs font-medium opacity-80"><AlertTriangle className="h-3.5 w-3.5" /> Something went wrong</span>
                   )}
-                  {m.content || (
+                  {m.content ? (
+                    m.role === 'assistant' && !m.isError ? <MarkdownMessage content={m.content} /> : m.content
+                  ) : (
                     <span className="inline-flex items-center gap-1">
                       <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-lipro-500" />
                       <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-lipro-500" style={{ animationDelay: '0.15s' }} />
@@ -665,8 +677,13 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
           ) : (
             <button
               type="submit"
-              disabled={loadingConversation}
-              className="grid h-9 w-9 shrink-0 place-items-center self-end rounded-full bg-gradient-to-br from-lipro-600 to-lipro-500 text-white transition-all active:scale-95 disabled:opacity-50"
+              disabled={loadingConversation || (!input.trim() && attached.length === 0)}
+              className={cn(
+                'grid h-9 w-9 shrink-0 place-items-center self-end rounded-full transition-all active:scale-95',
+                input.trim() || attached.length > 0
+                  ? 'bg-gradient-to-br from-lipro-600 to-lipro-500 text-white'
+                  : 'bg-lipro-100 text-lipro-300 dark:bg-lipro-950/60 dark:text-lipro-700'
+              )}
               aria-label="Send message"
             >
               <Send className="h-4 w-4" />
