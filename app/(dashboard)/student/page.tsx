@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
-import { Sparkles, ArrowRight, GraduationCap, FileText, MessageSquare, Brain, TrendingUp, PieChart } from 'lucide-react';
+import { Sparkles, ArrowRight, GraduationCap, FileText, MessageSquare, Brain, TrendingUp, PieChart, Bell } from 'lucide-react';
 import { LiproLogo } from '@/components/LiproLogo';
 import StatTiles from '@/components/dashboard/stat-tiles';
 import ScoreTrend from '@/components/dashboard/score-trend';
@@ -18,10 +18,10 @@ export default async function StudentDashboard() {
   if (!session) redirect('/login');
   if (session.role !== 'STUDENT') redirect(`/dashboard`);
 
-  const [courses, recentAttempts, notes, me, questionTypes, courseCount, attemptCount, noteCount] = await Promise.all([
+  const [courses, recentAttempts, notes, me, questionTypes, courseCount, attemptCount, noteCount, notices] = await Promise.all([
     prisma.course.findMany({
       where: { faculty: { not: undefined }, OR: [{ level: '100' }, { level: '200' }, { level: '300' }, { level: '400' }, { level: '500' }] },
-      include: { _count: { select: { notes: true, questions: true } }, lecturer: { select: { fullName: true } } },
+      include: { _count: { select: { notes: true, questions: true } }, lecturer: { select: { fullName: true, avatarUrl: true } } },
       orderBy: { createdAt: 'desc' }, take: 6,
     }),
     prisma.examSession.findMany({
@@ -39,6 +39,10 @@ export default async function StudentDashboard() {
     prisma.course.count(),
     prisma.examSession.count({ where: { userId: session.userId } }),
     prisma.note.count({ where: { userId: session.userId } }),
+    prisma.notification.findMany({
+      where: { userId: session.userId },
+      orderBy: { createdAt: 'desc' }, take: 4,
+    }),
   ]);
 
   const initials = (me?.fullName || 'S').split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase();
@@ -171,23 +175,31 @@ export default async function StudentDashboard() {
               </div>
               <Link href="/courses" className="inline-flex items-center gap-1 text-xs font-semibold text-lipro-600 hover:underline dark:text-lipro-300">View all <ArrowRight className="h-3 w-3" /></Link>
             </div>
-          <div className="space-y-2">
-            {courses.length === 0 && <p className="text-sm text-lipro-600/60">No courses available yet — ask your lecturer to publish materials.</p>}
+          {courses.length === 0 && <p className="text-sm text-lipro-600/60">No courses available yet — ask your lecturer to publish materials.</p>}
+          <div className="grid gap-3 sm:grid-cols-2">
             {courses.map((c) => (
-              <Link key={c.id} href={`/courses/${c.id}`} className="group flex items-center justify-between gap-3 rounded-xl p-3.5 transition-all glass-hover">
-                <div className="flex min-w-0 items-center gap-3">
-                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-lipro-200/60 bg-lipro-50/60 text-lipro-600 dark:border-lipro-500/20 dark:bg-lipro-950/40 dark:text-lipro-300">
+              <Link key={c.id} href={`/courses/${c.id}`} className="group rounded-xl border border-lipro-200/50 p-4 transition-all glass-hover dark:border-lipro-700/30">
+                <div className="mb-3 flex items-center justify-between">
+                  <span className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-lipro-500 to-indigo-500 text-white shadow-sm shadow-lipro-500/30">
                     <GraduationCap className="h-5 w-5" />
                   </span>
-                  <div className="min-w-0">
-                    <div className="truncate text-sm font-semibold">{c.code} · {c.title}</div>
-                    <div className="text-xs text-lipro-600/60">By {c.lecturer.fullName}</div>
-                  </div>
+                  {c.lecturer.avatarUrl ? (
+                    <img src={c.lecturer.avatarUrl} alt={c.lecturer.fullName} className="h-7 w-7 rounded-full object-cover ring-2 ring-white dark:ring-surface-dark" />
+                  ) : (
+                    <span className="grid h-7 w-7 place-items-center rounded-full bg-lipro-100 text-[10px] font-bold text-lipro-600 ring-2 ring-white dark:bg-lipro-950/60 dark:text-lipro-300 dark:ring-surface-dark">
+                      {c.lecturer.fullName.split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase()}
+                    </span>
+                  )}
                 </div>
-                <div className="flex shrink-0 items-center gap-2">
-                  <Badge tone="purple">{c._count.notes} notes</Badge>
-                  <Badge tone="indigo">{c._count.questions} questions</Badge>
-                  <ArrowRight className="h-4 w-4 text-lipro-400 transition-transform group-hover:translate-x-1" />
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-lipro-500">{c.code}</div>
+                <div className="mt-0.5 truncate text-sm font-bold leading-snug">{c.title}</div>
+                <div className="mt-0.5 text-xs text-lipro-600/60">By {c.lecturer.fullName}</div>
+                <div className="mt-3 flex items-center justify-between gap-2">
+                  <div className="flex flex-wrap gap-1.5">
+                    <Badge tone="purple">{c._count.notes} notes</Badge>
+                    <Badge tone="indigo">{c._count.questions} Qs</Badge>
+                  </div>
+                  <span className="shrink-0 rounded-full bg-lipro-500 px-3 py-1 text-xs font-semibold text-white transition-transform group-hover:scale-105">View</span>
                 </div>
               </Link>
             ))}
@@ -200,6 +212,69 @@ export default async function StudentDashboard() {
           <div className="relative">
             <div className="mb-4 flex items-center justify-between">
               <div>
+                <h2 className="heading flex items-center gap-2 text-lg font-bold"><Bell className="h-4 w-4 text-lipro-500" /> Notices</h2>
+                <p className="text-sm text-lipro-600/60 dark:text-lipro-200/50">Updates and reminders</p>
+              </div>
+              <Link href="/notifications" className="inline-flex items-center gap-1 text-xs font-semibold text-lipro-600 hover:underline dark:text-lipro-300">See all <ArrowRight className="h-3 w-3" /></Link>
+            </div>
+            {notices.length === 0 ? (
+              <p className="text-sm text-lipro-600/60">No notices yet — you&apos;re all caught up.</p>
+            ) : (
+              <div className="space-y-3">
+                {notices.map((n) => (
+                  <div key={n.id} className="rounded-xl p-3.5 glass-hover">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="text-sm font-semibold">{n.title}</div>
+                      {!n.isRead && <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-lipro-500" aria-hidden="true" />}
+                    </div>
+                    <p className="mt-1 line-clamp-2 text-xs text-lipro-600/70 dark:text-lipro-200/60">{n.message}</p>
+                    <Link href="/notifications" className="mt-1.5 inline-block text-xs font-semibold text-lipro-600 hover:underline dark:text-lipro-300">See more</Link>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+      </div>
+
+      {/* Analytics + recent attempts */}
+      <div className="grid gap-6 lg:grid-cols-3">
+        <section className="enter glass relative overflow-hidden rounded-2xl p-6 lg:col-span-2" style={{ animationDelay: '140ms' }}>
+          <AmbientBackground variant="breathe" />
+          <div className="relative">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h2 className="heading text-lg font-bold">Your recent notes</h2>
+                <p className="text-sm text-lipro-600/60 dark:text-lipro-200/50">Notes you&apos;ve created or saved</p>
+              </div>
+              <Link href="/notes" className="inline-flex items-center gap-1 text-xs font-semibold text-lipro-600 hover:underline dark:text-lipro-300">Open notes <ArrowRight className="h-3 w-3" /></Link>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              {notes.length === 0 && (
+                <div className="md:col-span-2 rounded-xl border border-dashed border-lipro-200/60 p-5 text-center text-sm text-lipro-600/60">
+                  No notes yet — create your first note to start revising.
+                </div>
+              )}
+              {notes.map((n) => (
+                <Link key={n.id} href={`/notes?id=${n.id}`} className="group flex items-start gap-3 rounded-xl p-3.5 transition-all glass-hover">
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-lipro-200/60 bg-lipro-50/60 text-lipro-600 dark:border-lipro-500/20 dark:bg-lipro-950/40 dark:text-lipro-300">
+                    <FileText className="h-5 w-5" />
+                  </span>
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-semibold group-hover:text-lipro-700 dark:group-hover:text-lipro-200">{n.title}</div>
+                    <div className="mt-0.5 text-xs text-lipro-600/60">{n.course?.code || 'General'} · Updated {new Date(n.updatedAt).toLocaleDateString()}</div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="enter glass relative overflow-hidden rounded-2xl p-6" style={{ animationDelay: '160ms' }}>
+          <AmbientBackground variant="dots" />
+          <div className="relative">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
                 <h2 className="heading text-lg font-bold">Recent attempts</h2>
                 <p className="text-sm text-lipro-600/60 dark:text-lipro-200/50">Your latest scores</p>
               </div>
@@ -209,38 +284,6 @@ export default async function StudentDashboard() {
           </div>
         </section>
       </div>
-
-      {/* Recent notes */}
-      <section className="enter glass relative overflow-hidden rounded-2xl p-6" style={{ animationDelay: '140ms' }}>
-        <AmbientBackground variant="breathe" />
-        <div className="relative">
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <h2 className="heading text-lg font-bold">Your recent notes</h2>
-              <p className="text-sm text-lipro-600/60 dark:text-lipro-200/50">Notes you&apos;ve created or saved</p>
-            </div>
-            <Link href="/notes" className="inline-flex items-center gap-1 text-xs font-semibold text-lipro-600 hover:underline dark:text-lipro-300">Open notes <ArrowRight className="h-3 w-3" /></Link>
-          </div>
-          <div className="grid gap-3 md:grid-cols-2">
-            {notes.length === 0 && (
-              <div className="md:col-span-2 rounded-xl border border-dashed border-lipro-200/60 p-5 text-center text-sm text-lipro-600/60">
-                No notes yet — create your first note to start revising.
-              </div>
-            )}
-            {notes.map((n) => (
-              <Link key={n.id} href={`/notes?id=${n.id}`} className="group flex items-start gap-3 rounded-xl p-3.5 transition-all glass-hover">
-                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-lipro-200/60 bg-lipro-50/60 text-lipro-600 dark:border-lipro-500/20 dark:bg-lipro-950/40 dark:text-lipro-300">
-                  <FileText className="h-5 w-5" />
-                </span>
-                <div className="min-w-0">
-                  <div className="truncate text-sm font-semibold group-hover:text-lipro-700 dark:group-hover:text-lipro-200">{n.title}</div>
-                  <div className="mt-0.5 text-xs text-lipro-600/60">{n.course?.code || 'General'} · Updated {new Date(n.updatedAt).toLocaleDateString()}</div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </section>
     </div>
   );
 }
