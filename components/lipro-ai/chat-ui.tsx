@@ -506,12 +506,12 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
               ) : (
                 <div
                   className={cn(
-                    'max-w-[80%] whitespace-pre-wrap rounded-2xl p-3 text-sm',
+                    'min-w-0 flex-1 whitespace-pre-wrap text-sm',
                     m.role === 'user'
-                      ? 'bg-gradient-to-r from-lipro-600 to-lipro-500 text-white'
+                      ? 'max-w-[80%] flex-none rounded-2xl bg-gradient-to-r from-lipro-600 to-lipro-500 p-3 text-white'
                       : m.isError
-                        ? 'glass border border-rose-300/50 bg-rose-50/40 text-rose-700 dark:border-rose-800/40 dark:bg-rose-950/20 dark:text-rose-200'
-                        : 'glass'
+                        ? 'glass rounded-2xl border border-rose-300/50 bg-rose-50/40 p-3 text-rose-700 dark:border-rose-800/40 dark:bg-rose-950/20 dark:text-rose-200'
+                        : 'py-1'
                   )}
                 >
                   {m.role === 'assistant' && m.isError && (
