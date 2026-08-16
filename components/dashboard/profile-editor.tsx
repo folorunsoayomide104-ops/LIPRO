@@ -3,6 +3,7 @@ import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input, Label } from '@/components/ui/input';
 import { Camera, Loader2, ImageOff } from 'lucide-react';
+import { toast } from 'sonner';
 
 export function ProfileEditor({ user }: { user: any }) {
   const [form, setForm] = useState({ fullName: user.fullName, matricNumber: user.matricNumber, university: user.university, faculty: user.faculty, department: user.department, level: user.level, semester: user.semester });
@@ -25,7 +26,7 @@ export function ProfileEditor({ user }: { user: any }) {
       setAvatarUrl(data.avatarUrl);
       window.dispatchEvent(new CustomEvent('avatar-updated', { detail: data.avatarUrl }));
     } catch (err: any) {
-      alert(err?.message || 'Upload failed');
+      toast.error(err?.message || 'Upload failed');
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = '';
@@ -37,7 +38,12 @@ export function ProfileEditor({ user }: { user: any }) {
     setLoading(true);
     const res = await fetch(`/api/users/${user.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) });
     setLoading(false);
-    if (res.ok) alert('Saved'); else alert('Failed');
+    if (res.ok) {
+      toast.success('Profile updated');
+    } else {
+      const data = await res.json().catch(() => null);
+      toast.error(data?.error || 'Could not save your changes');
+    }
   };
 
   return (

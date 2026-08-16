@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { ThemeProvider } from '@/components/theme-provider';
 import { ServiceWorkerRegistration } from '@/components/ServiceWorkerRegistration';
 import { ViewModeProvider } from '@/components/view-mode-provider';
+import { AppToaster } from '@/components/app-toaster';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -51,6 +52,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <ViewModeProvider>
             {children}
             <ServiceWorkerRegistration />
+            <AppToaster />
           </ViewModeProvider>
         </ThemeProvider>
       </body>

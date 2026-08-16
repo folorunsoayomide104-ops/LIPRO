@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus } from 'lucide-react';
+import { toast } from 'sonner';
 
 export function WalletFundButton() {
   const [open, setOpen] = useState(false);
@@ -16,7 +17,7 @@ export function WalletFundButton() {
     if (res.ok) {
       if (data.authorizationUrl) window.location.href = data.authorizationUrl;
       else location.reload();
-    } else alert(data?.error || 'Failed');
+    } else toast.error(data?.error || 'Could not fund your wallet. Please try again.');
   };
   if (!open) return <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4" /> Fund wallet</Button>;
   return (

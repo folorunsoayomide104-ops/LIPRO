@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 
 export function UpgradeButton({ plan }: { plan: 'premium' | 'ultimate' }) {
   const [loading, setLoading] = useState(false);
@@ -12,7 +13,7 @@ export function UpgradeButton({ plan }: { plan: 'premium' | 'ultimate' }) {
     if (res.ok) {
       if (data.authorizationUrl) window.location.href = data.authorizationUrl;
       else location.reload();
-    } else alert(data?.error || 'Failed');
+    } else toast.error(data?.error || 'Could not start the upgrade. Please try again.');
   };
   return <Button className="mt-6 w-full" onClick={upgrade} disabled={loading} variant={plan === 'premium' ? 'primary' : 'outline'}>{loading ? 'Processing...' : `Upgrade to ${plan}`}</Button>;
 }
