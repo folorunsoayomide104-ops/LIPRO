@@ -147,6 +147,16 @@ Guidelines:
   const messages = input.messages.slice(-10).map((m) => ({ role: m.role, content: m.content }));
 
   const contextBlocks: string[] = [];
+  // The raw text of documents attached to this conversation. Previously this was
+  // ONLY reachable via the document_search tool (an exact-phrase lexical lookup),
+  // which can't answer "summarize this document" — there's no single phrase to
+  // search for, so the model had no way to actually read a whole attached file
+  // and would (correctly, from its perspective) report no document was available.
+  // Give it the actual text directly, same as ragContext already is.
+  if (input.docs.length > 0) {
+    const docText = input.docs.map((d) => `[Document: ${d.name}]\n${d.text}`).join('\n\n---\n\n');
+    contextBlocks.push(`[Attached documents — read these directly to answer questions about them]\n${docText}`);
+  }
   if (input.ragContext) contextBlocks.push(`[Relevant document chunks from your saved materials]\n${input.ragContext}`);
   if (contextBlocks.length > 0) {
     const block = contextBlocks.join('\n\n---\n\n');
