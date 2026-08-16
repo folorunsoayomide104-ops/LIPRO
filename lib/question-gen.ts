@@ -41,10 +41,31 @@ Write ${countPerFormat} accurate question(s) for each of these formats: ${list}.
 Base every question ONLY on the material above. Return a JSON array.`;
 }
 
+/** True for an object shaped like one question (as opposed to e.g. `{"options":[...]}`). */
+function looksLikeQuestion(v: any): boolean {
+  return !!v && typeof v === 'object' && !Array.isArray(v) && typeof v.question === 'string' && 'answer' in v;
+}
+
 export function extractJsonArray(raw: string): GeneratedQuestion[] {
   let cleaned = raw.trim();
   const fence = cleaned.match(/```(?:json)?\s*([\s\S]*?)```/);
   if (fence) cleaned = fence[1].trim();
+
+  // Try parsing the response as-is before any bracket-slicing heuristics.
+  // This matters because slicing from the first "[" to the last "]" is wrong
+  // whenever the model returns a single bare object that merely *contains* a
+  // nested array (e.g. an MCQ's "options" field) instead of the requested
+  // top-level array — that slice parses "successfully" as just the options
+  // list, which then silently produces zero valid questions with no error.
+  try {
+    const direct = JSON.parse(cleaned);
+    if (Array.isArray(direct)) return normalizeQuestions(direct);
+    if (direct && Array.isArray(direct.questions)) return normalizeQuestions(direct.questions);
+    if (looksLikeQuestion(direct)) return normalizeQuestions([direct]);
+  } catch {
+    // Not directly parseable (fenced/truncated/decorated) — fall through.
+  }
+
   const start = cleaned.indexOf('[');
   const end = cleaned.lastIndexOf(']');
   if (start === -1 || end === -1 || end <= start) {
@@ -258,7 +279,13 @@ async function callProvider(text: string, formats: QuestionFormat[], count: numb
     maxTokens: Math.min(6000, count * 220 + 600),
     timeoutMs: 45000,
     retries: 1,
-    responseFormat: { type: 'json_object' },
+    // No responseFormat here deliberately: `json_object` forces a JSON
+    // *object* at the root, which conflicts with the array this prompt asks
+    // for. Against meta/llama-3.1-8b-instruct that constraint made the model
+    // silently collapse to a single bare question object (dropping the
+    // array and ignoring the requested count) — verified by comparing raw
+    // output with and without the flag. Rely on the prompt + extractJsonArray's
+    // repair logic instead.
   });
   return extractJsonArray(content);
 }

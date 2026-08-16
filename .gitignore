@@ -49,3 +49,4 @@ coverage/
 
 # TypeScript
 *.tsbuildinfo
+.env*
