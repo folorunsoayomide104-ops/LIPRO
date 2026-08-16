@@ -114,10 +114,16 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
   };
 
   const onPickFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
+    // FileList is a live view of the input's current selection — resetting
+    // e.target.value below (done so the same file can be re-picked later)
+    // empties this array retroactively even though we already have a
+    // reference to it. Snapshot into a plain array first, confirmed via a
+    // minimal repro (before=1 after=0 on the exact same pattern), so the
+    // reset can't wipe out the files before they're processed.
+    const files = e.target.files ? Array.from(e.target.files) : [];
     e.target.value = '';
     setAttachError('');
-    if (!files || files.length === 0) return;
+    if (files.length === 0) return;
 
     const newFiles: Array<{ name: string; file: File; preview?: string }> = [];
     const errors: string[] = [];
