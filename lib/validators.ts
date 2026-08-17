@@ -27,6 +27,11 @@ export const courseSchema = z.object({
   semester: z.enum(["First","Second"]),
 });
 
+// .partial() so a PATCH can send only the fields it's changing — critically,
+// it still only accepts this exact field set (no lecturerId, no id), unlike
+// passing the raw request body straight to Prisma.
+export const courseUpdateSchema = courseSchema.partial();
+
 export const noteSchema = z.object({
   title: z.string().min(2),
   content: z.string().min(1),

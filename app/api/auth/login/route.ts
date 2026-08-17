@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
 import { signToken, setAuthCookie, clearAuthCookie } from '@/lib/auth';
 import { loginSchema } from '@/lib/validators';
+import { checkRateLimit, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
@@ -12,6 +13,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message || 'Invalid input' }, { status: 422 });
   }
   const { email, password } = parsed.data;
+
+  // Two independent limits: per-IP stops a single attacker guessing across
+  // many accounts, per-email stops the same account being brute-forced from
+  // many different IPs (distributed credential stuffing against one target).
+  const ip = getClientIp(req);
+  const ipLimit = await checkRateLimit(`login:ip:${ip}`, 15 * 60 * 1000, 20);
+  if (!ipLimit.ok) return rateLimitResponse(ipLimit);
+  const emailLimit = await checkRateLimit(`login:email:${email}`, 15 * 60 * 1000, 8);
+  if (!emailLimit.ok) return rateLimitResponse(emailLimit);
 
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user) return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });

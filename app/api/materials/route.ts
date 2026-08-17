@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { guard } from '@/lib/api-guard';
 import { MAX_UPLOAD_BYTES } from '@/lib/pdf';
 import { ingestMaterial, type IngestedMaterial } from '@/lib/materials/ingest';
+import { isTrustedBlobUrl } from '@/lib/blob-url';
 
 export const maxDuration = 120;
 
@@ -21,6 +22,9 @@ export async function POST(req: Request) {
     const { blobUrl, originalName = 'document.pdf', sizeBytes = 0 } = body;
     if (sizeBytes > MAX_UPLOAD_BYTES) {
       return NextResponse.json({ error: 'File is too large. Max size is 100MB.' }, { status: 413 });
+    }
+    if (!isTrustedBlobUrl(blobUrl)) {
+      return NextResponse.json({ error: 'Invalid file URL' }, { status: 400 });
     }
 
     const blobRes = await fetch(blobUrl).catch(() => null);

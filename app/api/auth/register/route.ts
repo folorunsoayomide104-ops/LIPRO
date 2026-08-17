@@ -3,8 +3,13 @@ import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
 import { signToken, setAuthCookie } from '@/lib/auth';
 import { registerSchema } from '@/lib/validators';
+import { checkRateLimit, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 
 export async function POST(req: Request) {
+  const ip = getClientIp(req);
+  const ipLimit = await checkRateLimit(`register:ip:${ip}`, 60 * 60 * 1000, 8);
+  if (!ipLimit.ok) return rateLimitResponse(ipLimit);
+
   const body = await req.json().catch(() => null);
   if (!body) return NextResponse.json({ error: 'Invalid body' }, { status: 400 });
 

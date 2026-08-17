@@ -3,8 +3,11 @@ import { cookies } from "next/headers";
 import type { Role, JWTPayload } from "@/types";
 import { resolveJwtSecret } from "./jwt-secret";
 
-const secret = resolveJwtSecret();
-
+// Resolved lazily on first actual use, not at module scope — Next.js
+// evaluates route modules during `next build`'s page-data-collection step,
+// before request-time env vars are necessarily the ones that matter, so a
+// module-scope throw here would fail the build itself rather than fail a
+// real request.
 export const TOKEN_COOKIE = "lipro_token";
 export const RESET_TOKEN_TTL_SECONDS = 60 * 30; // 30 minutes
 
@@ -13,7 +16,7 @@ export async function signToken(payload: JWTPayload): Promise<string> {
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("7d")
-    .sign(secret);
+    .sign(resolveJwtSecret());
 }
 
 export async function signResetToken(userId: string): Promise<string> {
@@ -21,12 +24,12 @@ export async function signResetToken(userId: string): Promise<string> {
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(`${RESET_TOKEN_TTL_SECONDS}s`)
-    .sign(secret);
+    .sign(resolveJwtSecret());
 }
 
 export async function verifyResetToken(token: string): Promise<string | null> {
   try {
-    const { payload } = await jwtVerify(token, secret);
+    const { payload } = await jwtVerify(token, resolveJwtSecret());
     if (payload.purpose !== "password-reset") return null;
     return typeof payload.userId === "string" ? payload.userId : null;
   } catch {
@@ -36,7 +39,7 @@ export async function verifyResetToken(token: string): Promise<string | null> {
 
 export async function verifyToken(token: string): Promise<JWTPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, secret);
+    const { payload } = await jwtVerify(token, resolveJwtSecret());
     return payload as unknown as JWTPayload;
   } catch {
     return null;

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { guard } from '@/lib/api-guard';
+import { courseUpdateSchema } from '@/lib/validators';
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { ok, response } = await guard();
@@ -24,9 +25,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const { id } = await params;
   const body = await req.json().catch(() => null);
   if (!body) return NextResponse.json({ error: 'Invalid body' }, { status: 400 });
+  const parsed = courseUpdateSchema.safeParse(body);
+  if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message || 'Invalid input' }, { status: 422 });
   const course = await prisma.course.findUnique({ where: { id } });
   if (!course || course.lecturerId !== user.userId) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  const updated = await prisma.course.update({ where: { id }, data: body });
+  const updated = await prisma.course.update({ where: { id }, data: parsed.data });
   return NextResponse.json({ course: updated });
 }
 

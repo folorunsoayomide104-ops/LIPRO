@@ -282,3 +282,15 @@ model AiConversationMaterial {
   @@index([conversationId])
   @@index([materialId])
 }
+
+// Shared rate-limit counter, backed by Postgres rather than in-memory state
+// because Vercel serverless functions don't share memory across instances —
+// an in-process Map would reset per cold start and be invisible to sibling
+// instances handling concurrent requests, making it useless as a limiter.
+model RateLimitHit {
+  id        String   @id @default(cuid())
+  key       String
+  createdAt DateTime @default(now())
+
+  @@index([key, createdAt])
+}

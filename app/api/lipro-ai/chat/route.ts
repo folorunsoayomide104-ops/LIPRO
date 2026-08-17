@@ -5,6 +5,7 @@ import { chatSchema } from '@/lib/validators';
 import { resolveAiProvider } from '@/lib/ai';
 import { MAX_UPLOAD_BYTES } from '@/lib/pdf';
 import { ingestMaterial } from '@/lib/materials/ingest';
+import { isTrustedBlobUrl } from '@/lib/blob-url';
 import { fetchRelevantChunks, buildRagContext } from '@/lib/rag';
 import { runLiproAiPipeline } from '@/lib/lipro/pipeline';
 import type { PipelineInput } from '@/lib/lipro/types';
@@ -62,6 +63,10 @@ export async function POST(req: Request) {
     const validFiles = files.filter((f): f is { url: string; name: string } => !!f.url && !!f.name);
     for (const fileInfo of validFiles) {
       const name = fileInfo.name || 'document.pdf';
+      if (!isTrustedBlobUrl(fileInfo.url)) {
+        failedFiles.push({ name, reason: 'Invalid file URL.' });
+        continue;
+      }
       try {
         const head = await fetch(fileInfo.url, { method: 'HEAD' }).catch(() => null);
         const len = Number(head?.headers.get('content-length') || 0);
