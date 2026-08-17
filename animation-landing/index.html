@@ -728,6 +728,62 @@
     }
 
     /* =========================================================
+       SPOTLIGHT GLOW — cursor-tracked radial highlight, injected by
+       JS (see SPOTLIGHT GLOW below in the script) as the last child
+       of every ice-block card. Own overflow:hidden + border-radius:
+       inherit (not on the card itself) so it clips to the card's
+       rounded shape without cutting off elements that intentionally
+       sit outside it — e.g. the "Most Popular" badge, pinned above
+       .pricing__card's top edge. z-index:-1 paints it above the
+       card's own background but below the card's in-flow content;
+       .feature-card is the one exception (it already layers a z-index:0
+       background + z-index:1 content), so it gets z-index:0 instead,
+       ordered after .feature-card__bg by the JS append.
+       ========================================================= */
+    .testi__card { position: relative; }
+    .spotlight-glow {
+      position: absolute; inset: 0; z-index: -1; pointer-events: none;
+      overflow: hidden; border-radius: inherit;
+      opacity: 0; transition: opacity 0.4s var(--ease-quart);
+    }
+    .feature-card .spotlight-glow { z-index: 0; }
+    .spotlight-glow::after {
+      content: ''; position: absolute; inset: -1px;
+      background: radial-gradient(220px circle at var(--mx, 50%) var(--my, 50%), rgba(127, 224, 255, 0.22), transparent 70%);
+    }
+    .feature-card:hover .spotlight-glow,
+    .why__card:hover .spotlight-glow,
+    .pricing__card:hover .spotlight-glow,
+    .testi__card:hover .spotlight-glow { opacity: 1; }
+    @media (hover: none), (prefers-reduced-motion: reduce) {
+      .spotlight-glow { display: none; }
+    }
+
+    /* =========================================================
+       PRICING BEAM — a traveling light beam reserved for the single
+       featured plan only, not spread across every card. Rare/delight
+       tier, not a state indicator, so it's suppressed under reduced
+       motion like the spotlight glow above.
+       ========================================================= */
+    .pricing__beam {
+      position: absolute; inset: 0; z-index: 2; pointer-events: none;
+      border-radius: inherit; overflow: hidden;
+    }
+    .pricing__beam::after {
+      content: ''; position: absolute; aspect-ratio: 1; width: 110px;
+      background: linear-gradient(to left, var(--accent), var(--accent-3), transparent);
+      offset-path: rect(0 auto auto 0 round var(--radius-xl));
+      offset-anchor: 90% 50%;
+      animation: pricing-beam 7s linear infinite;
+    }
+    @keyframes pricing-beam {
+      100% { offset-distance: 100%; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .pricing__beam { display: none; }
+    }
+
+    /* =========================================================
        WEBGL BACKGROUND — frozen landscape, fixed behind everything.
        Falls back to the existing static bg-deep colour (no canvas) if
        WebGL is unavailable — nothing above depends on it rendering.
@@ -1240,6 +1296,7 @@
         </div>
 
         <div class="pricing__card pricing__card--featured" data-reveal-stagger>
+          <div class="pricing__beam" aria-hidden="true"></div>
           <span class="pricing__badge">Most Popular</span>
           <div class="pricing__name">Premium</div>
           <div class="pricing__tagline">For students who want to stand out</div>
@@ -1652,6 +1709,30 @@
         });
         el.addEventListener('pointerleave', () => {
           gsap.to(el, { x: 0, y: 0, duration: 0.7, ease: 'elastic.out(1, 0.45)' });
+        });
+      });
+    }
+
+    /* =========================================================
+       SPOTLIGHT GLOW — cursor-tracked radial highlight on every
+       ice-block card. Injected here (as each card's last child)
+       rather than hardcoded per card in the markup, since there are
+       23 of them across features/why/pricing/testimonials. Sets
+       --mx/--my as percentages on the card itself; .spotlight-glow's
+       ::after (a descendant) picks them up via CSS inheritance — see
+       the SPOTLIGHT GLOW CSS rules above for the paint-order reasoning
+       (z-index differs for .feature-card vs the others).
+       ========================================================= */
+    if (!isTouch && !prefersReduced) {
+      document.querySelectorAll('.feature-card, .why__card, .pricing__card, .testi__card').forEach((card) => {
+        const glow = document.createElement('div');
+        glow.className = 'spotlight-glow';
+        glow.setAttribute('aria-hidden', 'true');
+        card.appendChild(glow);
+        card.addEventListener('pointermove', (e) => {
+          const rect = card.getBoundingClientRect();
+          card.style.setProperty('--mx', `${((e.clientX - rect.left) / rect.width) * 100}%`);
+          card.style.setProperty('--my', `${((e.clientY - rect.top) / rect.height) * 100}%`);
         });
       });
     }
