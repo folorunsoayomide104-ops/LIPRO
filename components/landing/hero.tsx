@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Sparkles, ArrowRight, Brain, BookOpen, Trophy } from 'lucide-react';
+import { BorderBeam } from './border-beam';
 
 export function LandingHero() {
   return (
@@ -26,7 +27,10 @@ export function LandingHero() {
 
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.3 }}
           className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <Link href="/register"><Button size="lg">Start learning free <ArrowRight className="h-4 w-4" /></Button></Link>
+          <div className="relative overflow-hidden rounded-xl">
+            <Link href="/register"><Button size="lg">Start learning free <ArrowRight className="h-4 w-4" /></Button></Link>
+            <BorderBeam size={60} duration={6} colorFrom="#c084fc" colorTo="#818cf8" />
+          </div>
           <Link href="/login"><Button variant="outline" size="lg">Try the demo</Button></Link>
         </motion.div>
 

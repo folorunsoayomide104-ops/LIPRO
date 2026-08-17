@@ -95,8 +95,12 @@ module.exports = {
         'scale-in': 'scaleIn 0.2s ease-out',
         'pulse-soft': 'pulseSoft 2s ease-in-out infinite',
         'message-in': 'messageIn 0.25s ease-out',
+        'border-beam': 'border-beam calc(var(--duration)*1s) infinite linear',
       },
       keyframes: {
+        'border-beam': {
+          '100%': { offsetDistance: '100%' },
+        },
         fadeIn: {
           '0%': { opacity: '0' },
           '100%': { opacity: '1' },

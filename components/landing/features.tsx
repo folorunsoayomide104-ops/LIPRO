@@ -1,6 +1,7 @@
 'use client';
 import { motion } from 'framer-motion';
 import { Brain, BookOpen, Trophy, Wallet, Bell, Sparkles, FileText, Calendar } from 'lucide-react';
+import { SpotlightCard } from './spotlight-card';
 
 const FEATURES = [
   { icon: Brain, title: 'LIPRO AI', desc: 'A tutor that understands your courses and PDFs. Generate summaries, flashcards, MCQs, essays and revision guides on demand.' },
@@ -27,13 +28,13 @@ export function LandingFeatures() {
           {FEATURES.map((f, i) => (
             <motion.div key={f.title} initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
               transition={{ duration: 0.5, delay: 0.05 * i }}>
-              <div className="card">
+              <SpotlightCard className="card">
                 <div className="grid h-11 w-11 place-items-center rounded-xl bg-gradient-to-br from-lipro-500/20 to-lipro-700/20 text-lipro-600 dark:text-lipro-300">
                   <f.icon className="h-5 w-5" />
                 </div>
                 <h3 className="mt-4 font-semibold">{f.title}</h3>
                 <p className="mt-1 text-sm text-lipro-700/70 dark:text-lipro-200/70">{f.desc}</p>
-              </div>
+              </SpotlightCard>
             </motion.div>
           ))}
         </div>

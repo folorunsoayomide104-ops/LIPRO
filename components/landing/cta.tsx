@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Check } from 'lucide-react';
+import { SpotlightCard } from './spotlight-card';
 
 const PLANS = [
   { name: 'Free', price: '₦0', period: 'forever', features: ['Browse public notes', 'Limited AI questions', 'Practice mode (5 questions/day)', 'Community leaderboard'], cta: 'Start free', href: '/register', highlight: false },
@@ -24,7 +25,10 @@ export function LandingCTA() {
           {PLANS.map((plan, i) => (
             <motion.div key={plan.name} initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
               transition={{ duration: 0.5, delay: 0.08 * i }}>
-              <div className={`card relative ${plan.highlight ? 'border-lipro-400 ring-2 ring-lipro-400/40' : ''}`}>
+              <SpotlightCard
+                className={`card ${plan.highlight ? 'border-lipro-400 ring-2 ring-lipro-400/40' : ''}`}
+                spotlightColor={plan.highlight ? 'rgba(168, 85, 247, 0.35)' : 'rgba(168, 85, 247, 0.2)'}
+              >
               {plan.highlight && (
                 <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-gradient-to-r from-lipro-500 to-lipro-700 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-white">
                   Most popular
@@ -46,7 +50,7 @@ export function LandingCTA() {
               <div className="mt-8">
                 <Link href={plan.href}><Button className="w-full" variant={plan.highlight ? 'primary' : 'outline'}>{plan.cta}</Button></Link>
               </div>
-            </div>
+              </SpotlightCard>
           </motion.div>
           ))}
         </div>
