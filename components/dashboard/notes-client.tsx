@@ -122,7 +122,10 @@ function GenerateRevisionGuide({
 }) {
   const [materialId, setMaterialId] = useState(materials[0]?.id ?? '');
   const material = materials.find((m) => m.id === materialId);
-  const [courseId, setCourseId] = useState(material?.courseId ?? courses[0]?.id ?? '');
+  // Empty string means "no course" — a study document isn't always tied to
+  // a formal course, so this is a real, selectable option, not just a
+  // fallback for when the course list happens to be empty.
+  const [courseId, setCourseId] = useState(material?.courseId ?? '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [progressNote, setProgressNote] = useState('');
@@ -134,7 +137,7 @@ function GenerateRevisionGuide({
   };
 
   const submit = async () => {
-    if (!materialId || !courseId) return;
+    if (!materialId) return;
     setLoading(true);
     setError('');
     setProgressNote('Reading the document page by page — this can take a minute for longer files…');
@@ -142,7 +145,7 @@ function GenerateRevisionGuide({
       const res = await fetch(`/api/materials/${materialId}/revision-guide`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ save: true, courseId }),
+        body: JSON.stringify({ save: true, courseId: courseId || null }),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
@@ -155,7 +158,7 @@ function GenerateRevisionGuide({
         title: data.title,
         content: data.content,
         tags: 'revision-guide',
-        courseId: courseId,
+        courseId: courseId || null,
         courseCode: course?.code ?? null,
         updatedAt: new Date().toISOString(),
       });
@@ -191,20 +194,20 @@ function GenerateRevisionGuide({
           </select>
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-lipro-600/70 dark:text-lipro-200/60">Save under course</label>
+          <label className="mb-1 block text-xs font-medium text-lipro-600/70 dark:text-lipro-200/60">Save under course (optional)</label>
           <select
             value={courseId}
             onChange={(e) => setCourseId(e.target.value)}
             className="w-full rounded-xl border border-lipro-300/50 bg-white/70 px-4 py-2.5 text-sm outline-none focus:border-lipro-400 dark:border-lipro-700/40 dark:bg-surface-dark/60"
           >
-            {courses.length === 0 && <option value="">No courses available</option>}
+            <option value="">General (no course)</option>
             {courses.map((c) => <option key={c.id} value={c.id}>{c.code} — {c.title}</option>)}
           </select>
         </div>
         {error && <p className="text-xs text-rose-500">{error}</p>}
         {loading && progressNote && <p className="text-xs text-lipro-600/60 dark:text-lipro-200/50">{progressNote}</p>}
         <div className="flex gap-2">
-          <Button size="sm" onClick={submit} disabled={loading || !materialId || !courseId}>{loading ? 'Generating…' : 'Generate'}</Button>
+          <Button size="sm" onClick={submit} disabled={loading || !materialId}>{loading ? 'Generating…' : 'Generate'}</Button>
           <Button size="sm" variant="ghost" onClick={onCancel}>Cancel</Button>
         </div>
       </CardContent>

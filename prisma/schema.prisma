@@ -76,8 +76,11 @@ model Note {
   id        String   @id @default(cuid())
   title     String
   content   String
-  courseId  String
-  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  // Optional: a note (e.g. a revision guide generated from an uploaded
+  // document) isn't always tied to a formal course — SetNull rather than
+  // Cascade so deleting a course never destroys a student's own notes.
+  courseId  String?
+  course    Course?  @relation(fields: [courseId], references: [id], onDelete: SetNull)
   userId    String
   user      User     @relation(fields: [userId], references: [id])
   tags      String?

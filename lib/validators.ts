@@ -35,7 +35,7 @@ export const courseUpdateSchema = courseSchema.partial();
 export const noteSchema = z.object({
   title: z.string().min(2),
   content: z.string().min(1),
-  courseId: z.string().min(1),
+  courseId: z.string().min(1).nullable().optional(),
   tags: z.string().optional(),
 });
 

@@ -21,12 +21,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const save = body?.save === true;
   const requestedCourseId: string | undefined = typeof body?.courseId === 'string' ? body.courseId : undefined;
 
-  let courseId: string | null = null;
-  if (save) {
-    courseId = requestedCourseId ?? material.courseId ?? null;
-    if (!courseId) {
-      return NextResponse.json({ error: 'Select a course to save this revision guide as a note.' }, { status: 422 });
-    }
+  // A course is optional — a study document isn't always tied to a formal
+  // course, so this only validates one when the caller actually supplied it.
+  const courseId: string | null = requestedCourseId ?? material.courseId ?? null;
+  if (save && courseId) {
     const course = await prisma.course.findUnique({ where: { id: courseId }, select: { id: true } });
     if (!course) return NextResponse.json({ error: 'Course not found' }, { status: 404 });
   }
@@ -51,7 +49,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const title = `Revision guide — ${material.originalName}`;
 
   let noteId: string | null = null;
-  if (save && courseId) {
+  if (save) {
     const note = await prisma.note.create({
       data: {
         title,
