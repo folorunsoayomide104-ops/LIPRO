@@ -103,11 +103,6 @@ function LoginForm() {
         <p className="mt-6 text-center text-sm text-lipro-600/70 dark:text-lipro-200/60">
           New here? <Link href="/register" className="font-medium text-lipro-600 hover:underline">Create an account</Link>
         </p>
-        <div className="mt-4 rounded-xl bg-lipro-50/50 p-3 text-xs text-lipro-700/80 dark:bg-lipro-950/30 dark:text-lipro-200/70">
-          <div className="font-semibold mb-1">Demo accounts (password: Password123!):</div>
-          <div>superadmin@lipro.academy · admin@lipro.academy</div>
-          <div>lecturer@lipro.academy · student@lipro.academy</div>
-        </div>
         <p className="mt-6 text-center text-sm text-lipro-600/70 dark:text-lipro-200/60">
           <Link href="/" className="font-medium text-lipro-600 hover:underline">Visit homepage</Link>
         </p>
