@@ -91,8 +91,15 @@ export async function ingestMaterial(params: IngestMaterialParams): Promise<Inge
   }
 
   let text: string;
+  let pageOffsets: number[] = [];
   try {
-    text = info.isImage ? await extractTextFromImage(buffer, userId) : (await extractText(buffer, info.mimeType)).text;
+    if (info.isImage) {
+      text = await extractTextFromImage(buffer, userId);
+    } else {
+      const extracted = await extractText(buffer, info.mimeType);
+      text = extracted.text;
+      pageOffsets = extracted.pageOffsets ?? [];
+    }
   } catch (err: any) {
     return { ok: false, status: 422, error: err?.message || 'Failed to read the file' };
   }
@@ -109,6 +116,7 @@ export async function ingestMaterial(params: IngestMaterialParams): Promise<Inge
       sizeBytes: buffer.length,
       status: 'ready',
       text,
+      pageOffsets,
     },
   });
 

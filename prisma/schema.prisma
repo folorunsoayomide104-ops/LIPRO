@@ -124,6 +124,11 @@ model Material {
   sizeBytes    Int
   status       String   @default("ready")
   text         String?
+  // Character offsets into `text` where each PDF page begins, so revision
+  // guides can be generated per real page. Empty for non-PDF sources and for
+  // materials ingested before this field existed — those fall back to
+  // synthetic section splitting (see lib/revision-guide-gen.ts).
+  pageOffsets  Int[]    @default([])
   createdAt    DateTime @default(now())
 
   user      User       @relation(fields: [userId], references: [id])

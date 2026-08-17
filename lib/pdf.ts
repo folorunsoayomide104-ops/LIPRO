@@ -17,7 +17,13 @@ async function ensureDomPolyfills() {
 export type ExtractResult = {
   text: string;
   truncated: boolean;
+  /** Offsets into `text` where each PDF page begins. Only set for multi-page PDFs. */
+  pageOffsets?: number[];
 };
+
+function collapse(raw: string): string {
+  return raw.replace(/\r\n/g, '\n').replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
+}
 
 export const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 
@@ -36,6 +42,7 @@ function looksLikeDocx(buffer: Buffer, mimeType: string): boolean {
 
 export async function extractText(buffer: Buffer, mimeType: string): Promise<ExtractResult> {
   let raw = '';
+  let pageOffsets: number[] | undefined;
 
   if (mimeType === 'application/pdf' || buffer.subarray(0, 5).toString('latin1') === '%PDF-') {
     try {
@@ -43,8 +50,24 @@ export async function extractText(buffer: Buffer, mimeType: string): Promise<Ext
       const { PDFParse } = await import('pdf-parse');
       const parser = new PDFParse({ data: buffer });
       const parsed = await parser.getText();
-      raw = parsed.text || '';
       await parser.destroy().catch(() => undefined);
+
+      // Collapse each page independently, then join, so offsets computed here
+      // stay valid in the final collapsed text — collapsing the whole
+      // concatenation afterward could shift them (whitespace at page seams).
+      const pages = (parsed.pages || []).map((p) => collapse(p.text || '')).filter((t) => t.length > 0);
+      if (pages.length > 1) {
+        const offsets: number[] = [];
+        let acc = '';
+        for (const pageText of pages) {
+          offsets.push(acc.length);
+          acc = acc ? `${acc}\n\n${pageText}` : pageText;
+        }
+        raw = acc;
+        pageOffsets = offsets;
+      } else {
+        raw = parsed.text || pages[0] || '';
+      }
     } catch (err: any) {
       throw new Error(`Could not read this PDF: ${err?.message || 'unknown error'}`);
     }
@@ -69,10 +92,13 @@ export async function extractText(buffer: Buffer, mimeType: string): Promise<Ext
     raw = buffer.toString('utf8');
   }
 
-  const collapsed = raw.replace(/\r\n/g, '\n').replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
+  // Already collapsed per-page above when pageOffsets is set — collapsing again is a no-op.
+  const collapsed = pageOffsets ? raw : collapse(raw);
   if (collapsed.length === 0) {
     throw new Error('No readable text found. This file may be a scanned image PDF — try a text-based PDF.');
   }
   const truncated = collapsed.length > MAX_TEXT_CHARS;
-  return { text: truncated ? collapsed.slice(0, MAX_TEXT_CHARS) : collapsed, truncated };
+  const finalText = truncated ? collapsed.slice(0, MAX_TEXT_CHARS) : collapsed;
+  const finalOffsets = pageOffsets ? pageOffsets.filter((o) => o < finalText.length) : undefined;
+  return { text: finalText, truncated, pageOffsets: finalOffsets };
 }
