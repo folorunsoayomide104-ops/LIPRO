@@ -1,6 +1,6 @@
 'use client';
 import { useMemo, useState } from 'react';
-import { Layers, Plus, Sparkles, Trash2, X, Check, RotateCcw, ChevronLeft } from 'lucide-react';
+import { Layers, Plus, Sparkles, X, Check, RotateCcw, ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
@@ -129,7 +129,7 @@ export function FlashcardsClient({ initialCards, materials }: { initialCards: Fl
           </div>
           <div>
             <p className="font-medium">No flashcards yet</p>
-            <p className="mt-1 text-sm text-lipro-600/60 dark:text-lipro-300/60">Generate a set from a document you've already uploaded, or add one manually.</p>
+            <p className="mt-1 text-sm text-lipro-600/60 dark:text-lipro-300/60">Generate a set from a document you&apos;ve already uploaded, or add one manually.</p>
           </div>
         </div>
       ) : (
@@ -257,7 +257,7 @@ function GenerateFromDocument({ materials, onGenerated, onCancel }: { materials:
     return (
       <Card>
         <CardContent>
-          <p className="text-sm text-lipro-600/70 dark:text-lipro-200/60">Upload a document in LIPRO AI or the CBT PDF tool first — flashcards generate from a document's text.</p>
+          <p className="text-sm text-lipro-600/70 dark:text-lipro-200/60">Upload a document in LIPRO AI or the CBT PDF tool first — flashcards generate from a document&apos;s text.</p>
           <Button size="sm" variant="ghost" onClick={onCancel}>Close</Button>
         </CardContent>
       </Card>
@@ -367,7 +367,7 @@ function StudySession({ cards, onExit, onReview }: { cards: FlashcardRow[]; onEx
       ) : (
         <div className="flex justify-center gap-3">
           <Button variant="outline" onClick={() => answer(false)} className="border-rose-300/60 text-rose-600 hover:bg-rose-50 dark:border-rose-800/40 dark:hover:bg-rose-950/30">
-            <X className="h-4 w-4" /> Didn't know
+            <X className="h-4 w-4" /> Didn&apos;t know
           </Button>
           <Button onClick={() => answer(true)}><Check className="h-4 w-4" /> Knew it</Button>
         </div>

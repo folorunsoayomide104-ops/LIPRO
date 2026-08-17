@@ -2,16 +2,25 @@ import { NextResponse, type NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 import { resolveJwtSecret } from "./lib/jwt-secret";
 
-const PUBLIC_PATHS = ["/", "/login", "/register", "/privacy", "/terms", "/about"];
+// Fail-closed by design: PUBLIC_PATHS is the allowlist, everything else
+// requires auth by default. The previous version inverted this — a growing
+// list of *protected* prefixes, public unless explicitly listed — which
+// fails open: /flashcards shipped without anyone remembering to add it here,
+// and relied entirely on its own page-level getSession() check for auth. A
+// page that forgets that check too would have been silently public. This
+// version can't repeat that failure mode; a new page is protected by default.
+const PUBLIC_PATHS = [
+  "/", "/about", "/logo", "/preview", "/privacy", "/terms",
+  "/login", "/register", "/forgot-password", "/reset-password",
+  "/help-center", "/documentation", "/support", "/cookie-policy",
+  "/manifest.webmanifest", // PWA manifest — browsers fetch this unauthenticated
+];
 const PUBLIC_API = ["/api/auth/register", "/api/auth/login", "/api/auth/forgot-password", "/api/auth/reset-password", "/api/paystack/webhook"];
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   if (PUBLIC_API.some((p) => pathname.startsWith(p))) return NextResponse.next();
-  if (PUBLIC_PATHS.includes(pathname) || pathname.startsWith("/_next") || pathname.startsWith("/static") || pathname.match(/\.(svg|png|jpg|ico|css|js)$/)) {
-    return NextResponse.next();
-  }
-  if (!pathname.startsWith("/api") && !pathname.startsWith("/student") && !pathname.startsWith("/lecturer") && !pathname.startsWith("/admin") && !pathname.startsWith("/super-admin") && !pathname.startsWith("/courses") && !pathname.startsWith("/notes") && !pathname.startsWith("/cbt") && !pathname.startsWith("/lipro-ai") && !pathname.startsWith("/wallet") && !pathname.startsWith("/subscription") && !pathname.startsWith("/settings") && !pathname.startsWith("/dashboard")) {
+  if (PUBLIC_PATHS.includes(pathname) || pathname.startsWith("/_next") || pathname.startsWith("/static") || pathname.match(/\.(svg|png|jpg|ico|css|js|html)$/)) {
     return NextResponse.next();
   }
   const token = req.cookies.get("lipro_token")?.value;
