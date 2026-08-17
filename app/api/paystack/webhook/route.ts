@@ -22,23 +22,56 @@ export async function POST(req: NextRequest) {
   if (event !== 'charge.success') return NextResponse.json({ ok: true });
 
   const metadata = body?.data?.metadata;
-  if (!metadata?.userId || !metadata?.tier) return NextResponse.json({ ok: true });
+  if (!metadata?.userId) return NextResponse.json({ ok: true });
 
   const ref = body?.data?.reference;
   const amount = (body?.data?.amount || 0) / 100;
-  const expiry = new Date();
-  expiry.setMonth(expiry.getMonth() + 1);
+  if (!ref) return NextResponse.json({ ok: true });
 
-  await prisma.user.update({
-    where: { id: metadata.userId },
-    data: { subscriptionTier: metadata.tier, subscriptionExpiry: expiry, paystackCustomerId: body?.data?.customer?.customer_code || null },
-  });
-  await prisma.walletTxn.create({
-    data: { userId: metadata.userId, type: 'DEBIT', amount, reference: ref, status: 'completed' },
-  });
-  await prisma.notification.create({
-    data: { userId: metadata.userId, type: 'PAYMENT', title: 'Subscription activated', message: `Your ${metadata.tier} subscription is now active.` },
-  });
+  // Idempotency fast-path: Paystack retries undelivered webhooks and can
+  // legitimately fire the same event more than once. WalletTxn.reference is
+  // now @unique, which is the real guarantee against a race between two
+  // near-simultaneous deliveries (caught below); this check just avoids
+  // doing the work twice in the common non-racing case.
+  const already = await prisma.walletTxn.findUnique({ where: { reference: ref } });
+  if (already) return NextResponse.json({ ok: true });
+
+  try {
+    if (metadata.type === 'WALLET_FUND') {
+      await prisma.$transaction([
+        prisma.user.update({ where: { id: metadata.userId }, data: { walletBalance: { increment: amount } } }),
+        prisma.walletTxn.create({
+          data: { userId: metadata.userId, type: 'CREDIT', amount, reference: ref, status: 'completed' },
+        }),
+        prisma.notification.create({
+          data: { userId: metadata.userId, type: 'PAYMENT', title: 'Wallet funded', message: `₦${amount.toLocaleString()} was added to your wallet.` },
+        }),
+      ]);
+    } else if (metadata.tier) {
+      const expiry = new Date();
+      expiry.setMonth(expiry.getMonth() + 1);
+      await prisma.$transaction([
+        prisma.user.update({
+          where: { id: metadata.userId },
+          data: { subscriptionTier: metadata.tier, subscriptionExpiry: expiry, paystackCustomerId: body?.data?.customer?.customer_code || null },
+        }),
+        prisma.walletTxn.create({
+          data: { userId: metadata.userId, type: 'DEBIT', amount, reference: ref, status: 'completed' },
+        }),
+        prisma.notification.create({
+          data: { userId: metadata.userId, type: 'PAYMENT', title: 'Subscription activated', message: `Your ${metadata.tier} subscription is now active.` },
+        }),
+      ]);
+    }
+  } catch (err: any) {
+    // P2002 = unique constraint violation on reference — a second webhook
+    // delivery raced this one and won; the payment is already recorded, so
+    // this is a safe no-op rather than a real failure.
+    if (err?.code !== 'P2002') {
+      console.error('Paystack webhook processing failed:', err?.message || err);
+      return NextResponse.json({ error: 'Processing failed' }, { status: 500 });
+    }
+  }
 
   return NextResponse.json({ ok: true });
 }

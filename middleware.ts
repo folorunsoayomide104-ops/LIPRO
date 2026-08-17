@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { jwtVerify } from "jose";
+import { resolveJwtSecret } from "./lib/jwt-secret";
 
 const PUBLIC_PATHS = ["/", "/login", "/register", "/privacy", "/terms", "/about"];
 const PUBLIC_API = ["/api/auth/register", "/api/auth/login", "/api/auth/forgot-password", "/api/auth/reset-password", "/api/paystack/webhook"];
@@ -21,8 +22,7 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(url);
   }
   try {
-    const secret = new TextEncoder().encode(process.env.JWT_SECRET || "dev-secret-change-me-in-production-please-yes-yes");
-    await jwtVerify(token, secret);
+    await jwtVerify(token, resolveJwtSecret());
     return NextResponse.next();
   } catch {
     const url = req.nextUrl.clone();

@@ -116,8 +116,16 @@ export async function POST(req: Request) {
 
   let conversation: any = null;
   if (conversationId) {
-    conversation = await prisma.aiConversation.findUnique({
-      where: { id: conversationId },
+    // findFirst scoped by userId, not findUnique by id alone — otherwise
+    // any authenticated user who obtains another user's conversationId
+    // (a leaked link, a screenshot, browser history) could inject messages
+    // into that conversation and have the server load its full prior
+    // history and attached document text as context, then simply ask the
+    // model to repeat it back. If the id doesn't belong to this user,
+    // conversation stays null and the code below correctly starts a fresh
+    // conversation instead of touching someone else's.
+    conversation = await prisma.aiConversation.findFirst({
+      where: { id: conversationId, userId: user.userId },
       include: { materials: { include: { material: { select: { originalName: true, text: true } } } } },
     });
   }

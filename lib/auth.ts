@@ -1,10 +1,9 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import type { Role, JWTPayload } from "@/types";
+import { resolveJwtSecret } from "./jwt-secret";
 
-const secret = new TextEncoder().encode(
-  process.env.JWT_SECRET || "dev-secret-change-me-in-production-please-yes-yes"
-);
+const secret = resolveJwtSecret();
 
 export const TOKEN_COOKIE = "lipro_token";
 export const RESET_TOKEN_TTL_SECONDS = 60 * 30; // 30 minutes

@@ -236,7 +236,7 @@ model WalletTxn {
   user      User     @relation(fields: [userId], references: [id])
   type      String
   amount    Float
-  reference String?
+  reference String?  @unique
   status    String   @default("completed")
   createdAt DateTime @default(now())
 
