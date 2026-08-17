@@ -39,6 +39,19 @@ export const noteSchema = z.object({
   tags: z.string().optional(),
 });
 
+export const flashcardSchema = z.object({
+  front: z.string().min(1).max(500),
+  back: z.string().min(1).max(2000),
+  courseId: z.string().min(1).nullable().optional(),
+  materialId: z.string().min(1).nullable().optional(),
+});
+
+export const flashcardUpdateSchema = flashcardSchema.partial();
+
+export const flashcardReviewSchema = z.object({
+  correct: z.boolean(),
+});
+
 /**
  * Types accepted on WRITE. Reads deliberately treat `Question.type` as a plain
  * string — older rows may hold MATCHING/IMAGE, and the runner falls back to a

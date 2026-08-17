@@ -4,10 +4,14 @@ import { guard } from '@/lib/api-guard';
 import { noteSchema } from '@/lib/validators';
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { ok, response } = await guard();
-  if (!ok) return response!;
+  const { ok, user, response } = await guard();
+  if (!ok || !user) return response!;
   const { id } = await params;
-  const note = await prisma.note.findUnique({ where: { id }, include: { course: true } });
+  // findFirst scoped by userId, not findUnique by id alone — this was the
+  // one Medium finding from the pre-launch audit left open (PATCH/DELETE on
+  // this same file already check ownership; GET didn't, so any authenticated
+  // user who knew/guessed a note id could read someone else's private note).
+  const note = await prisma.note.findFirst({ where: { id, userId: user.userId }, include: { course: true } });
   if (!note) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   return NextResponse.json({ note });
 }

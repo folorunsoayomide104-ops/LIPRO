@@ -41,6 +41,7 @@ model User {
   aiConversations   AiConversation[]
   materials         Material[]
   documentChunks    DocumentChunk[]
+  flashcards        Flashcard[]
 
   @@index([role])
   @@index([university, faculty, department])
@@ -65,6 +66,7 @@ model Course {
   questions    Question[]
   examSessions ExamSession[]
   materials    Material[]
+  flashcards   Flashcard[]
 
   @@index([lecturerId])
   @@index([faculty, department, level])
@@ -130,9 +132,35 @@ model Material {
   aiConversations AiConversationMaterial[]
   documentChunks DocumentChunk[]
   examSessions ExamSession[]
+  flashcards Flashcard[]
 
   @@index([userId])
   @@index([courseId])
+}
+
+model Flashcard {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId   String?
+  course     Course?   @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  materialId String?
+  material   Material? @relation(fields: [materialId], references: [id], onDelete: SetNull)
+  front      String
+  back       String
+
+  // Lightweight review tracking (not full spaced-repetition scheduling —
+  // the landing page copy never promised that, just "Flashcards").
+  timesSeen      Int       @default(0)
+  timesCorrect   Int       @default(0)
+  lastReviewedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([courseId])
+  @@index([materialId])
 }
 
 model DocumentChunk {

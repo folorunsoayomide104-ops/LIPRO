@@ -3,7 +3,7 @@ import { ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  LayoutDashboard, BookOpen, StickyNote, Brain, Wallet as WalletIcon, Bell, Settings, LogOut, Menu, Home, ArrowRight, MoreHorizontal, Smartphone, Monitor
+  LayoutDashboard, BookOpen, StickyNote, Layers, Brain, Wallet as WalletIcon, Bell, Settings, LogOut, Menu, Home, ArrowRight, MoreHorizontal, Smartphone, Monitor
 } from 'lucide-react';
 import { LiproLogo } from '@/components/LiproLogo';
 import { cn } from '@/lib/utils';
@@ -16,18 +16,18 @@ const NAV = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Courses', href: '/courses', icon: BookOpen },
   { label: 'Notes', href: '/notes', icon: StickyNote },
+  { label: 'Flashcards', href: '/flashcards', icon: Layers },
   { label: 'CBT Engine', href: '/cbt', icon: Brain },
   { label: 'LIPRO AI', href: '/lipro-ai', icon: LiproLogo, highlight: true },
   { label: 'Wallet', href: '/wallet', icon: WalletIcon },
   { label: 'Settings', href: '/settings', icon: Settings },
 ];
 
-const MOBILE_TABS = [
-  NAV[0], // Dashboard
-  NAV[1], // Courses
-  NAV[3], // CBT Engine
-  NAV[4], // LIPRO AI
-];
+// Looked up by href rather than fixed indices into NAV — a positional
+// reference silently breaks (points at the wrong tab) the moment NAV grows
+// or reorders, which is exactly what adding Flashcards above just did.
+const MOBILE_TAB_HREFS = ['/dashboard', '/courses', '/cbt', '/lipro-ai'];
+const MOBILE_TABS = MOBILE_TAB_HREFS.map((href) => NAV.find((item) => item.href === href)!);
 
 export function LayoutShell({ children, roleLabel }: { children: ReactNode; roleLabel?: string }) {
   const pathname = usePathname();
