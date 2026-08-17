@@ -3,13 +3,15 @@ import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
-import { Sparkles, ArrowRight, GraduationCap, FileText, MessageSquare, Brain, TrendingUp, PieChart, Bell } from 'lucide-react';
+import { Sparkles, ArrowRight, GraduationCap, FileText, MessageSquare, Brain, TrendingUp, PieChart, Bell, Target } from 'lucide-react';
 import { LiproLogo } from '@/components/LiproLogo';
 import StatTiles from '@/components/dashboard/stat-tiles';
 import ScoreTrend from '@/components/dashboard/score-trend';
 import TypeDonut from '@/components/dashboard/type-donut';
 import RecentAttempts from '@/components/dashboard/recent-attempts';
 import AmbientBackground from '@/components/dashboard/ambient-bg';
+import WeakTopics from '@/components/dashboard/weak-topics';
+import { getWeakTopics } from '@/lib/weak-topics';
 
 const TYPE_ORDER = ['MCQ', 'TRUE_FALSE', 'FILL_BLANK', 'THEORY', 'ESSAY'];
 
@@ -18,7 +20,7 @@ export default async function StudentDashboard() {
   if (!session) redirect('/login');
   if (session.role !== 'STUDENT') redirect(`/dashboard`);
 
-  const [courses, recentAttempts, notes, me, questionTypes, courseCount, attemptCount, noteCount, notices] = await Promise.all([
+  const [courses, recentAttempts, notes, me, questionTypes, courseCount, attemptCount, noteCount, notices, weakTopics] = await Promise.all([
     prisma.course.findMany({
       where: { faculty: { not: undefined }, OR: [{ level: '100' }, { level: '200' }, { level: '300' }, { level: '400' }, { level: '500' }] },
       include: { _count: { select: { notes: true, questions: true } }, lecturer: { select: { fullName: true, avatarUrl: true } } },
@@ -43,6 +45,7 @@ export default async function StudentDashboard() {
       where: { userId: session.userId },
       orderBy: { createdAt: 'desc' }, take: 4,
     }),
+    getWeakTopics(session.userId),
   ]);
 
   const initials = (me?.fullName || 'S').split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase();
@@ -160,6 +163,20 @@ export default async function StudentDashboard() {
               <TypeDonut slices={typeDist} />
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* Weak topics */}
+      <section className="enter glass relative overflow-hidden rounded-2xl p-6" style={{ animationDelay: '90ms' }}>
+        <AmbientBackground variant="dots" />
+        <div className="relative">
+          <div className="mb-4">
+            <h2 className="heading flex items-center gap-2 text-lg font-bold">
+              <Target className="h-4 w-4 text-lipro-500" /> Weak topics
+            </h2>
+            <p className="text-sm text-lipro-600/60 dark:text-lipro-200/50">Courses and documents where your CBT accuracy is lowest</p>
+          </div>
+          <WeakTopics topics={weakTopics} />
         </div>
       </section>
 
