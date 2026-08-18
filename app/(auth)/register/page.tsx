@@ -68,35 +68,43 @@ export default function RegisterPage() {
     router.push('/dashboard');
   };
 
+  // Palette-only reskin of this one page, matching a warm cream + golden-
+  // amber reference: local overrides on top of the shared .card/Input/
+  // Button components (utility classes beat their `.glass`/@apply rules in
+  // Tailwind's layer order), not a change to any global token — every other
+  // page keeps the app's usual violet palette untouched.
+  const inputClass = 'border-[#e7e0cc] bg-[#f8f6ee] text-[#211d14] placeholder:text-[#a89f85] focus:border-[#e0b23a] focus:ring-[#e0b23a]/20 dark:border-[#39321f] dark:bg-[#221d13] dark:text-[#f3ecd6] dark:placeholder:text-[#8a8064]';
+  const linkClass = 'font-medium text-[#8a6a14] hover:underline dark:text-[#e0b23a]';
+
   return (
-    <div className="grid min-h-screen place-items-center p-4">
-      <div className="card w-full max-w-2xl">
+    <div className="grid min-h-screen place-items-center bg-gradient-to-br from-[#eeece5] via-[#f3ecd7] to-[#f7e6ae] p-4 dark:from-[#161310] dark:via-[#1c170d] dark:to-[#221a09]">
+      <div className="card w-full max-w-2xl !border-[#ece4c9] !bg-[#fbfaf5] shadow-xl shadow-[#c9a227]/10 dark:!border-[#39321f] dark:!bg-[#1c1810]">
         <div className="mb-6 flex items-center gap-2">
-          <div className="grid h-10 w-10 place-items-center rounded-xl bg-[#0a0a0c] ring-1 ring-white/10">
+          <div className="grid h-10 w-10 place-items-center rounded-xl bg-[#221d13] ring-1 ring-[#e0b23a]/30">
             <LiproLogo className="h-6 w-6" />
           </div>
           <div>
-            <h1 className="text-xl font-bold tracking-tight">Create your LIPRO account</h1>
-            <p className="text-xs text-lipro-600/70 dark:text-lipro-200/60">
+            <h1 className="text-xl font-bold tracking-tight text-[#221d13] dark:text-[#f3ecd6]">Create your LIPRO account</h1>
+            <p className="text-xs text-[#8a8064] dark:text-[#a89f85]">
               {googlePending ? 'Finish setting up your account' : 'Join thousands of Nigerian university students'}
             </p>
           </div>
         </div>
         {googlePending && (
-          <div className="mb-4 rounded-xl border border-lipro-200/60 bg-lipro-50/60 px-3 py-2 text-xs text-lipro-700 dark:border-lipro-700/30 dark:bg-lipro-950/30 dark:text-lipro-200">
+          <div className="mb-4 rounded-xl border border-[#e7e0cc] bg-[#f8f2d8] px-3 py-2 text-xs text-[#5c4a10] dark:border-[#39321f] dark:bg-[#2a230f] dark:text-[#e0b23a]">
             Signing up with Google as <span className="font-semibold">{googlePending.email}</span>. We just need a few more details to match you with your university.
           </div>
         )}
-        {checkingGoogle && <p className="mb-4 text-xs text-lipro-600/60">Checking your Google sign-in…</p>}
+        {checkingGoogle && <p className="mb-4 text-xs text-[#8a8064] dark:text-[#a89f85]">Checking your Google sign-in…</p>}
         <form onSubmit={submit} className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div><Label>Full name</Label><Input value={form.fullName} onChange={set('fullName')} required /></div>
+          <div><Label className="text-[#6b6350] dark:text-[#a89f85]">Full name</Label><Input value={form.fullName} onChange={set('fullName')} required className={inputClass} /></div>
           <div>
-            <Label>Email</Label>
-            <Input type="email" value={form.email} onChange={set('email')} required disabled={!!googlePending} className={googlePending ? 'opacity-60' : undefined} />
+            <Label className="text-[#6b6350] dark:text-[#a89f85]">Email</Label>
+            <Input type="email" value={form.email} onChange={set('email')} required disabled={!!googlePending} className={`${inputClass} ${googlePending ? 'opacity-60' : ''}`} />
           </div>
           {!googlePending && (
             <div>
-              <Label>Password</Label>
+              <Label className="text-[#6b6350] dark:text-[#a89f85]">Password</Label>
               <div className="relative">
                 <Input
                   type={showPassword ? 'text' : 'password'}
@@ -104,59 +112,63 @@ export default function RegisterPage() {
                   onChange={set('password')}
                   required
                   minLength={8}
-                  className="pr-10"
+                  className={`${inputClass} pr-10`}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((s) => !s)}
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-lipro-600/60 transition-colors hover:text-lipro-600 dark:text-lipro-300/60 dark:hover:text-lipro-200"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#a89f85] transition-colors hover:text-[#8a6a14] dark:hover:text-[#e0b23a]"
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
             </div>
           )}
-          <div><Label>Matric number</Label><Input value={form.matricNumber} onChange={set('matricNumber')} required /></div>
-          <div className="md:col-span-2"><Label>University</Label><Input value={form.university} onChange={set('university')} placeholder="University of Lagos" required /></div>
-          <div><Label>Faculty</Label><Input value={form.faculty} onChange={set('faculty')} placeholder="Science" required /></div>
-          <div><Label>Department</Label><Input value={form.department} onChange={set('department')} placeholder="Computer Science" required /></div>
+          <div><Label className="text-[#6b6350] dark:text-[#a89f85]">Matric number</Label><Input value={form.matricNumber} onChange={set('matricNumber')} required className={inputClass} /></div>
+          <div className="md:col-span-2"><Label className="text-[#6b6350] dark:text-[#a89f85]">University</Label><Input value={form.university} onChange={set('university')} placeholder="University of Lagos" required className={inputClass} /></div>
+          <div><Label className="text-[#6b6350] dark:text-[#a89f85]">Faculty</Label><Input value={form.faculty} onChange={set('faculty')} placeholder="Science" required className={inputClass} /></div>
+          <div><Label className="text-[#6b6350] dark:text-[#a89f85]">Department</Label><Input value={form.department} onChange={set('department')} placeholder="Computer Science" required className={inputClass} /></div>
           <div>
-            <Label>Level</Label>
-            <select className="input" value={form.level} onChange={set('level')}>
+            <Label className="text-[#6b6350] dark:text-[#a89f85]">Level</Label>
+            <select className={`input ${inputClass}`} value={form.level} onChange={set('level')}>
               {['100','200','300','400','500','600','Staff'].map(l => <option key={l} value={l}>{l}</option>)}
             </select>
           </div>
           <div>
-            <Label>Semester</Label>
-            <select className="input" value={form.semester} onChange={set('semester')}>
+            <Label className="text-[#6b6350] dark:text-[#a89f85]">Semester</Label>
+            <select className={`input ${inputClass}`} value={form.semester} onChange={set('semester')}>
               <option value="First">First</option>
               <option value="Second">Second</option>
             </select>
           </div>
-          <label className="flex items-start gap-2 text-sm text-lipro-600/80 dark:text-lipro-200/70 md:col-span-2">
+          <label className="flex items-start gap-2 text-sm text-[#6b6350] dark:text-[#a89f85] md:col-span-2">
             <input
               type="checkbox"
               checked={agree}
               onChange={(e) => setAgree(e.target.checked)}
-              className="mt-0.5 h-4 w-4 accent-lipro-600"
+              className="mt-0.5 h-4 w-4 accent-[#e0b23a]"
             />
             <span>
               I agree to the{' '}
-              <Link href="/privacy" className="font-medium text-lipro-600 hover:underline">Privacy Policy</Link>{' '}
+              <Link href="/privacy" className={linkClass}>Privacy Policy</Link>{' '}
               and{' '}
-              <Link href="/terms" className="font-medium text-lipro-600 hover:underline">Terms of Service</Link>.
+              <Link href="/terms" className={linkClass}>Terms of Service</Link>.
             </span>
           </label>
           {error && <p className="text-sm text-rose-500 md:col-span-2">{error}</p>}
           <div className="md:col-span-2">
-            <Button type="submit" disabled={loading || !agree} className="w-full">
+            <Button
+              type="submit"
+              disabled={loading || !agree}
+              className="w-full !bg-[#e0b23a] !bg-none text-[#221d13] shadow-[#e0b23a]/30 hover:!brightness-105 disabled:!opacity-50"
+            >
               {loading ? 'Creating account…' : 'Create account'} <ArrowRight className="h-4 w-4" />
             </Button>
           </div>
         </form>
-        <p className="mt-6 text-center text-sm text-lipro-600/70 dark:text-lipro-200/60">
-          Already have an account? <Link href="/login" className="font-medium text-lipro-600 hover:underline">Sign in</Link>
+        <p className="mt-6 text-center text-sm text-[#8a8064] dark:text-[#a89f85]">
+          Already have an account? <Link href="/login" className={linkClass}>Sign in</Link>
         </p>
       </div>
     </div>
