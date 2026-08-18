@@ -12,7 +12,7 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message || 'Invalid input' }, { status: 422 });
   }
-  const { email, password } = parsed.data;
+  const { email, password, remember } = parsed.data;
 
   // Two independent limits: per-IP stops a single attacker guessing across
   // many accounts, per-email stops the same account being brute-forced from
@@ -28,8 +28,8 @@ export async function POST(req: Request) {
   const valid = await bcrypt.compare(password, user.passwordHash);
   if (!valid) return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
 
-  const token = await signToken({ userId: user.id, email: user.email, role: user.role as any });
-  await setAuthCookie(token);
+  const token = await signToken({ userId: user.id, email: user.email, role: user.role as any }, { remember });
+  await setAuthCookie(token, { remember });
 
   return NextResponse.json({ ok: true, role: user.role });
 }

@@ -11,11 +11,11 @@ import { resolveJwtSecret } from "./jwt-secret";
 export const TOKEN_COOKIE = "lipro_token";
 export const RESET_TOKEN_TTL_SECONDS = 60 * 30; // 30 minutes
 
-export async function signToken(payload: JWTPayload): Promise<string> {
+export async function signToken(payload: JWTPayload, options?: { remember?: boolean }): Promise<string> {
   return await new SignJWT({ ...payload })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime("7d")
+    .setExpirationTime(options?.remember ? "30d" : "7d")
     .sign(resolveJwtSecret());
 }
 
@@ -53,13 +53,13 @@ export async function getSession(): Promise<JWTPayload | null> {
   return await verifyToken(token);
 }
 
-export async function setAuthCookie(token: string) {
+export async function setAuthCookie(token: string, options?: { remember?: boolean }) {
   const store = await cookies();
   store.set(TOKEN_COOKIE, token, {
     httpOnly: true,
     secure: true,
     sameSite: "none",
-    maxAge: 60 * 60 * 24 * 7,
+    maxAge: 60 * 60 * 24 * (options?.remember ? 30 : 7),
     path: "/",
   });
 }
