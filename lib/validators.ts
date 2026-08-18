@@ -18,6 +18,19 @@ export const loginSchema = z.object({
   remember: z.boolean().optional(),
 });
 
+// Completes a brand-new Google sign-in: email/fullName come from the
+// Google-verified pending-signup cookie server-side, not the client, so
+// this only covers the fields Google can't supply.
+export const googleCompleteSchema = z.object({
+  fullName: z.string().min(2, "Full name required").optional(),
+  matricNumber: z.string().min(3, "Matric number required"),
+  university: z.string().min(2, "University required"),
+  faculty: z.string().min(2, "Faculty required"),
+  department: z.string().min(2, "Department required"),
+  level: z.enum(["100","200","300","400","500","600","Staff"]),
+  semester: z.enum(["First","Second"]),
+});
+
 export const courseSchema = z.object({
   code: z.string().min(2),
   title: z.string().min(2),

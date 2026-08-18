@@ -10,6 +10,8 @@ import { resolveJwtSecret } from "./jwt-secret";
 // real request.
 export const TOKEN_COOKIE = "lipro_token";
 export const RESET_TOKEN_TTL_SECONDS = 60 * 30; // 30 minutes
+export const GOOGLE_SIGNUP_COOKIE = "lipro_google_signup";
+export const GOOGLE_SIGNUP_TTL_SECONDS = 60 * 15; // 15 minutes — just long enough to fill in the registration form
 
 export async function signToken(payload: JWTPayload, options?: { remember?: boolean }): Promise<string> {
   return await new SignJWT({ ...payload })
@@ -25,6 +27,37 @@ export async function signResetToken(userId: string): Promise<string> {
     .setIssuedAt()
     .setExpirationTime(`${RESET_TOKEN_TTL_SECONDS}s`)
     .sign(resolveJwtSecret());
+}
+
+export interface GooglePendingSignup {
+  email: string;
+  googleId: string;
+  fullName: string;
+}
+
+// Bridges a brand-new Google sign-in to the registration form: this app's
+// registration requires matric number/university/faculty/department, none
+// of which Google can supply, so a first-time Google user can't be created
+// immediately. This short-lived, signed token carries the Google-verified
+// identity (so the register page never has to trust client input for email
+// ownership) until they finish the required fields.
+export async function signGooglePendingSignup(payload: GooglePendingSignup): Promise<string> {
+  return await new SignJWT({ purpose: "google-signup", ...payload })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime(`${GOOGLE_SIGNUP_TTL_SECONDS}s`)
+    .sign(resolveJwtSecret());
+}
+
+export async function verifyGooglePendingSignup(token: string): Promise<GooglePendingSignup | null> {
+  try {
+    const { payload } = await jwtVerify(token, resolveJwtSecret());
+    if (payload.purpose !== "google-signup") return null;
+    if (typeof payload.email !== "string" || typeof payload.googleId !== "string" || typeof payload.fullName !== "string") return null;
+    return { email: payload.email, googleId: payload.googleId, fullName: payload.fullName };
+  } catch {
+    return null;
+  }
 }
 
 export async function verifyResetToken(token: string): Promise<string | null> {
