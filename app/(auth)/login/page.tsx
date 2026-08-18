@@ -2,9 +2,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { AnimatePresence } from 'framer-motion';
 import { Input, Label } from '@/components/ui/input';
 import { Eye, EyeOff } from 'lucide-react';
 import { LiproLogo } from '@/components/LiproLogo';
+import { LoginIntro, LoginMascots } from '@/components/auth/login-mascots';
 
 export default function LoginPage() {
   return <LoginForm />;
@@ -20,6 +22,12 @@ function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [agree, setAgree] = useState(false);
+  const [emailFocused, setEmailFocused] = useState(false);
+  const [passwordFocused, setPasswordFocused] = useState(false);
+  // The tumble-in + preloader only play once per browser session — a
+  // returning user re-visiting /login shouldn't sit through it every time.
+  const [showIntro, setShowIntro] = useState(false);
+  const [introDone, setIntroDone] = useState(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -28,6 +36,13 @@ function LoginForm() {
       const oauthError = params.get('error');
       if (oauthError === 'google_not_configured') setError('Google Sign-In isn’t set up yet. Use email and password below.');
       else if (oauthError === 'google_state' || oauthError === 'google_failed') setError('Google Sign-In didn’t go through. Please try again.');
+
+      if (sessionStorage.getItem('lipro_login_intro_seen')) {
+        setIntroDone(true);
+      } else {
+        setShowIntro(true);
+        sessionStorage.setItem('lipro_login_intro_seen', '1');
+      }
     }
   }, []);
 
@@ -46,47 +61,28 @@ function LoginForm() {
   };
 
   return (
+    <>
+      <AnimatePresence>
+        {showIntro && !introDone && <LoginIntro onDone={() => setIntroDone(true)} />}
+      </AnimatePresence>
     <div className="grid min-h-screen place-items-center bg-[#0a0a0c] p-4 md:p-8">
       <div className="grid w-full max-w-4xl overflow-hidden rounded-[2rem] shadow-2xl shadow-black/50 ring-1 ring-white/10 md:grid-cols-2">
         {/* Illustration panel */}
-        <div className="relative hidden flex-col justify-end overflow-hidden bg-gradient-to-br from-lipro-50 to-lipro-100 p-10 md:flex dark:from-lipro-950/60 dark:to-lipro-900/40">
-          <svg className="pointer-events-none absolute inset-0 h-full w-full opacity-40" viewBox="0 0 400 500" preserveAspectRatio="none" aria-hidden="true">
-            <line x1="0" y1="60" x2="400" y2="440" stroke="currentColor" strokeWidth="1" className="text-lipro-400/40" />
-          </svg>
-          <div aria-hidden className="pointer-events-none absolute -left-16 -top-16 h-56 w-56 rounded-full bg-lipro-400/20 blur-3xl" />
-          <div aria-hidden className="pointer-events-none absolute -right-10 bottom-10 h-40 w-40 rounded-full bg-amber-300/20 blur-3xl" />
-
-          <div className="relative flex items-end gap-3">
-            {/* Book stack */}
-            <div className="flex flex-col items-center gap-1">
-              <div className="h-3 w-24 rounded-sm bg-amber-400 shadow-sm" />
-              <div className="h-3 w-24 rounded-sm bg-lipro-500 shadow-sm" />
-              <div className="h-3 w-24 rounded-sm bg-lipro-700 shadow-sm" />
-            </div>
-            {/* Graduation cap */}
-            <div className="relative -ml-2 mb-4">
-              <svg width="86" height="70" viewBox="0 0 86 70" fill="none">
-                <path d="M43 6L2 24l41 18 41-18-41-18Z" fill="#0a0a0c" />
-                <path d="M20 30v16c0 6 10 12 23 12s23-6 23-12V30" stroke="#0a0a0c" strokeWidth="3" strokeLinecap="round" />
-                <path d="M76 26v18" stroke="#0a0a0c" strokeWidth="3" strokeLinecap="round" />
-                <circle cx="76" cy="48" r="3.5" fill="#F5C842" />
-              </svg>
-            </div>
-            {/* Rounded person shape reading */}
-            <div className="relative">
-              <div className="h-32 w-16 rounded-t-full bg-indigo-500 shadow-md" />
-              <div className="absolute left-1/2 top-9 flex -translate-x-1/2 gap-2">
-                <span className="h-1.5 w-1.5 rounded-full bg-white/90" />
-                <span className="h-1.5 w-1.5 rounded-full bg-white/90" />
-              </div>
-            </div>
+        <div className="relative hidden flex-col items-center justify-end gap-8 overflow-hidden bg-[#e9e9ea] p-10 md:flex dark:bg-[#141518]">
+          <LoginMascots
+            ready={introDone}
+            instant={!showIntro}
+            emailFocused={emailFocused}
+            passwordFocused={passwordFocused}
+          />
+          <div className="relative text-center">
+            <p className="font-display text-lg font-semibold text-lipro-900 dark:text-lipro-50">
+              Your Life In Progress.
+            </p>
+            <p className="mt-1 text-sm text-lipro-700/70 dark:text-lipro-200/60">
+              Practice smarter, study with LIPRO AI, and track every gain.
+            </p>
           </div>
-          <p className="relative mt-8 font-display text-lg font-semibold text-lipro-900 dark:text-lipro-50">
-            Your Life In Progress.
-          </p>
-          <p className="relative mt-1 text-sm text-lipro-700/70 dark:text-lipro-200/60">
-            Practice smarter, study with LIPRO AI, and track every gain.
-          </p>
         </div>
 
         {/* Form panel */}
@@ -105,6 +101,7 @@ function LoginForm() {
                 <Label htmlFor="email" className="normal-case tracking-normal">Email</Label>
                 <Input
                   id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+                  onFocus={() => setEmailFocused(true)} onBlur={() => setEmailFocused(false)}
                   placeholder="you@example.com" required
                   className="rounded-none border-0 border-b border-lipro-200 bg-transparent px-0 focus:border-lipro-500 focus:ring-0 dark:border-lipro-700/40"
                 />
@@ -114,6 +111,7 @@ function LoginForm() {
                 <div className="relative">
                   <Input
                     id="password" type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)}
+                    onFocus={() => setPasswordFocused(true)} onBlur={() => setPasswordFocused(false)}
                     placeholder="••••••••" required
                     className="rounded-none border-0 border-b border-lipro-200 bg-transparent px-0 pr-8 focus:border-lipro-500 focus:ring-0 dark:border-lipro-700/40"
                   />
@@ -188,6 +186,7 @@ function LoginForm() {
         </div>
       </div>
     </div>
+    </>
   );
 }
 
