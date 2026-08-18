@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input, Label } from '@/components/ui/input';
 import { ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { LiproLogo } from '@/components/LiproLogo';
-import AmbientBackground from '@/components/dashboard/ambient-bg';
+import FlowingAuroraBg from '@/components/auth/flowing-aurora-bg';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -79,10 +79,8 @@ export default function RegisterPage() {
   const linkClass = 'font-medium text-lipro-300 hover:text-lipro-200 hover:underline';
 
   return (
-    <div className="relative grid min-h-screen place-items-center overflow-hidden bg-[#08070c] p-4">
-      <AmbientBackground variant="aurora" />
-      {/* A third, cooler-blue blob alongside the shared violet/indigo aurora pair, closer to the reference's blue-to-purple sweep. */}
-      <div aria-hidden className="amb-drift-slow pointer-events-none absolute right-[-10%] top-[-10%] h-[70%] w-1/2 rounded-full bg-gradient-to-br from-sky-500/20 via-cyan-400/8 to-transparent blur-3xl" style={{ animationDelay: '-3.5s' }} />
+    <div className="relative grid min-h-screen place-items-center overflow-hidden bg-[#06070c] p-4">
+      <FlowingAuroraBg />
 
       <div className="card relative z-10 w-full max-w-2xl !border-white/10 !bg-[#101018]/80 shadow-2xl shadow-black/40 backdrop-blur-xl">
         <div className="mb-6 flex items-center gap-2">
