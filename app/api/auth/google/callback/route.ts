@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { prisma } from '@/lib/prisma';
-import { signToken, setAuthCookie, signGooglePendingSignup, GOOGLE_SIGNUP_COOKIE, GOOGLE_SIGNUP_TTL_SECONDS } from '@/lib/auth';
+import { signToken, setAuthCookie, signResetToken, signGooglePendingSignup, GOOGLE_SIGNUP_COOKIE, GOOGLE_SIGNUP_TTL_SECONDS } from '@/lib/auth';
 import { exchangeGoogleCode } from '@/lib/google-oauth';
 
 const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || 'https://liproacademyapp.vercel.app').replace(/\/$/, '');
@@ -15,16 +15,24 @@ export async function GET(req: Request) {
   const expectedState = store.get('google_oauth_state')?.value;
   store.delete('google_oauth_state');
 
+  // Encoded by the two start routes (/api/auth/google vs /api/auth/google/reset)
+  // as a prefix on the state value itself, so the shared callback can tell a
+  // password-reset request apart from a normal login/signup without a second
+  // cookie. Comparing the full prefixed value against the cookie (not just
+  // the random suffix) still gives us the same CSRF protection either way.
+  const isResetIntent = state?.startsWith('reset.') ?? false;
+  const errorTarget = isResetIntent ? 'forgot-password' : 'login';
+
   if (!code || !state || !expectedState || state !== expectedState) {
-    return NextResponse.redirect(`${APP_URL}/login?error=google_state`);
+    return NextResponse.redirect(`${APP_URL}/${errorTarget}?error=google_state`);
   }
 
   const profile = await exchangeGoogleCode(code);
   if (!profile) {
-    return NextResponse.redirect(`${APP_URL}/login?error=google_failed`);
+    return NextResponse.redirect(`${APP_URL}/${errorTarget}?error=google_failed`);
   }
 
-  // 1. Already linked to a LIPRO account — sign in directly.
+  // 1. Already linked to a LIPRO account.
   let user = await prisma.user.findUnique({ where: { googleId: profile.googleId } });
 
   // 2. An account exists under this email (registered with a password) but
@@ -34,6 +42,18 @@ export async function GET(req: Request) {
     if (byEmail) {
       user = await prisma.user.update({ where: { id: byEmail.id }, data: { googleId: profile.googleId } });
     }
+  }
+
+  if (isResetIntent) {
+    // Google having just verified this person owns that email is exactly
+    // the same proof-of-ownership a clicked email link would have given —
+    // so this reuses the real password-reset token mechanism rather than
+    // inventing a separate "reset via Google" code path.
+    if (!user) {
+      return NextResponse.redirect(`${APP_URL}/forgot-password?error=no_account`);
+    }
+    const resetToken = await signResetToken(user.id);
+    return NextResponse.redirect(`${APP_URL}/reset-password?token=${encodeURIComponent(resetToken)}`);
   }
 
   if (user) {

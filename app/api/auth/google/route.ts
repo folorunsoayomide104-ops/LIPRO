@@ -9,7 +9,7 @@ export async function GET() {
     return NextResponse.redirect(`${APP_URL.replace(/\/$/, '')}/login?error=google_not_configured`);
   }
 
-  const state = crypto.randomBytes(24).toString('hex');
+  const state = `login.${crypto.randomBytes(24).toString('hex')}`;
   const res = NextResponse.redirect(buildGoogleAuthUrl(state));
   // sameSite: 'lax' (not 'none') — this cookie only needs to survive the
   // top-level redirect back from Google, which 'lax' already allows, and
