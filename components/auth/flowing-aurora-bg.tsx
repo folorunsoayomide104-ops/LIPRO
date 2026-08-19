@@ -47,23 +47,28 @@ export default function FlowingAuroraBg({ className = '' }: { className?: string
     }
 
     function draw(t: number) {
+      const s = t * 0.001; // seconds, so every coefficient below reads as "cycles per second"
+
       ctx!.globalCompositeOperation = 'source-over';
       ctx!.fillStyle = BASE;
       ctx!.fillRect(0, 0, w, h);
 
       ctx!.globalCompositeOperation = 'lighter';
+      const maxDim = Math.max(w, h);
 
-      const violetX = w * 0.22 + Math.sin(t * 0.00014) * w * 0.16;
-      const violetY = h * 0.72 + Math.cos(t * 0.00011) * h * 0.14;
-      blob(violetX, violetY, Math.max(w, h) * 0.62, VIOLET, 0.55);
+      const violetX = w * 0.24 + Math.sin(s * 0.32) * w * 0.32;
+      const violetY = h * 0.7 + Math.cos(s * 0.24) * h * 0.26;
+      const violetR = maxDim * (0.46 + Math.sin(s * 0.18) * 0.08);
+      blob(violetX, violetY, violetR, VIOLET, 0.6);
 
-      const cyanX = w * 0.78 + Math.cos(t * 0.00016 + 2) * w * 0.16;
-      const cyanY = h * 0.28 + Math.sin(t * 0.00013 + 1) * h * 0.16;
-      blob(cyanX, cyanY, Math.max(w, h) * 0.58, CYAN, 0.5);
+      const cyanX = w * 0.76 + Math.cos(s * 0.36 + 2) * w * 0.32;
+      const cyanY = h * 0.3 + Math.sin(s * 0.27 + 1) * h * 0.26;
+      const cyanR = maxDim * (0.44 + Math.cos(s * 0.21) * 0.08);
+      blob(cyanX, cyanY, cyanR, CYAN, 0.55);
 
-      const driftX = w * 0.5 + Math.sin(t * 0.00009 + 4) * w * 0.22;
-      const driftY = h * 0.5 + Math.cos(t * 0.0001 + 3) * h * 0.18;
-      blob(driftX, driftY, Math.max(w, h) * 0.38, VIOLET, 0.18);
+      const driftX = w * 0.5 + Math.sin(s * 0.2 + 4) * w * 0.4;
+      const driftY = h * 0.5 + Math.cos(s * 0.23 + 3) * h * 0.32;
+      blob(driftX, driftY, maxDim * 0.3, VIOLET, 0.22);
 
       ctx!.globalCompositeOperation = 'source-over';
     }
