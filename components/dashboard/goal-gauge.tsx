@@ -50,7 +50,7 @@ export default function GoalGauge({
             cy={SIZE / 2}
             r={R}
             fill="none"
-            stroke="#7c5cff"
+            stroke="#3559F7"
             strokeWidth="12"
             strokeLinecap="round"
             initial={{ strokeDasharray: `0 ${C}` }}
@@ -66,7 +66,7 @@ export default function GoalGauge({
       </div>
 
       <div className="mt-auto flex items-center justify-center gap-4 pt-3 text-[11px] font-medium text-lipro-600/70 dark:text-lipro-200/60">
-        <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-lipro-500" /> Average</span>
+        <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full" style={{ background: '#3559F7' }} /> Average</span>
         <span className="inline-flex items-center gap-1.5">
           <span className="h-2 w-2 rounded-full bg-lipro-200 dark:bg-white/15" /> Best {bestScore !== null ? `${bestScore}%` : '—'}
         </span>

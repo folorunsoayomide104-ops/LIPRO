@@ -113,7 +113,7 @@ export default async function StudentDashboard() {
           <Link href="/lipro-ai" className="inline-flex items-center gap-1.5 rounded-xl border border-lipro-200/60 px-3.5 py-2 text-sm font-semibold text-lipro-700 transition-colors hover:bg-lipro-50 dark:border-lipro-500/20 dark:text-lipro-200 dark:hover:bg-lipro-950/40">
             <MessageSquare className="h-4 w-4" /> LIPRO AI
           </Link>
-          <Link href="/cbt" className="inline-flex items-center gap-1.5 rounded-xl bg-lipro-500 px-3.5 py-2 text-sm font-semibold text-white shadow-md shadow-lipro-500/30 transition-transform hover:scale-[1.02] active:scale-95">
+          <Link href="/cbt" className="inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-semibold text-white shadow-md transition-transform hover:scale-[1.02] active:scale-95" style={{ background: '#3559F7', boxShadow: '0 6px 16px -4px rgb(53 89 247 / 0.5)' }}>
             <Brain className="h-4 w-4" /> Start CBT
           </Link>
         </div>

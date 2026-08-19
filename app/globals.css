@@ -15,13 +15,17 @@
 }
 
 html.dark {
-  --bg: 12 9 22;
+  /* Page/card surface colors sampled directly from the NeuroBank dashboard
+     reference clip (#0F1018 page, #12142C card) rather than the app's
+     original violet-black — --primary/--fg/--muted/--card are unreferenced
+     elsewhere so they're left as-is. */
+  --bg: 15 16 24;
   --fg: 240 230 255;
   --primary: 192 132 252;
-  --glass-bg: 15 10 26;
-  --glass-alpha: 0.78;
-  --glass-border: 192 132 252;
-  --glass-border-alpha: 0.22;
+  --glass-bg: 18 20 44;
+  --glass-alpha: 0.82;
+  --glass-border: 53 89 247;
+  --glass-border-alpha: 0.18;
   --muted: 180 170 200;
   --card: 30 20 50;
 }
@@ -49,6 +53,15 @@ body {
     radial-gradient(circle at 0% 0%, rgba(168,85,247,0.10), transparent 42%),
     radial-gradient(circle at 100% 0%, rgba(99,102,241,0.08), transparent 38%),
     radial-gradient(circle at 50% 100%, rgba(217,70,239,0.06), transparent 46%);
+}
+
+html.dark body {
+  /* Same ambient-glow treatment, retinted to the reference's blue-violet
+     accent (#3559F7 / #545AC5) instead of the app's default fuchsia/violet. */
+  background-image:
+    radial-gradient(circle at 0% 0%, rgba(53,89,247,0.12), transparent 42%),
+    radial-gradient(circle at 100% 0%, rgba(84,90,197,0.10), transparent 38%),
+    radial-gradient(circle at 50% 100%, rgba(53,89,247,0.06), transparent 46%);
 }
 
 /* Safe area padding for notched phones (iPhone X+) */

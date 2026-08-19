@@ -5,7 +5,7 @@ import { GraduationCap, ArrowUpRight } from 'lucide-react';
 export type CourseActivity = { code: string; count: number };
 
 const EASE = [0.22, 1, 0.36, 1] as const;
-const TONES = ['bg-lipro-500', 'bg-indigo-500', 'bg-emerald-500', 'bg-amber-500'];
+const TONES = ['bg-[#3559F7]', 'bg-[#545AC5]', 'bg-emerald-500', 'bg-amber-500'];
 
 export default function CourseBreakdown({
   totalActivity,

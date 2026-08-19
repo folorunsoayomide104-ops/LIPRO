@@ -32,7 +32,7 @@ export default function InsightCarousel({ insights }: { insights: string[] }) {
           maskImage: 'radial-gradient(ellipse 100% 90% at 70% 30%, black 0%, transparent 75%)',
         }}
       />
-      <div aria-hidden="true" className="pointer-events-none absolute -right-10 -top-10 h-56 w-56 rounded-full bg-lipro-500/20 blur-3xl dark:bg-lipro-500/25" />
+      <div aria-hidden="true" className="pointer-events-none absolute -right-10 -top-10 h-56 w-56 rounded-full blur-3xl" style={{ background: 'rgb(53 89 247 / 0.2)' }} />
 
       <div className="relative">
         <span className="inline-flex items-center gap-1.5 rounded-full border border-lipro-300/50 bg-white/60 px-3 py-1 text-[11px] font-semibold text-lipro-700 backdrop-blur dark:border-lipro-500/25 dark:bg-white/[0.06] dark:text-lipro-200">
@@ -47,7 +47,8 @@ export default function InsightCarousel({ insights }: { insights: string[] }) {
               key={dotIdx}
               onClick={() => setI(dotIdx)}
               aria-label={`Show insight ${dotIdx + 1}`}
-              className={`h-1.5 rounded-full transition-all ${dotIdx === i ? 'w-5 bg-lipro-500' : 'w-1.5 bg-lipro-500/25'}`}
+              className="h-1.5 rounded-full transition-all"
+              style={{ width: dotIdx === i ? 20 : 6, background: dotIdx === i ? '#3559F7' : 'rgb(53 89 247 / 0.25)' }}
             />
           ))}
         </div>
@@ -67,7 +68,8 @@ export default function InsightCarousel({ insights }: { insights: string[] }) {
           <Link
             href="/lipro-ai"
             aria-label="Open LIPRO AI"
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-lipro-500 text-white shadow-md shadow-lipro-500/30 transition-transform hover:scale-105 active:scale-95"
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-white shadow-md transition-transform hover:scale-105 active:scale-95"
+            style={{ background: '#3559F7', boxShadow: '0 6px 16px -4px rgb(53 89 247 / 0.5)' }}
           >
             <ArrowUpRight className="h-4 w-4" />
           </Link>

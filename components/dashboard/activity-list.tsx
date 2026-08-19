@@ -5,7 +5,7 @@ import { Brain, ArrowUpRight, Filter } from 'lucide-react';
 export type AttemptItem = { id: string; code: string; date: string; pct: number | null; done: boolean };
 
 const EASE = [0.22, 1, 0.36, 1] as const;
-const ICON_TONES = ['bg-lipro-500', 'bg-indigo-500', 'bg-emerald-500', 'bg-amber-500', 'bg-rose-500'];
+const ICON_TONES = ['bg-[#3559F7]', 'bg-[#545AC5]', 'bg-emerald-500', 'bg-amber-500', 'bg-rose-500'];
 
 export default function ActivityList({ attempts }: { attempts: AttemptItem[] }) {
   return (

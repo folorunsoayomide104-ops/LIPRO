@@ -75,12 +75,12 @@ export default function OverviewChart({
           <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full" role="img" aria-label="Score trend">
             <defs>
               <linearGradient id="ov-fill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#7c5cff" stopOpacity="0.28" />
-                <stop offset="100%" stopColor="#7c5cff" stopOpacity="0.02" />
+                <stop offset="0%" stopColor="#3559F7" stopOpacity="0.28" />
+                <stop offset="100%" stopColor="#3559F7" stopOpacity="0.02" />
               </linearGradient>
               <linearGradient id="ov-stroke" x1="0" y1="0" x2="1" y2="0">
-                <stop offset="0%" stopColor="#7c5cff" />
-                <stop offset="100%" stopColor="#22d3ee" />
+                <stop offset="0%" stopColor="#3559F7" />
+                <stop offset="100%" stopColor="#545AC5" />
               </linearGradient>
             </defs>
             <motion.path
@@ -102,11 +102,11 @@ export default function OverviewChart({
               transition={{ duration: 1, ease: EASE }}
             />
             {pts.map((p, i) => (
-              <circle key={i} cx={p.x} cy={p.y} r={p === peak ? 4 : 2.5} fill="#7c5cff" opacity={p === peak ? 1 : 0.7} />
+              <circle key={i} cx={p.x} cy={p.y} r={p === peak ? 4 : 2.5} fill="#3559F7" opacity={p === peak ? 1 : 0.7} />
             ))}
             {peak && (
               <g transform={`translate(${Math.min(peak.x + 8, W - 60)}, ${Math.max(peak.y - 26, 6)})`}>
-                <rect width="52" height="20" rx="10" className="fill-lipro-500" />
+                <rect width="52" height="20" rx="10" fill="#3559F7" />
                 <text x="26" y="14" textAnchor="middle" fontSize="10" fontWeight="700" fill="white">
                   {peak.pct}%
                 </text>
