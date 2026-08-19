@@ -1331,50 +1331,6 @@ window.addEventListener('scroll', function () {
   }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
   els.forEach(function (e) { io.observe(e); });
 })();
-
-/* ── Welcome voice greeting (plays once per visit, after first interaction) ── */
-(function () {
-  if (!('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') return;
-  var GREETED_KEY = 'lipro_greeted';
-  if (sessionStorage.getItem(GREETED_KEY)) return;
-
-  function pickFemaleVoice(voices) {
-    if (!voices || !voices.length) return null;
-    var byName = voices.find(function (v) {
-      return /female|zira|samantha|victoria|susan|karen|moira|tessa|serena|fiona|salli|joanna|kendra|kimberly|ivy/i.test(v.name);
-    });
-    if (byName) return byName;
-    var enVoice = voices.find(function (v) { return v.lang && v.lang.toLowerCase().indexOf('en') === 0; });
-    return enVoice || voices[0];
-  }
-
-  function speakWelcome() {
-    var voices = window.speechSynthesis.getVoices();
-    var utter = new SpeechSynthesisUtterance('Welcome to LIPRO Academy.');
-    var voice = pickFemaleVoice(voices);
-    if (voice) utter.voice = voice;
-    utter.pitch = 1.15;
-    utter.rate = 0.95;
-    utter.volume = 0.85;
-    window.speechSynthesis.speak(utter);
-  }
-
-  function greetOnce() {
-    if (sessionStorage.getItem(GREETED_KEY)) return;
-    sessionStorage.setItem(GREETED_KEY, '1');
-    var voices = window.speechSynthesis.getVoices();
-    if (voices.length === 0) {
-      window.speechSynthesis.onvoiceschanged = function () { speakWelcome(); };
-    } else {
-      speakWelcome();
-    }
-  }
-
-  var events = ['click', 'touchstart', 'keydown', 'scroll'];
-  events.forEach(function (ev) {
-    document.addEventListener(ev, greetOnce, { once: true, passive: true });
-  });
-})();
 </script>
 
 <!-- WEBGL -->
