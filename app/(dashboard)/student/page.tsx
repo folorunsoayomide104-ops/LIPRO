@@ -18,7 +18,7 @@ export default async function StudentDashboard() {
   if (!session) redirect('/login');
   if (session.role !== 'STUDENT') redirect(`/dashboard`);
 
-  const [courses, recentAttempts, notes, me, courseCount, attemptCount, noteCount, notices, weakTopics] = await Promise.all([
+  const [courses, recentAttempts, allScoredAttempts, notes, me, courseCount, attemptCount, noteCount, notices, weakTopics] = await Promise.all([
     prisma.course.findMany({
       where: { faculty: { not: undefined }, OR: [{ level: '100' }, { level: '200' }, { level: '300' }, { level: '400' }, { level: '500' }] },
       include: { _count: { select: { notes: true, questions: true } }, lecturer: { select: { fullName: true, avatarUrl: true } } },
@@ -28,6 +28,14 @@ export default async function StudentDashboard() {
       where: { userId: session.userId },
       include: { course: { select: { title: true, code: true } } },
       orderBy: { startedAt: 'desc' }, take: 5,
+    }),
+    // Separate from recentAttempts (which is capped at 5, for the trend
+    // chart and activity list): "Average Score" and "Best" need to reflect
+    // every scored attempt, not just the last 5, or the number shown
+    // wouldn't match the "across N attempts" claim in the AI insight text.
+    prisma.examSession.findMany({
+      where: { userId: session.userId, score: { not: null }, totalPoints: { not: null } },
+      select: { score: true, totalPoints: true },
     }),
     prisma.note.findMany({
       where: { userId: session.userId },
@@ -45,14 +53,16 @@ export default async function StudentDashboard() {
     getWeakTopics(session.userId),
   ]);
 
-  const avgScore = recentAttempts.filter((a) => a.score !== null && a.totalPoints).length
-    ? Math.round(recentAttempts.filter((a) => a.score !== null && a.totalPoints).reduce((s, a) => s + (a.score! / a.totalPoints!) * 100, 0) / recentAttempts.filter((a) => a.score !== null && a.totalPoints).length)
-    : null;
+  // totalPoints is nullable in the schema but guaranteed non-null by the
+  // where clause above — filter again defensively against a 0 value, which
+  // would otherwise divide by zero.
+  const scoredPcts = allScoredAttempts.filter((a) => a.totalPoints).map((a) => Math.round((a.score! / a.totalPoints!) * 100));
+  const avgScore = scoredPcts.length ? Math.round(scoredPcts.reduce((s, p) => s + p, 0) / scoredPcts.length) : null;
+  const bestPct = scoredPcts.length ? Math.max(...scoredPcts) : null;
 
   const trend = [...recentAttempts]
     .reverse()
     .filter((a) => a.score !== null && a.totalPoints)
-    .slice(0, 8)
     .map((a) => ({
       label: new Date(a.startedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
       pct: Math.round((a.score! / a.totalPoints!) * 100),
@@ -68,8 +78,6 @@ export default async function StudentDashboard() {
 
   const latestPct = trend.length ? trend[trend.length - 1].pct : null;
   const deltaLatest = trend.length >= 2 ? trend[trend.length - 1].pct - trend[trend.length - 2].pct : null;
-  const scoredAttempts = recentAttempts.filter((a) => a.score !== null && a.totalPoints);
-  const bestPct = scoredAttempts.length ? Math.max(...scoredAttempts.map((a) => Math.round((a.score! / a.totalPoints!) * 100))) : null;
 
   const courseTally = new Map<string, number>();
   notes.forEach((n) => { if (n.course?.code) courseTally.set(n.course.code, (courseTally.get(n.course.code) || 0) + 1); });
