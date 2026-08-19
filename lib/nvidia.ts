@@ -224,6 +224,7 @@ export async function runAgenticLoop(params: {
   temperature?: number;
   maxTokens?: number;
   maxIterations?: number;
+  timeoutMs?: number;
   /**
    * When provided, each turn is requested with stream:true so content deltas
    * of the FINAL answer (the turn with no tool_calls) are forwarded live.
@@ -244,15 +245,17 @@ export async function runAgenticLoop(params: {
     try {
       result = await call({ ...params, messages });
     } catch (err: any) {
-      // Some models/providers reject the `tools` param outright (function
-      // calling isn't universally supported), which used to surface as a
-      // hard failure for the whole turn. On the first iteration, fall back
-      // to a plain toolless completion instead — better to answer without
-      // acting than to fail the turn entirely. Never retry a timeout,
-      // though: the provider was just slow, not tools-averse, and a second
-      // attempt at the same timeoutMs risks stacking two slow calls back to
-      // back and blowing the route's own hard time limit.
-      if (i === 0 && !err?.isTimeout && params.tools && params.tools.length > 0) {
+      // Some models/providers don't actually support the `tools` param even
+      // when advertised — observed in production as a hang rather than a
+      // clean rejection, surfacing here as a timeout. On the first
+      // iteration, fall back to a plain toolless completion instead —
+      // better to answer without acting than to fail the turn entirely.
+      // A timeout only triggers this retry when the caller passed an
+      // explicit timeoutMs (meaning they've already budgeted for two bounded
+      // attempts back to back) — with nvidia.ts's 60s default, two stacked
+      // attempts would risk blowing the route's own hard time limit.
+      const canRetryTimeout = !err?.isTimeout || params.timeoutMs !== undefined;
+      if (i === 0 && canRetryTimeout && params.tools && params.tools.length > 0) {
         result = await call({ ...params, messages, tools: undefined });
       } else {
         throw err;

@@ -214,6 +214,12 @@ async function reason(input: PipelineInput, plan: TaskPlan): Promise<{ content: 
     temperature: isChitchat ? 0.6 : 0.5,
     maxTokens: isChitchat ? 400 : 1400,
     maxIterations: isChitchat ? 2 : 3,
+    // Explicit and bounded rather than nvidia.ts's 60s default: the
+    // tools-enabled attempt and its toolless retry (see runAgenticLoop) are
+    // each capped at 40s, so the worst case for this stage is 80s — leaving
+    // headroom under the route's 120s limit alongside the planner (~12s)
+    // and self-eval (~15s) stages.
+    timeoutMs: 40000,
     onDelta,
   });
   return { content: result.content, usedTools: executor.calls };
