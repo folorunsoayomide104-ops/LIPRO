@@ -1,5 +1,5 @@
 import type { AiProviderConfig } from '@/lib/ai';
-import { chatCompletionWithTools, streamChatCompletionWithTools, runAgenticLoop, type ToolDefinition } from '@/lib/nvidia';
+import { chatCompletionWithTools, runAgenticLoop, type ToolDefinition } from '@/lib/nvidia';
 import { buildToolExecutor, WEB_SEARCH_TOOL, RAG_SEARCH_TOOL, DOCUMENT_SEARCH_TOOL, CALCULATOR_TOOL, CREATE_NOTE_TOOL, CREATE_FLASHCARD_TOOL, START_CBT_TOOL, ACCOUNT_STATUS_TOOL } from './tools';
 import type { Intent, PipelineInput, PipelineResult, TaskPlan } from './types';
 
@@ -117,7 +117,7 @@ async function planTask(input: PipelineInput): Promise<TaskPlan> {
  * ------------------------------------------------------------------ */
 const REASONING_INSTRUCTIONS: Record<Intent, string> = {
   chitchat:
-    'The user is just chatting. Respond warmly and briefly, then gently steer back to studying. No tools needed.',
+    "The user is just chatting or asking something outside academics — answer it naturally on its own terms, like a knowledgeable, direct assistant would. Don't redirect the conversation to studying unless they bring it up themselves. If they ask about their own account (notes, flashcards, wallet, CBT attempts), use get_account_status or the other tools rather than guessing.",
   study_help:
     'Answer the academic question clearly and correctly. Explain step by step, adjust depth to the stated difficulty, and only add detail that helps. Mark anything you are unsure about and verify it by searching the web when needed.',
   document_qa:
@@ -172,8 +172,19 @@ Guidelines:
   return [{ role: 'system', content: systemContent }, ...messages];
 }
 
+/**
+ * The action/account tools (create_note, create_flashcard, start_cbt,
+ * get_account_status) are available for every intent, including chitchat —
+ * a casually-phrased question like "how many notes do I have" or "what's my
+ * wallet balance" doesn't reliably classify as study_help/complex, and
+ * previously chitchat skipped tools entirely, so the model would guess at
+ * real account numbers instead of looking them up. web_search/calculator
+ * stay gated to non-chitchat since they're heavier and rarely relevant to
+ * small talk.
+ */
 function toolsForPlan(plan: TaskPlan): ToolDefinition[] {
-  const tools: ToolDefinition[] = [WEB_SEARCH_TOOL, CALCULATOR_TOOL, CREATE_NOTE_TOOL, CREATE_FLASHCARD_TOOL, START_CBT_TOOL, ACCOUNT_STATUS_TOOL];
+  const tools: ToolDefinition[] = [CREATE_NOTE_TOOL, CREATE_FLASHCARD_TOOL, START_CBT_TOOL, ACCOUNT_STATUS_TOOL];
+  if (plan.intent !== 'chitchat') tools.push(WEB_SEARCH_TOOL, CALCULATOR_TOOL);
   if (plan.needsRagSearch) tools.push(RAG_SEARCH_TOOL);
   if (plan.needsDocumentSearch) tools.push(DOCUMENT_SEARCH_TOOL);
   return tools;
@@ -181,22 +192,7 @@ function toolsForPlan(plan: TaskPlan): ToolDefinition[] {
 
 async function reason(input: PipelineInput, plan: TaskPlan): Promise<{ content: string; usedTools: string[] }> {
   const { provider, onDelta } = input;
-  if (plan.intent === 'chitchat') {
-    const call = onDelta
-      ? (p: Parameters<typeof chatCompletionWithTools>[0]) => streamChatCompletionWithTools({ ...p, onDelta })
-      : chatCompletionWithTools;
-    const r = await call({
-      apiKey: provider.apiKey,
-      baseURL: provider.baseURL,
-      model: modelFor(provider, 'reasoning'),
-      label: labelFor(provider, 'reasoning'),
-      messages: buildReasoningMessages(input, plan),
-      temperature: 0.6,
-      maxTokens: 400,
-      timeoutMs: 20000,
-    });
-    return { content: r.content, usedTools: [] };
-  }
+  const isChitchat = plan.intent === 'chitchat';
 
   const tools = toolsForPlan(plan);
   const executor = buildToolExecutor({
@@ -215,9 +211,9 @@ async function reason(input: PipelineInput, plan: TaskPlan): Promise<{ content: 
     messages: buildReasoningMessages(input, plan),
     tools,
     executeTool: executor,
-    temperature: 0.5,
-    maxTokens: 1400,
-    maxIterations: 3,
+    temperature: isChitchat ? 0.6 : 0.5,
+    maxTokens: isChitchat ? 400 : 1400,
+    maxIterations: isChitchat ? 2 : 3,
     onDelta,
   });
   return { content: result.content, usedTools: executor.calls };
