@@ -1,4 +1,4 @@
-export type Role = "STUDENT" | "LECTURER" | "ADMIN" | "SUPER_ADMIN";
+export type Role = "STUDENT" | "ADMIN";
 
 export type SubscriptionTier = "FREE" | "PREMIUM" | "ULTIMATE";
 

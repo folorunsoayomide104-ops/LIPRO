@@ -103,7 +103,7 @@ export async function clearAuthCookie() {
 }
 
 export function roleRank(role: Role): number {
-  return { STUDENT: 0, LECTURER: 1, ADMIN: 2, SUPER_ADMIN: 3 }[role];
+  return { STUDENT: 0, ADMIN: 1 }[role];
 }
 
 export function canAccess(required: Role, current: Role): boolean {

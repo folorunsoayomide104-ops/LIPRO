@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { guard } from '@/lib/api-guard';
-import { canAccess } from '@/lib/auth';
 import { examOverrideSchema } from '@/lib/validators';
 import { recomputeScore } from '@/lib/cbt/attempt';
 import { percentage } from '@/lib/cbt/serialize';
@@ -9,7 +8,7 @@ import { percentage } from '@/lib/cbt/serialize';
 export const dynamic = 'force-dynamic';
 
 /**
- * Lecturer override of a machine-assigned grade.
+ * Admin override of a machine-assigned grade.
  *
  * Overridden items carry gradeMethod 'override' and are skipped by any later
  * grading pass, so a re-grade can never undo a human decision.
@@ -18,7 +17,7 @@ export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string; itemId: string }> }
 ) {
-  const { ok, user, response } = await guard('LECTURER');
+  const { ok, user, response } = await guard('ADMIN');
   if (!ok || !user) return response!;
   const { id, itemId } = await params;
 
@@ -31,14 +30,10 @@ export async function PATCH(
 
   const attempt = await prisma.examSession.findUnique({
     where: { id },
-    select: { id: true, status: true, course: { select: { lecturerId: true } } },
+    select: { id: true, status: true },
   });
   if (!attempt) return NextResponse.json({ error: 'Attempt not found' }, { status: 404 });
 
-  const isLecturer = attempt.course?.lecturerId === user.userId;
-  if (!isLecturer && !canAccess('ADMIN', user.role)) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
   if (attempt.status === 'in_progress') {
     return NextResponse.json({ error: 'Attempt is still in progress' }, { status: 409 });
   }

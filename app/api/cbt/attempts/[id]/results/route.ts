@@ -115,16 +115,15 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     where: { id },
     include: {
       items: { orderBy: { orderIndex: 'asc' } },
-      course: { select: { id: true, title: true, lecturerId: true } },
+      course: { select: { id: true, title: true } },
       user: { select: { id: true, fullName: true } },
     },
   });
   if (!attempt) return NextResponse.json({ error: 'Attempt not found' }, { status: 404 });
 
   const isOwner = attempt.userId === user.userId;
-  const isLecturer = !!attempt.course && attempt.course.lecturerId === user.userId;
   const isAdmin = canAccess('ADMIN', user.role);
-  if (!isOwner && !isLecturer && !isAdmin) {
+  if (!isOwner && !isAdmin) {
     return NextResponse.json({ error: 'Attempt not found' }, { status: 404 });
   }
 
@@ -154,7 +153,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       gradingStatus: attempt.gradingStatus,
       aiFeedback: attempt.aiFeedback,
       legacy,
-      canOverride: isLecturer || isAdmin,
+      canOverride: isAdmin,
       student: isOwner ? null : { id: attempt.user.id, name: attempt.user.fullName },
     },
     items,

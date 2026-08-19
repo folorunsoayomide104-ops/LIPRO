@@ -10,7 +10,7 @@ import { GraduationCap } from 'lucide-react';
 export default async function CoursesPage() {
   const session = await getSession();
   if (!session) redirect('/login');
-  const canCreate = session.role === 'LECTURER' || session.role === 'ADMIN' || session.role === 'SUPER_ADMIN';
+  const canCreate = session.role === 'ADMIN';
 
   const courses = await prisma.course.findMany({
     include: { _count: { select: { notes: true, questions: true } }, lecturer: { select: { fullName: true } } },
@@ -31,7 +31,7 @@ export default async function CoursesPage() {
           <div>
             <p className="font-medium">No courses yet</p>
             <p className="mt-1 text-sm text-lipro-600/60 dark:text-lipro-300/60">
-              {canCreate ? 'Add your first course to get started.' : 'Check back once a lecturer adds a course.'}
+              {canCreate ? 'Add your first course to get started.' : 'Check back once an admin adds a course.'}
             </p>
           </div>
         </div>

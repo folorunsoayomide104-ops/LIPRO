@@ -3,7 +3,7 @@
 //
 // JWT_SECRET missing in production used to silently fall back to a
 // hardcoded string committed in this file's git history. Anyone who reads
-// the repo could then forge a token (e.g. role: "SUPER_ADMIN") signed with
+// the repo could then forge a token (e.g. role: "ADMIN") signed with
 // that known secret and get full admin access — a fail-open bug. This fails
 // loudly instead: every request 500s until the env var is set, rather than
 // silently accepting forged tokens.

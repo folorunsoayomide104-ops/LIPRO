@@ -6,8 +6,6 @@ export default async function DashboardIndex() {
   if (!session) redirect('/login');
   redirect({
     STUDENT: '/student',
-    LECTURER: '/lecturer',
     ADMIN: '/admin',
-    SUPER_ADMIN: '/super-admin',
   }[session.role]);
 }

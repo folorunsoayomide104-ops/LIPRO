@@ -24,7 +24,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const { ok, user, response } = await guard('LECTURER');
+  const { ok, user, response } = await guard('ADMIN');
   if (!ok || !user) return response!;
   const body = await req.json().catch(() => null);
   if (!body) return NextResponse.json({ error: 'Invalid body' }, { status: 400 });

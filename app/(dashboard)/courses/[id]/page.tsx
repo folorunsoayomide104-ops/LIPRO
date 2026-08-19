@@ -29,9 +29,7 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
   });
   if (!course) return <div className="p-8">Course not found.</div>;
 
-  const isLecturer = course.lecturerId === session.userId;
-  const isAdmin = session.role === 'ADMIN' || session.role === 'SUPER_ADMIN';
-  const canManage = isLecturer || isAdmin;
+  const canManage = session.role === 'ADMIN';
 
   return (
     <div className="space-y-6">

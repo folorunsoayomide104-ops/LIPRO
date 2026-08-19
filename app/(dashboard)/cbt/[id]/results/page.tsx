@@ -11,14 +11,13 @@ export default async function ExamResultsPage({ params }: { params: Promise<{ id
 
   const attempt = await prisma.examSession.findUnique({
     where: { id },
-    select: { userId: true, status: true, course: { select: { lecturerId: true } } },
+    select: { userId: true, status: true },
   });
   if (!attempt) redirect('/cbt');
 
   const isOwner = attempt.userId === session.userId;
-  const isLecturer = attempt.course?.lecturerId === session.userId;
   const isAdmin = canAccess('ADMIN', session.role);
-  if (!isOwner && !isLecturer && !isAdmin) redirect('/cbt');
+  if (!isOwner && !isAdmin) redirect('/cbt');
 
   if (attempt.status === 'in_progress') redirect(`/cbt/${id}`);
 

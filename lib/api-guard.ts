@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { verifyToken } from "@/lib/auth";
+import { verifyToken, roleRank } from "@/lib/auth";
 import type { Role, JWTPayload } from "@/types";
 
 export interface GuardResult {
@@ -26,8 +26,7 @@ export async function guard(requiredRole?: Role): Promise<GuardResult> {
     };
   }
   if (requiredRole) {
-    const rank = (r: Role) => ({ STUDENT: 0, LECTURER: 1, ADMIN: 2, SUPER_ADMIN: 3 }[r]);
-    if (rank(user.role) < rank(requiredRole)) {
+    if (roleRank(user.role) < roleRank(requiredRole)) {
       return {
         ok: false,
         response: NextResponse.json({ error: "Forbidden" }, { status: 403 }),

@@ -20,28 +20,25 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 }
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { ok, user, response } = await guard('LECTURER');
-  if (!ok || !user) return response!;
+  const { ok, response } = await guard('ADMIN');
+  if (!ok) return response!;
   const { id } = await params;
   const body = await req.json().catch(() => null);
   if (!body) return NextResponse.json({ error: 'Invalid body' }, { status: 400 });
   const parsed = courseUpdateSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message || 'Invalid input' }, { status: 422 });
   const course = await prisma.course.findUnique({ where: { id } });
-  if (!course || course.lecturerId !== user.userId) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  if (!course) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   const updated = await prisma.course.update({ where: { id }, data: parsed.data });
   return NextResponse.json({ course: updated });
 }
 
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { ok, user, response } = await guard();
-  if (!ok || !user) return response!;
+  const { ok, response } = await guard('ADMIN');
+  if (!ok) return response!;
   const { id } = await params;
   const course = await prisma.course.findUnique({ where: { id } });
   if (!course) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-  if (course.lecturerId !== user.userId && user.role !== 'SUPER_ADMIN') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
   await prisma.course.delete({ where: { id } });
   return NextResponse.json({ ok: true });
 }

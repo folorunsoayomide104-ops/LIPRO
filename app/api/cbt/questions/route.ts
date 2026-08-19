@@ -10,7 +10,9 @@ const PAGE_SIZE = 200;
  * List questions. Answers/explanations are stripped by default — this used to
  * return the full row (including `answer`) to any authenticated user, which let
  * a student read the key before sitting the exam. `includeAnswers=1` is only
- * honored for the course's lecturer or an admin.
+ * honored for an admin, or for the student who owns the source material
+ * (course-scoped questions can only ever be authored by an admin, so there's
+ * no separate "course owner" case to check there).
  */
 export async function GET(req: Request) {
   const { ok, user, response } = await guard();
@@ -28,14 +30,9 @@ export async function GET(req: Request) {
   }
 
   let canSeeAnswers = canAccess('ADMIN', user.role);
-  if (wantAnswers && !canSeeAnswers) {
-    if (courseId) {
-      const course = await prisma.course.findUnique({ where: { id: courseId }, select: { lecturerId: true } });
-      canSeeAnswers = course?.lecturerId === user.userId;
-    } else if (sourceId) {
-      const material = await prisma.material.findUnique({ where: { id: sourceId }, select: { userId: true } });
-      canSeeAnswers = material?.userId === user.userId;
-    }
+  if (wantAnswers && !canSeeAnswers && sourceId) {
+    const material = await prisma.material.findUnique({ where: { id: sourceId }, select: { userId: true } });
+    canSeeAnswers = material?.userId === user.userId;
   }
 
   const where: Record<string, unknown> = {
@@ -69,7 +66,7 @@ export async function GET(req: Request) {
 }
 
 /**
- * Create a question. Course-scoped questions still require LECTURER+ (as
+ * Create a question. Course-scoped questions still require ADMIN (as
  * before); material-scoped questions are now allowed for any user who owns
  * that material — this was previously impossible because `courseId` was a
  * required field on the schema.
@@ -89,7 +86,7 @@ export async function POST(req: Request) {
     const material = await prisma.material.findFirst({ where: { id: sourceId, userId: user.userId } });
     if (!material) return NextResponse.json({ error: 'Document not found' }, { status: 404 });
   } else if (courseId) {
-    if (!canAccess('LECTURER', user.role)) {
+    if (!canAccess('ADMIN', user.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
   }

@@ -7,9 +7,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   if (!session) redirect('/login?redirect=/dashboard');
   const roleLabel = {
     STUDENT: 'Student',
-    LECTURER: 'Lecturer',
     ADMIN: 'Admin',
-    SUPER_ADMIN: 'Super Admin',
   }[session.role];
   return <LayoutShell roleLabel={roleLabel}>{children}</LayoutShell>;
 }

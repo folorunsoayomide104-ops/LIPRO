@@ -3,17 +3,18 @@ import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Users, BookOpen, Brain, Wallet } from 'lucide-react';
+import Link from 'next/link';
+import { Users, BookOpen, Brain, Wallet, ShieldCheck, ArrowRight } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 
 export default async function AdminDashboard() {
   const session = await getSession();
   if (!session) redirect('/login');
-  if (session.role !== 'ADMIN' && session.role !== 'SUPER_ADMIN') redirect('/dashboard');
+  if (session.role !== 'ADMIN') redirect('/dashboard');
 
-  const [students, lecturers, courses, questions, totalWallet, recentUsers] = await Promise.all([
+  const [students, admins, courses, questions, totalWallet, recentUsers] = await Promise.all([
     prisma.user.count({ where: { role: 'STUDENT' } }),
-    prisma.user.count({ where: { role: 'LECTURER' } }),
+    prisma.user.count({ where: { role: 'ADMIN' } }),
     prisma.course.count(),
     prisma.question.count(),
     prisma.user.aggregate({ _sum: { walletBalance: true } }),
@@ -22,13 +23,29 @@ export default async function AdminDashboard() {
 
   return (
     <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-lipro-500" /> Admin Control Center</CardTitle>
+          <CardDescription>Full platform oversight. Currently signed in as {session.email}.</CardDescription>
+        </CardHeader>
+      </Card>
+
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         <Card><CardHeader><CardDescription>Students</CardDescription><CardTitle className="text-2xl flex items-center gap-2"><Users className="h-5 w-5 text-lipro-500" /> {students}</CardTitle></CardHeader></Card>
-        <Card><CardHeader><CardDescription>Lecturers</CardDescription><CardTitle className="text-2xl">{lecturers}</CardTitle></CardHeader></Card>
+        <Card><CardHeader><CardDescription>Admins</CardDescription><CardTitle className="text-2xl">{admins}</CardTitle></CardHeader></Card>
         <Card><CardHeader><CardDescription>Courses</CardDescription><CardTitle className="text-2xl flex items-center gap-2"><BookOpen className="h-5 w-5 text-lipro-500" /> {courses}</CardTitle></CardHeader></Card>
         <Card><CardHeader><CardDescription>Questions</CardDescription><CardTitle className="text-2xl flex items-center gap-2"><Brain className="h-5 w-5 text-lipro-500" /> {questions}</CardTitle></CardHeader></Card>
         <Card><CardHeader><CardDescription>Wallet volume</CardDescription><CardTitle className="text-2xl flex items-center gap-2"><Wallet className="h-5 w-5 text-lipro-500" /> {formatCurrency(totalWallet._sum.walletBalance || 0)}</CardTitle></CardHeader></Card>
       </div>
+
+      <Card>
+        <CardHeader><CardTitle>Courses</CardTitle><CardDescription>Create courses, author questions, and manage materials</CardDescription></CardHeader>
+        <CardContent>
+          <Link href="/courses" className="inline-flex items-center gap-1 text-sm font-semibold text-lipro-600 hover:underline dark:text-lipro-300">
+            Manage courses <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader><CardTitle>Recent registrations</CardTitle><CardDescription>Latest users on the platform</CardDescription></CardHeader>
@@ -41,7 +58,7 @@ export default async function AdminDashboard() {
                   <tr key={u.id} className="border-b border-lipro-200/10 last:border-0">
                     <td className="py-2 font-medium">{u.fullName}</td>
                     <td>{u.email}</td>
-                    <td><Badge tone={u.role === 'STUDENT' ? 'purple' : u.role === 'LECTURER' ? 'indigo' : 'amber'}>{u.role}</Badge></td>
+                    <td><Badge tone={u.role === 'STUDENT' ? 'purple' : 'amber'}>{u.role}</Badge></td>
                     <td className="text-lipro-600/60 dark:text-lipro-200/60">{u.university}</td>
                     <td className="text-lipro-600/60 dark:text-lipro-200/60">{new Date(u.createdAt).toLocaleDateString()}</td>
                   </tr>

@@ -4,25 +4,7 @@ import bcrypt from "bcryptjs";
 const prisma = new PrismaClient();
 
 async function main() {
-  const superAdmin = await prisma.user.upsert({
-    where: { email: "superadmin@lipro.academy" },
-    update: {},
-    create: {
-      email: "superadmin@lipro.academy",
-      passwordHash: await bcrypt.hash("Password123!", 10),
-      fullName: "LIPRO Super Admin",
-      matricNumber: "SA000001",
-      university: "LIPRO Headquarters",
-      faculty: "Administration",
-      department: "Operations",
-      level: "100",
-      semester: "First",
-      role: "SUPER_ADMIN",
-      isEmailVerified: true,
-    },
-  });
-
-  const admin = await prisma.user.upsert({
+  await prisma.user.upsert({
     where: { email: "admin@lipro.academy" },
     update: {},
     create: {
@@ -36,24 +18,6 @@ async function main() {
       level: "100",
       semester: "First",
       role: "ADMIN",
-      isEmailVerified: true,
-    },
-  });
-
-  const lecturer = await prisma.user.upsert({
-    where: { email: "lecturer@lipro.academy" },
-    update: {},
-    create: {
-      email: "lecturer@lipro.academy",
-      passwordHash: await bcrypt.hash("Password123!", 10),
-      fullName: "Dr. Adekunle Johnson",
-      matricNumber: "LEC000001",
-      university: "University of Lagos",
-      faculty: "Science",
-      department: "Computer Science",
-      level: "Staff",
-      semester: "First",
-      role: "LECTURER",
       isEmailVerified: true,
     },
   });
@@ -93,10 +57,8 @@ async function main() {
   });
 
   console.log("Seed complete. Demo accounts:");
-  console.log("  Super Admin: superadmin@lipro.academy / Password123!");
-  console.log("  Admin:       admin@lipro.academy / Password123!");
-  console.log("  Lecturer:    lecturer@lipro.academy / Password123!");
-  console.log("  Student:     student@lipro.academy / Password123!");
+  console.log("  Admin:   admin@lipro.academy / Password123!");
+  console.log("  Student: student@lipro.academy / Password123!");
 }
 
 main().catch((e) => { console.error(e); process.exit(1); }).finally(async () => { await prisma.$disconnect(); });
