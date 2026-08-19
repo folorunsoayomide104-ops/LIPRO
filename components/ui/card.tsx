@@ -2,7 +2,10 @@ import type { HTMLAttributes } from 'react';
 import { cn } from '@/lib/utils';
 
 export function Card({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('glass glass-hover rounded-2xl p-6', className)} {...props} />;
+  // p-6 on every nesting level (page padding + Card + a row inside it) eats
+  // ~50-75px of a 320px phone before any content renders. p-4 below sm:
+  // gives that width back without changing anything at sm: and up.
+  return <div className={cn('glass glass-hover rounded-2xl p-4 sm:p-6', className)} {...props} />;
 }
 export function CardHeader({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   // Stacked by default: nearly every call site passes a bare CardTitle +

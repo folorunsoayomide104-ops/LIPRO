@@ -62,7 +62,7 @@ export function ExamRunner({ attemptId }: { attemptId: string }) {
         <Card>
           <CardContent>
             <p className="text-sm">{error || 'Could not load this attempt.'}</p>
-            <div className="mt-3 flex gap-2">
+            <div className="mt-3 flex flex-wrap gap-2">
               <Button onClick={reload}><RefreshCw className="h-4 w-4" /> Retry</Button>
               <Button variant="outline" onClick={() => router.push('/cbt')}>Back to CBT</Button>
             </div>
@@ -192,9 +192,9 @@ export function ExamRunner({ attemptId }: { attemptId: string }) {
               <p className="text-sm text-lipro-600/70">
                 {unansweredCount} of {items.length} question{unansweredCount === 1 ? '' : 's'} still {unansweredCount === 1 ? 'has' : 'have'} no answer. Unanswered questions score zero.
               </p>
-              <div className="mt-4 flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setConfirmSubmit(false)}>Keep answering</Button>
-                <Button onClick={() => { setConfirmSubmit(false); submit(); }} disabled={submitting}>
+              <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
+                <Button variant="outline" className="w-full sm:w-auto" onClick={() => setConfirmSubmit(false)}>Keep answering</Button>
+                <Button className="w-full sm:w-auto" onClick={() => { setConfirmSubmit(false); submit(); }} disabled={submitting}>
                   {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Submit anyway
                 </Button>
               </div>
