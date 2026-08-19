@@ -84,23 +84,23 @@ export function ExamRunner({ attemptId }: { attemptId: string }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
           <h2 className="text-lg font-semibold">{isPractice ? 'Practice' : 'Exam'} mode</h2>
           <p className="flex flex-wrap items-center gap-x-2 text-xs text-lipro-600/60">
-            <span>{attempt.sourceTitle ? `${attempt.sourceTitle} · ` : ''}{items.length} questions · {answeredCount} answered</span>
+            <span className="truncate">{attempt.sourceTitle ? `${attempt.sourceTitle} · ` : ''}{items.length} questions · {answeredCount} answered</span>
             {saveLabel && (
-              <span className="inline-flex items-center gap-1">
+              <span className="inline-flex shrink-0 items-center gap-1">
                 {saveState === 'offline' || saveState === 'error' ? <CloudOff className="h-3 w-3" /> : <Cloud className="h-3 w-3" />}
                 {saveLabel}
               </span>
             )}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
           <Button size="sm" variant="outline" onClick={() => setShowNav((s) => !s)}><LayoutGrid className="h-4 w-4" /> Questions</Button>
           {!isPractice && remaining != null && (
-            <Badge tone={timerTone(remaining, attempt.durationSec)} className={cn('text-sm', remaining <= 60 && 'animate-pulse')}>
+            <Badge tone={timerTone(remaining, attempt.durationSec)} className={cn('shrink-0 text-sm', remaining <= 60 && 'animate-pulse')}>
               <Clock className="h-3 w-3" /> {fmtTime(remaining)}
             </Badge>
           )}
@@ -152,7 +152,7 @@ export function ExamRunner({ attemptId }: { attemptId: string }) {
         />
       )}
 
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <Button variant="outline" onClick={() => setCurrent((c) => Math.max(0, c - 1))} disabled={current === 0}>
           <ChevronLeft className="h-4 w-4" /> Previous
         </Button>

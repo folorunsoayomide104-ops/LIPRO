@@ -52,12 +52,12 @@ export default async function CbtIndexPage() {
               {inProgress.map((s) => {
                 const remaining = s.deadlineAt ? Math.max(0, Math.round((s.deadlineAt.getTime() - Date.now()) / 1000)) : null;
                 return (
-                  <Link key={s.id} href={`/cbt/${s.id}`} className="flex items-center justify-between rounded-xl p-3 glass-hover">
-                    <div>
-                      <div className="text-sm font-medium">{s.sourceTitle ?? s.course?.title ?? 'Exam'}</div>
-                      <div className="text-xs text-lipro-600/60">{s.mode === 'practice' ? 'Practice' : 'Exam'} · Started {new Date(s.startedAt).toLocaleString()}</div>
+                  <Link key={s.id} href={`/cbt/${s.id}`} className="flex items-center justify-between gap-3 rounded-xl p-3 glass-hover">
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-medium">{s.sourceTitle ?? s.course?.title ?? 'Exam'}</div>
+                      <div className="truncate text-xs text-lipro-600/60">{s.mode === 'practice' ? 'Practice' : 'Exam'} · Started {new Date(s.startedAt).toLocaleString()}</div>
                     </div>
-                    <Badge tone={remaining !== null && remaining < 120 ? 'rose' : 'amber'}>
+                    <Badge tone={remaining !== null && remaining < 120 ? 'rose' : 'amber'} className="shrink-0">
                       {remaining !== null ? `${Math.floor(remaining / 60)}m left` : 'Resume'}
                     </Badge>
                   </Link>
@@ -76,9 +76,9 @@ export default async function CbtIndexPage() {
           <div className="space-y-2">
             {completed.length === 0 && <p className="text-sm text-lipro-600/60">No completed attempts yet.</p>}
             {completed.map((s) => (
-              <Link key={s.id} href={`/cbt/${s.id}/results`} className="flex items-center justify-between rounded-xl p-3 glass-hover">
-                <div><div className="text-sm font-medium">{s.sourceTitle ?? s.course?.code ?? 'Document exam'}</div><div className="text-xs text-lipro-600/60">{new Date(s.startedAt).toLocaleString()}</div></div>
-                <Badge tone={s.status === 'completed' ? 'green' : 'purple'}>
+              <Link key={s.id} href={`/cbt/${s.id}/results`} className="flex items-center justify-between gap-3 rounded-xl p-3 glass-hover">
+                <div className="min-w-0"><div className="truncate text-sm font-medium">{s.sourceTitle ?? s.course?.code ?? 'Document exam'}</div><div className="truncate text-xs text-lipro-600/60">{new Date(s.startedAt).toLocaleString()}</div></div>
+                <Badge tone={s.status === 'completed' ? 'green' : 'purple'} className="shrink-0">
                   {s.status === 'completed' && s.score !== null && s.totalPoints ? `${Math.round((s.score / s.totalPoints) * 100)}%` : s.status}
                 </Badge>
               </Link>
@@ -90,9 +90,9 @@ export default async function CbtIndexPage() {
         <div className="space-y-2">
           {courses.map((c) => (
             <div key={c.id} className="rounded-xl p-3 glass-hover">
-              <div className="flex items-center justify-between gap-3">
-                <div><div className="text-sm font-medium">{c.code} · {c.title}</div><div className="text-xs text-lipro-600/60">{c._count.questions} questions · By {c.lecturer.fullName}</div></div>
-                <StartExamButton courseId={c.id} />
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="min-w-0"><div className="truncate text-sm font-medium">{c.code} · {c.title}</div><div className="truncate text-xs text-lipro-600/60">{c._count.questions} questions · By {c.lecturer.fullName}</div></div>
+                <div className="shrink-0"><StartExamButton courseId={c.id} /></div>
               </div>
             </div>
           ))}

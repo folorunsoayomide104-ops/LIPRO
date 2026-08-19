@@ -97,10 +97,11 @@ export function PdfExamCreator({ materials }: { materials: Doc[] }) {
           onChange={(e) => setFile(e.target.files?.[0] || null)}
         />
         {file ? (
-          <div className="flex items-center justify-center gap-2 text-sm font-medium">
-            <FileText className="h-4 w-4 text-lipro-500" /> {file.name}
-            <span className="text-xs text-lipro-600/60">({fmtBytes(file.size)})</span>
-            <Badge tone="green">Selected</Badge>
+          <div className="flex flex-wrap items-center justify-center gap-2 text-sm font-medium">
+            <FileText className="h-4 w-4 shrink-0 text-lipro-500" />
+            <span className="max-w-full truncate">{file.name}</span>
+            <span className="shrink-0 text-xs text-lipro-600/60">({fmtBytes(file.size)})</span>
+            <Badge tone="green" className="shrink-0">Selected</Badge>
           </div>
         ) : (
           <div className="flex items-center justify-center gap-2 text-sm text-lipro-600/70">
@@ -109,7 +110,7 @@ export function PdfExamCreator({ materials }: { materials: Doc[] }) {
         )}
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
           <label className="label">Questions</label>
           <select className="input" value={count} onChange={(e) => setCount(Number(e.target.value))}>

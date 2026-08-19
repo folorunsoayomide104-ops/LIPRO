@@ -134,16 +134,16 @@ export function ExamResults({ attemptId }: { attemptId: string }) {
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader>
-          <div>
-            <CardTitle>{attempt.sourceTitle} — {attempt.percentage}%</CardTitle>
+        <CardHeader className="flex-row flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <CardTitle className="break-words">{attempt.sourceTitle} — {attempt.percentage}%</CardTitle>
             <p className="text-sm text-lipro-600/70">
               Score: {attempt.score} / {attempt.totalPoints} points
               {attempt.autoSubmitted && ' · Auto-submitted when time ran out'}
               {attempt.student && ` · ${attempt.student.name}`}
             </p>
           </div>
-          <Badge tone={scoreTone(attempt.percentage)} className="text-sm">{attempt.percentage}%</Badge>
+          <Badge tone={scoreTone(attempt.percentage)} className="shrink-0 text-sm">{attempt.percentage}%</Badge>
         </CardHeader>
         <CardContent>
           {attempt.legacy && (
