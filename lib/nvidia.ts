@@ -56,10 +56,14 @@ export async function chatCompletionWithTools(params: {
     signal: AbortSignal.timeout(timeoutMs),
   });
 
-  if (res.status === 429 || res.status === 503 || res.status >= 500) {
-    throw new Error(`${label} error ${res.status}`);
+  if (!res.ok) {
+    // Surface the provider's actual error body (truncated) rather than just
+    // the status code — some models/providers reject the `tools` param
+    // outright (e.g. "function calling not supported for this model"), and
+    // that detail is what actually explains a failure, not "error 400".
+    const detail = await res.text().catch(() => '');
+    throw new Error(`${label} error ${res.status}${detail ? `: ${detail.slice(0, 300)}` : ''}`);
   }
-  if (!res.ok) throw new Error(`${label} error ${res.status}`);
 
   const data = await res.json();
   const message = data.choices?.[0]?.message;
@@ -207,7 +211,21 @@ export async function runAgenticLoop(params: {
     : chatCompletionWithTools;
 
   for (let i = 0; i < maxIterations; i++) {
-    const result = await call({ ...params, messages });
+    let result: CompletionResult;
+    try {
+      result = await call({ ...params, messages });
+    } catch (err) {
+      // Some models/providers reject the `tools` param outright (function
+      // calling isn't universally supported), which used to surface as a
+      // hard failure for the whole turn. On the first iteration, fall back
+      // to a plain toolless completion instead — better to answer without
+      // acting than to fail the turn entirely.
+      if (i === 0 && params.tools && params.tools.length > 0) {
+        result = await call({ ...params, messages, tools: undefined });
+      } else {
+        throw err;
+      }
+    }
 
     if (result.toolCalls.length === 0) {
       return { content: result.content, messages };
