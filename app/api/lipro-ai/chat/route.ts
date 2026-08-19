@@ -90,7 +90,6 @@ export async function POST(req: Request) {
           buffer,
           originalName: name,
           declaredMimeType: head?.headers.get('content-type') ?? undefined,
-          provider,
         });
         if ('error' in result) {
           failedFiles.push({ name, reason: result.error });

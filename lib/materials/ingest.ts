@@ -3,7 +3,7 @@ import { extractText, isDocxName, DOCX_MIME, MAX_UPLOAD_BYTES } from '@/lib/pdf'
 import { extractTextFromImage } from '@/lib/ocr';
 import { chunkText } from '@/lib/chunkText';
 import { generateEmbeddings } from '@/lib/embeddings';
-import { resolveAiProvider, type AiProviderConfig } from '@/lib/ai';
+import { resolveNvidiaApiKey } from '@/lib/ai';
 
 /**
  * Single entry point for turning an uploaded file into a searchable Material.
@@ -53,8 +53,6 @@ export interface IngestMaterialParams {
   /** Advisory only — resolveMimeType() re-derives from name/bytes regardless. */
   declaredMimeType?: string;
   courseId?: string | null;
-  /** Pass an already-resolved provider to skip a redundant resolveAiProvider() call. */
-  provider?: AiProviderConfig;
 }
 
 export interface IngestedMaterial {
@@ -123,8 +121,11 @@ export async function ingestMaterial(params: IngestMaterialParams): Promise<Inge
   let embeddedChunkCount = 0;
   const chunks = chunkText(text);
   if (chunks.length > 0) {
-    const provider = params.provider ?? (await resolveAiProvider(userId));
-    const hasEmbeddingProvider = provider.provider !== 'none' && !!provider.apiKey.trim();
+    // Embeddings always resolve NVIDIA specifically (see lib/embeddings.ts) —
+    // Groq has no embeddings endpoint — so the gate checks for an NVIDIA key
+    // directly rather than params.provider, which may be a Groq chat
+    // provider that can't actually embed anything.
+    const hasEmbeddingProvider = !!(await resolveNvidiaApiKey(userId));
 
     // DocumentChunk.embedding is NOT NULL at the database level (verified
     // against the actual schema — confirmed by a real 23502 constraint
