@@ -31,8 +31,8 @@ export default function GoalGauge({
         <ArrowUpRight className="h-4 w-4 shrink-0 text-lipro-400" />
       </div>
 
-      <div className="relative mx-auto mt-2 grid place-items-center">
-        <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
+      <div className="relative mx-auto mt-2 grid w-full max-w-[160px] place-items-center">
+        <svg viewBox={`0 0 ${SIZE} ${SIZE}`} className="h-auto w-full" role="img" aria-label="Average score gauge">
           <circle
             cx={SIZE / 2}
             cy={SIZE / 2}

@@ -106,7 +106,7 @@ export default async function StudentDashboard() {
             <Badge tone="indigo">{me?.subscriptionTier || 'FREE'} plan</Badge>
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <span className="inline-flex items-center gap-2 rounded-xl border border-lipro-200/60 px-3 py-2 text-sm font-medium text-lipro-700 dark:border-lipro-500/20 dark:text-lipro-200">
             <Calendar className="h-4 w-4" /> This Month
           </span>
