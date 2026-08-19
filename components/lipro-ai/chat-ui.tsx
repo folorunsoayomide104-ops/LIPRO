@@ -1,8 +1,9 @@
 'use client';
 import { useState, useRef, useEffect } from 'react';
+import Link from 'next/link';
 import { upload as blobUpload } from '@vercel/blob/client';
 import { Button } from '@/components/ui/button';
-import { Send, Bot, User, Loader2, Plus, Maximize2, Minimize2, X, FileText, CheckCircle2, Edit2, Check, RotateCcw, List, ChevronLeft, Square, AlertTriangle } from 'lucide-react';
+import { Send, Bot, User, Loader2, Plus, Maximize2, Minimize2, X, FileText, CheckCircle2, Edit2, Check, RotateCcw, List, ChevronLeft, Square, AlertTriangle, ArrowLeft } from 'lucide-react';
 import { LiproLogo } from '@/components/LiproLogo';
 import AmbientBackground from '@/components/dashboard/ambient-bg';
 import { Badge } from '@/components/ui/badge';
@@ -451,9 +452,20 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
 
       <div className="relative flex min-w-0 flex-1 flex-col">
         <div className="mb-3 flex items-center justify-between gap-2 max-md:mb-1.5 max-md:border-b max-md:border-lipro-200/60 max-md:px-3 max-md:py-2.5 max-md:dark:border-lipro-700/40">
-          <div className="min-w-0">
-            <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight max-md:text-base"><LiproLogo className="h-6 w-6 max-md:h-5 max-md:w-5" /> LIPRO AI</h1>
-            <p className="text-sm text-lipro-600/70 max-md:hidden dark:text-lipro-200/70">Your AI tutor with conversation memory</p>
+          <div className="flex min-w-0 items-center gap-2 md:gap-3">
+            <Link
+              href="/dashboard"
+              onClick={() => { if (fullscreen) setFullscreen(false); }}
+              className="tap flex shrink-0 items-center gap-1.5 rounded-xl border border-lipro-200/60 px-2.5 py-2 text-sm font-medium text-lipro-700 transition-colors hover:bg-lipro-50 dark:border-lipro-500/20 dark:text-lipro-200 dark:hover:bg-lipro-950/40"
+              aria-label="Back to dashboard"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              <span className="max-md:hidden">Back</span>
+            </Link>
+            <div className="min-w-0">
+              <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight max-md:text-base"><LiproLogo className="h-6 w-6 max-md:h-5 max-md:w-5" /> LIPRO AI</h1>
+              <p className="text-sm text-lipro-600/70 max-md:hidden dark:text-lipro-200/70">Your AI tutor with conversation memory</p>
+            </div>
           </div>
           <div className="flex shrink-0 items-center gap-2">
             {fallback && <Badge tone="amber" className="max-md:hidden">Demo mode — add API key in Settings</Badge>}
