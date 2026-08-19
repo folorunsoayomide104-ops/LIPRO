@@ -49,12 +49,23 @@ export async function chatCompletionWithTools(params: {
     body.tool_choice = 'auto';
   }
 
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(timeoutMs),
-  });
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+  } catch (err: any) {
+    // Tagged distinctly from an HTTP-level rejection below: a caller that
+    // retries on "tools rejected" must NOT retry on a timeout — the retry
+    // would just add another full timeoutMs on top, and two 60s attempts
+    // back-to-back is exactly enough to blow the route's 120s hard limit.
+    const timeoutErr = new Error(`${label} timed out after ${Math.round(timeoutMs / 1000)}s`);
+    (timeoutErr as any).isTimeout = true;
+    throw timeoutErr;
+  }
 
   if (!res.ok) {
     // Surface the provider's actual error body (truncated) rather than just
@@ -112,74 +123,92 @@ export async function streamChatCompletionWithTools(params: {
     body.tool_choice = 'auto';
   }
 
+  // The timer used to guard the whole call — fetch AND the full stream read
+  // below — not just time-to-first-byte. Previously it was cleared the
+  // instant fetch() resolved (i.e. once headers arrived), so a provider that
+  // sent headers promptly but then hung mid-stream (never sending [DONE])
+  // had no timeout at all short of Vercel's own 120s function hard limit,
+  // which is exactly the failure mode seen in production.
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
-  let res: Response;
   try {
-    res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify(body),
-      signal: controller.signal,
-    });
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+    } catch (err) {
+      const timeoutErr = new Error(`${label} timed out after ${Math.round(timeoutMs / 1000)}s`);
+      (timeoutErr as any).isTimeout = true;
+      throw timeoutErr;
+    }
+
+    if (!res.ok || !res.body) {
+      const detail = await res.text().catch(() => '');
+      throw new Error(`${label} error ${res.status}${detail ? `: ${detail.slice(0, 300)}` : ''}`);
+    }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let content = '';
+    const toolCallsAcc: Record<number, { id: string; name: string; args: string }> = {};
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed.startsWith('data:')) continue;
+          const data = trimmed.slice(5).trim();
+          if (!data || data === '[DONE]') continue;
+          let json: any;
+          try {
+            json = JSON.parse(data);
+          } catch {
+            continue;
+          }
+          const delta = json.choices?.[0]?.delta;
+          if (!delta) continue;
+          if (typeof delta.content === 'string' && delta.content) {
+            content += delta.content;
+            onDelta?.(delta.content);
+          }
+          if (Array.isArray(delta.tool_calls)) {
+            for (const tc of delta.tool_calls) {
+              const idx = tc.index ?? 0;
+              const acc = (toolCallsAcc[idx] ??= { id: '', name: '', args: '' });
+              if (tc.id) acc.id = tc.id;
+              if (tc.function?.name) acc.name += tc.function.name;
+              if (tc.function?.arguments) acc.args += tc.function.arguments;
+            }
+          }
+        }
+      }
+    } catch (err) {
+      const timeoutErr = new Error(`${label} timed out after ${Math.round(timeoutMs / 1000)}s`);
+      (timeoutErr as any).isTimeout = true;
+      throw timeoutErr;
+    }
+
+    const toolCalls: ToolCall[] = Object.values(toolCallsAcc)
+      .filter((tc) => tc.name)
+      .map((tc) => ({ id: tc.id, type: 'function', function: { name: tc.name, arguments: tc.args } }));
+
+    if (!content && toolCalls.length === 0) throw new Error(`${label} returned an empty response`);
+
+    return { content, toolCalls };
   } finally {
     clearTimeout(timer);
   }
-
-  if (res.status === 429 || res.status === 503 || res.status >= 500) {
-    throw new Error(`${label} error ${res.status}`);
-  }
-  if (!res.ok || !res.body) throw new Error(`${label} error ${res.status}`);
-
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
-  let content = '';
-  const toolCallsAcc: Record<number, { id: string; name: string; args: string }> = {};
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split('\n');
-    buffer = lines.pop() || '';
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed.startsWith('data:')) continue;
-      const data = trimmed.slice(5).trim();
-      if (!data || data === '[DONE]') continue;
-      let json: any;
-      try {
-        json = JSON.parse(data);
-      } catch {
-        continue;
-      }
-      const delta = json.choices?.[0]?.delta;
-      if (!delta) continue;
-      if (typeof delta.content === 'string' && delta.content) {
-        content += delta.content;
-        onDelta?.(delta.content);
-      }
-      if (Array.isArray(delta.tool_calls)) {
-        for (const tc of delta.tool_calls) {
-          const idx = tc.index ?? 0;
-          const acc = (toolCallsAcc[idx] ??= { id: '', name: '', args: '' });
-          if (tc.id) acc.id = tc.id;
-          if (tc.function?.name) acc.name += tc.function.name;
-          if (tc.function?.arguments) acc.args += tc.function.arguments;
-        }
-      }
-    }
-  }
-
-  const toolCalls: ToolCall[] = Object.values(toolCallsAcc)
-    .filter((tc) => tc.name)
-    .map((tc) => ({ id: tc.id, type: 'function', function: { name: tc.name, arguments: tc.args } }));
-
-  if (!content && toolCalls.length === 0) throw new Error(`${label} returned an empty response`);
-
-  return { content, toolCalls };
 }
 
 export type ToolExecutor = (name: string, args: any) => Promise<string>;
@@ -214,13 +243,16 @@ export async function runAgenticLoop(params: {
     let result: CompletionResult;
     try {
       result = await call({ ...params, messages });
-    } catch (err) {
+    } catch (err: any) {
       // Some models/providers reject the `tools` param outright (function
       // calling isn't universally supported), which used to surface as a
       // hard failure for the whole turn. On the first iteration, fall back
       // to a plain toolless completion instead — better to answer without
-      // acting than to fail the turn entirely.
-      if (i === 0 && params.tools && params.tools.length > 0) {
+      // acting than to fail the turn entirely. Never retry a timeout,
+      // though: the provider was just slow, not tools-averse, and a second
+      // attempt at the same timeoutMs risks stacking two slow calls back to
+      // back and blowing the route's own hard time limit.
+      if (i === 0 && !err?.isTimeout && params.tools && params.tools.length > 0) {
         result = await call({ ...params, messages, tools: undefined });
       } else {
         throw err;
