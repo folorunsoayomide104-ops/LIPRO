@@ -15,6 +15,7 @@ export default function LoginPage() {
 function LoginForm() {
   const router = useRouter();
   const redirectRef = useRef<string | null>(null);
+  const emailInputRef = useRef<HTMLInputElement>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -24,6 +25,7 @@ function LoginForm() {
   const [agree, setAgree] = useState(false);
   const [emailFocused, setEmailFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
+  const [celebrate, setCelebrate] = useState(false);
   // The tumble-in + preloader only play once per browser session — a
   // returning user re-visiting /login shouldn't sit through it every time.
   const [showIntro, setShowIntro] = useState(false);
@@ -57,7 +59,10 @@ function LoginForm() {
     });
     const data = await res.json().catch(() => null);
     if (!res.ok) { setError(data?.error || 'Login failed'); setLoading(false); return; }
-    router.push(redirectRef.current || '/dashboard');
+    // Let the celebrate beat actually play before navigating away — a
+    // one-time delight moment is pointless if the page unmounts under it.
+    setCelebrate(true);
+    setTimeout(() => router.push(redirectRef.current || '/dashboard'), 550);
   };
 
   return (
@@ -74,6 +79,8 @@ function LoginForm() {
             instant={!showIntro}
             emailFocused={emailFocused}
             passwordFocused={passwordFocused}
+            emailRef={emailInputRef}
+            celebrate={celebrate}
           />
           <div className="relative text-center">
             <p className="font-display text-lg font-semibold text-lipro-900 dark:text-lipro-50">
@@ -100,6 +107,7 @@ function LoginForm() {
               <div>
                 <Label htmlFor="email" className="normal-case tracking-normal">Email</Label>
                 <Input
+                  ref={emailInputRef}
                   id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)}
                   onFocus={() => setEmailFocused(true)} onBlur={() => setEmailFocused(false)}
                   placeholder="you@example.com" required
