@@ -448,6 +448,29 @@ nav.links a:hover{color:var(--txt)}
   color:var(--purple-lt);padding:4px 10px;border-radius:999px;
 }
 
+/* ── LIPRO AI SPOTLIGHT ──────────────────────────────────
+   Own solid background (not transparent, unlike .features) so it
+   opaquely covers the shared hero canvas regardless of the existing
+   scroll-fade timing, which is keyed to .how's position further down
+   — same reasoning as .hero-solid-bg. */
+.ai-spotlight{
+  padding:clamp(80px,10vw,140px) 0;
+  background:var(--bg2);
+  position:relative;overflow:hidden;z-index:2;
+  text-align:center;
+}
+.ai-spotlight .section-head{max-width:640px;margin:0 auto 8px}
+.ai-canvas-wrap{
+  position:relative;
+  height:clamp(360px,52vw,560px);
+  margin-top:8px;
+}
+.ai-canvas-wrap canvas{
+  position:absolute;inset:0;width:100%;height:100%;display:block;
+  cursor:pointer;
+}
+.ai-orb-cta{margin-top:8px}
+
 /* ── HOW IT WORKS ────────────────────────────────────── */
 .how{
   padding:clamp(80px,10vw,140px) 0;
@@ -833,6 +856,21 @@ body.no-webgl #hero-canvas{display:none}
         </div>
       </div>
     </div>
+  </div>
+</section>
+
+<!-- LIPRO AI SPOTLIGHT -->
+<section class="ai-spotlight" id="ai-spotlight">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="eyebrow">Meet Your AI Study Partner</span>
+      <h2>Get help from your personal AI, LIPRO.</h2>
+      <p>Ask it to explain a concept, quiz you on a topic, or summarize a whole PDF — LIPRO AI knows your course, your faculty, and where you're stuck.</p>
+    </div>
+    <div class="ai-canvas-wrap reveal">
+      <canvas id="ai-orb-canvas" role="img" aria-label="An animated glowing sphere of tangled light representing LIPRO AI"></canvas>
+    </div>
+    <a class="btn btn-primary ai-orb-cta" href="https://liproacademyapp.vercel.app/register">Ask LIPRO AI free →</a>
   </div>
 </section>
 
@@ -5707,6 +5745,221 @@ three/build/three.module.js:
   } catch (e) {
     document.body.classList.add('no-webgl');
     console.warn('WebGL init failed:', e);
+  }
+})();
+</script>
+
+<!-- ── LIPRO AI orb: hand-rolled Canvas 2D, no WebGL/three.js ──
+     The hero's crystal scene already inlines its own three.js build,
+     but its internals are fully private to that bundle (only
+     initLiproHex is exposed, no global THREE) — reusing it wasn't an
+     option without either exposing internals it wasn't built to
+     expose, or inlining a second ~600KB copy of three.js just for one
+     more sphere. A tangled-sphere network is simple enough 3D (points
+     + edges + perspective projection) to hand-roll directly in 2D
+     canvas instead, reusing the same additive-blending glow technique
+     already proven in components/auth/flowing-aurora-bg.tsx. -->
+<script>
+(function () {
+  var canvas = document.getElementById('ai-orb-canvas');
+  var wrap = canvas ? canvas.parentElement : null;
+  if (!canvas || !wrap) return;
+  var ctx = canvas.getContext('2d');
+  if (!ctx) return;
+
+  var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // ── Build the sphere: Fibonacci distribution for even coverage, then
+  // connect each point to its nearest neighbors. This gives the same
+  // naturally irregular "tangled yarn" network an icosahedron's edges
+  // would, without needing geodesic subdivision math.
+  var POINT_COUNT = 210;
+  var NEIGHBORS = 6;
+  var points = [];
+  (function buildSphere() {
+    var golden = Math.PI * (3 - Math.sqrt(5));
+    for (var i = 0; i < POINT_COUNT; i++) {
+      var y = 1 - (i / (POINT_COUNT - 1)) * 2;
+      var r = Math.sqrt(Math.max(0, 1 - y * y));
+      var theta = golden * i;
+      points.push({
+        x: Math.cos(theta) * r, y: y, z: Math.sin(theta) * r,
+        seed: [Math.random() * Math.PI * 2, Math.random() * Math.PI * 2, Math.random() * Math.PI * 2],
+      });
+    }
+  })();
+
+  var edges = [];
+  (function buildEdges() {
+    var seen = {};
+    for (var i = 0; i < points.length; i++) {
+      var dists = [];
+      for (var j = 0; j < points.length; j++) {
+        if (i === j) continue;
+        var dx = points[i].x - points[j].x, dy = points[i].y - points[j].y, dz = points[i].z - points[j].z;
+        dists.push({ j: j, d: dx * dx + dy * dy + dz * dz });
+      }
+      dists.sort(function (a, b) { return a.d - b.d; });
+      for (var k = 0; k < NEIGHBORS && k < dists.length; k++) {
+        var a = i, b = dists[k].j;
+        var key = a < b ? a + '_' + b : b + '_' + a;
+        if (seen[key]) continue;
+        seen[key] = true;
+        edges.push([a, b]);
+      }
+    }
+  })();
+
+  var W = 0, H = 0, dpr = 1;
+  function resize() {
+    dpr = Math.min(window.devicePixelRatio || 1, 1.75);
+    W = wrap.clientWidth; H = wrap.clientHeight;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  var pointer = { x: 0, y: 0, active: false };
+  wrap.addEventListener('pointermove', function (e) {
+    var r = wrap.getBoundingClientRect();
+    pointer.x = ((e.clientX - r.left) / r.width) * 2 - 1;
+    pointer.y = ((e.clientY - r.top) / r.height) * 2 - 1;
+    pointer.active = true;
+  });
+  wrap.addEventListener('pointerleave', function () { pointer.active = false; });
+
+  function project(p, radius, rotY, rotX) {
+    // Rotate around Y then X.
+    var cy = Math.cos(rotY), sy = Math.sin(rotY);
+    var x1 = p.x * cy + p.z * sy;
+    var z1 = -p.x * sy + p.z * cy;
+    var cx = Math.cos(rotX), sx = Math.sin(rotX);
+    var y1 = p.y * cx - z1 * sx;
+    var z2 = p.y * sx + z1 * cx;
+
+    var scaled = { x: x1 * radius, y: y1 * radius, z: z2 * radius };
+    var focal = radius * 2.6;
+    var persp = focal / (focal + scaled.z);
+    return {
+      x: W / 2 + scaled.x * persp,
+      y: H / 2 + scaled.y * persp,
+      depth: persp,
+    };
+  }
+
+  function colorFor(t) {
+    // Violet -> magenta by original Y, matching the reference's two-tone energy.
+    var r = Math.round(139 + (236 - 139) * t);
+    var g = Math.round(92 + (72 - 92) * t);
+    var b = Math.round(246 + (153 - 246) * t);
+    return r + ',' + g + ',' + b;
+  }
+
+  function drawLayer(radius, opacityMul, intensity, rotY, rotX, t) {
+    ctx.lineWidth = Math.max(0.6, radius * 0.004);
+    for (var e = 0; e < edges.length; e++) {
+      var pa = points[edges[e][0]], pb = points[edges[e][1]];
+      var na = pa.seed, nb = pb.seed;
+      var dpa = {
+        x: pa.x + (Math.sin(t * 0.6 + na[0]) * 0.5 + Math.sin(t * 1.3 + na[1]) * 0.3) * intensity,
+        y: pa.y + (Math.sin(t * 0.7 + na[1]) * 0.5 + Math.sin(t * 1.1 + na[2]) * 0.3) * intensity,
+        z: pa.z + (Math.sin(t * 0.5 + na[2]) * 0.5 + Math.sin(t * 1.4 + na[0]) * 0.3) * intensity,
+      };
+      var dpb = {
+        x: pb.x + (Math.sin(t * 0.6 + nb[0]) * 0.5 + Math.sin(t * 1.3 + nb[1]) * 0.3) * intensity,
+        y: pb.y + (Math.sin(t * 0.7 + nb[1]) * 0.5 + Math.sin(t * 1.1 + nb[2]) * 0.3) * intensity,
+        z: pb.z + (Math.sin(t * 0.5 + nb[2]) * 0.5 + Math.sin(t * 1.4 + nb[0]) * 0.3) * intensity,
+      };
+      var sa = project(dpa, radius, rotY, rotX);
+      var sb = project(dpb, radius, rotY, rotX);
+      var avgT = (pa.y + pb.y + 2) / 4;
+      var avgDepth = (sa.depth + sb.depth) / 2;
+      var op = Math.max(0.08, Math.min(1, avgDepth - 0.55)) * opacityMul;
+      ctx.strokeStyle = 'rgba(' + colorFor(avgT) + ',' + op + ')';
+      ctx.beginPath();
+      ctx.moveTo(sa.x, sa.y);
+      ctx.lineTo(sb.x, sb.y);
+      ctx.stroke();
+    }
+  }
+
+  var glowSprite = null;
+  function buildGlowSprite() {
+    var c = document.createElement('canvas');
+    c.width = c.height = 256;
+    var g = c.getContext('2d');
+    var grad = g.createRadialGradient(128, 128, 0, 128, 128, 128);
+    grad.addColorStop(0, 'rgba(255,255,255,0.95)');
+    grad.addColorStop(0.35, 'rgba(245,236,255,0.5)');
+    grad.addColorStop(1, 'rgba(245,236,255,0)');
+    g.fillStyle = grad;
+    g.fillRect(0, 0, 256, 256);
+    return c;
+  }
+  glowSprite = buildGlowSprite();
+
+  var start = null;
+  var running = false;
+  var rafId = null;
+
+  function frame(ts) {
+    if (!start) start = ts;
+    var t = (ts - start) * 0.001;
+
+    ctx.clearRect(0, 0, W, H);
+    ctx.globalCompositeOperation = 'lighter';
+
+    var radius = Math.min(W, H) * 0.30;
+    var pointerDist = pointer.active ? Math.min(1, Math.hypot(pointer.x, pointer.y)) : 1;
+    var intensity = (0.13 + (1 - pointerDist) * 0.11) * radius;
+    var rotY = t * 0.18 + (pointer.active ? pointer.x * 0.35 : 0);
+    var rotX = pointer.active ? pointer.y * 0.25 : Math.sin(t * 0.3) * 0.08;
+    var pulse = 1 + Math.sin(t * 1.4) * 0.025;
+
+    // Glow core
+    var glowSize = radius * 2.3 * pulse;
+    ctx.drawImage(glowSprite, W / 2 - glowSize / 2, H / 2 - glowSize / 2, glowSize, glowSize);
+
+    // Three additive layers fake a bloom halo, cheapest-tool-that-works —
+    // same trick as the earlier WebGL mockup, just in 2D now.
+    drawLayer(radius * 1.08 * pulse, 0.10, intensity * 1.15, rotY, rotX, t);
+    drawLayer(radius * 1.035 * pulse, 0.22, intensity * 1.05, rotY, rotX, t);
+    drawLayer(radius * pulse, 0.85, intensity, rotY, rotX, t);
+
+    ctx.globalCompositeOperation = 'source-over';
+
+    if (running) rafId = requestAnimationFrame(frame);
+  }
+
+  function play() {
+    if (running) return;
+    running = true;
+    if (reduceMotion) {
+      start = null;
+      frame(performance.now());
+      running = false;
+    } else {
+      rafId = requestAnimationFrame(frame);
+    }
+  }
+  function pause() {
+    running = false;
+    if (rafId) cancelAnimationFrame(rafId);
+  }
+
+  // Only animate while the section is actually on screen — this page
+  // already runs one persistent WebGL context (the hero); a second
+  // canvas has no reason to keep computing off-screen.
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) play(); else pause();
+      });
+    }, { threshold: 0.05 });
+    io.observe(wrap);
+  } else {
+    play();
   }
 })();
 </script>
