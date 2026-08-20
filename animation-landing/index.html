@@ -471,6 +471,147 @@ nav.links a:hover{color:var(--txt)}
 }
 .ai-orb-cta{margin-top:8px}
 
+/* ── PDF INTELLIGENCE SPOTLIGHT ──────────────────────────
+   Same reasoning as .ai-spotlight: own solid background so it
+   opaquely covers the shared hero canvas for its own scroll range. */
+.pdf-spotlight{
+  padding:clamp(80px,10vw,140px) 0;
+  background:var(--bg2);
+  position:relative;overflow:hidden;z-index:2;
+  text-align:center;
+}
+.pdf-spotlight .section-head{max-width:640px;margin:0 auto 40px}
+.pdf-stage{
+  position:relative;
+  width:min(760px,92vw);
+  height:560px;
+  margin:0 auto;
+}
+.pdf-orb-glow{
+  position:absolute;left:50%;top:50%;width:260px;height:260px;
+  transform:translate(-50%,-50%);z-index:2;
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(108,71,255,.55) 0%,rgba(108,71,255,.15) 45%,transparent 72%);
+  opacity:0;animation:pdf-cycle-orb 8s cubic-bezier(.22,1,.36,1) infinite;
+}
+.pdf-orb-ring{
+  position:absolute;left:50%;top:50%;width:190px;height:190px;
+  transform:translate(-50%,-50%);z-index:2;
+  border:1.5px dashed rgba(138,110,255,.5);border-radius:50%;
+  opacity:0;animation:pdf-cycle-ring 8s cubic-bezier(.22,1,.36,1) infinite,pdf-spin 6s linear infinite;
+}
+@keyframes pdf-spin{to{transform:translate(-50%,-50%) rotate(360deg)}}
+.pdf-doc-card{
+  position:absolute;left:50%;top:50%;z-index:6;
+  width:168px;
+  background:#17142c;border:1.5px solid var(--border2);border-radius:16px;
+  padding:20px 18px;box-shadow:0 24px 60px rgba(13,11,26,.7);
+  opacity:0;transform:translate(-50%,calc(-50% - 46px)) scale(.9);
+  animation:pdf-cycle-pdf 8s cubic-bezier(.22,1,.36,1) infinite;
+}
+.pdf-doc-icon{
+  width:34px;height:34px;border-radius:9px;
+  background:#E44536;display:flex;align-items:center;justify-content:center;
+  color:#fff;font-family:'Syne',sans-serif;font-weight:800;font-size:10px;
+  margin-bottom:12px;
+}
+.pdf-doc-line{height:5px;border-radius:3px;background:rgba(255,255,255,.14);margin-bottom:7px}
+.pdf-doc-line.short{width:60%}
+.pdf-doc-scan{
+  position:absolute;left:4px;right:4px;height:2px;
+  background:linear-gradient(90deg,transparent,var(--purple-lt),transparent);
+  box-shadow:0 0 12px 2px var(--purple-lt);
+  opacity:0;animation:pdf-cycle-scan 8s cubic-bezier(.4,0,.2,1) infinite;
+}
+.pdf-mat-card{
+  position:absolute;z-index:4;
+  width:152px;
+  background:rgba(16,14,36,.9);border:1px solid var(--border);border-radius:14px;
+  padding:14px 15px;
+  -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+  box-shadow:0 18px 40px rgba(13,11,26,.6);
+  opacity:0;transform:scale(.55);
+  text-align:left;
+}
+.pdf-mat-icon{
+  width:26px;height:26px;border-radius:8px;
+  display:flex;align-items:center;justify-content:center;font-size:13px;margin-bottom:9px;
+  background:linear-gradient(135deg,rgba(108,71,255,.3),rgba(108,71,255,.1));
+  border:1px solid rgba(108,71,255,.35);
+}
+.pdf-mat-card h4{font-family:'Syne',sans-serif;font-size:12.5px;font-weight:700;margin:0 0 4px;color:var(--txt)}
+.pdf-mat-card p{font-size:10.5px;color:var(--txt35);margin:0;line-height:1.4}
+.pdf-mat-1{left:2%;top:6%;animation:pdf-cycle-mat1 8s cubic-bezier(.34,1.4,.64,1) infinite}
+.pdf-mat-2{right:0%;top:10%;animation:pdf-cycle-mat2 8s cubic-bezier(.34,1.4,.64,1) infinite}
+.pdf-mat-3{left:0%;bottom:8%;animation:pdf-cycle-mat3 8s cubic-bezier(.34,1.4,.64,1) infinite}
+.pdf-mat-4{right:3%;bottom:4%;animation:pdf-cycle-mat4 8s cubic-bezier(.34,1.4,.64,1) infinite}
+svg.pdf-connectors{position:absolute;inset:0;z-index:3;pointer-events:none;overflow:visible}
+svg.pdf-connectors path{
+  fill:none;stroke:rgba(138,110,255,.45);stroke-width:1.5;stroke-dasharray:4 5;
+  stroke-dashoffset:60;opacity:0;
+}
+.pdf-conn-1{animation:pdf-cycle-conn 8s cubic-bezier(.22,1,.36,1) infinite}
+.pdf-conn-2{animation:pdf-cycle-conn 8s cubic-bezier(.22,1,.36,1) infinite .05s}
+.pdf-conn-3{animation:pdf-cycle-conn 8s cubic-bezier(.22,1,.36,1) infinite .1s}
+.pdf-conn-4{animation:pdf-cycle-conn 8s cubic-bezier(.22,1,.36,1) infinite .15s}
+
+/* Timeline (percentages of the 8s loop): 0–12% PDF drops in,
+   12–30% orb activates + scan sweeps, 30–55% material cards spring
+   out, 55–82% hold fully assembled, 82–100% fade out and reset. */
+@keyframes pdf-cycle-pdf{
+  0%{opacity:0;transform:translate(-50%,calc(-50% - 46px)) scale(.9)}
+  10%,80%{opacity:1;transform:translate(-50%,-50%) scale(1)}
+  92%,100%{opacity:0;transform:translate(-50%,calc(-50% - 20px)) scale(.94)}
+}
+@keyframes pdf-cycle-scan{
+  0%,12%{opacity:0;top:22px}
+  16%{opacity:1;top:22px}
+  28%{opacity:1;top:108px}
+  32%,100%{opacity:0;top:108px}
+}
+@keyframes pdf-cycle-orb{0%,14%{opacity:0}24%,80%{opacity:1}92%,100%{opacity:0}}
+@keyframes pdf-cycle-ring{0%,16%{opacity:0}26%,80%{opacity:1}92%,100%{opacity:0}}
+@keyframes pdf-cycle-mat1{
+  0%,28%{opacity:0;transform:scale(.55) translate(20px,14px)}
+  40%,80%{opacity:1;transform:scale(1) translate(0,0)}
+  92%,100%{opacity:0;transform:scale(.7) translate(10px,8px)}
+}
+@keyframes pdf-cycle-mat2{
+  0%,32%{opacity:0;transform:scale(.55) translate(-20px,14px)}
+  44%,80%{opacity:1;transform:scale(1) translate(0,0)}
+  92%,100%{opacity:0;transform:scale(.7) translate(-10px,8px)}
+}
+@keyframes pdf-cycle-mat3{
+  0%,36%{opacity:0;transform:scale(.55) translate(20px,-14px)}
+  48%,80%{opacity:1;transform:scale(1) translate(0,0)}
+  92%,100%{opacity:0;transform:scale(.7) translate(10px,-8px)}
+}
+@keyframes pdf-cycle-mat4{
+  0%,40%{opacity:0;transform:scale(.55) translate(-20px,-14px)}
+  52%,80%{opacity:1;transform:scale(1) translate(0,0)}
+  92%,100%{opacity:0;transform:scale(.7) translate(-10px,-8px)}
+}
+@keyframes pdf-cycle-conn{
+  0%,34%{opacity:0;stroke-dashoffset:60}
+  46%{opacity:1;stroke-dashoffset:0}
+  80%{opacity:1;stroke-dashoffset:0}
+  92%,100%{opacity:0}
+}
+/* Paused off-screen — matches the AI orb canvas's IntersectionObserver
+   discipline; a purely decorative loop has no reason to keep computing
+   style/paint while scrolled out of view. */
+.pdf-stage.paused *{animation-play-state:paused!important}
+
+@media (prefers-reduced-motion: reduce){
+  .pdf-doc-card,.pdf-orb-glow,.pdf-orb-ring,.pdf-mat-card,svg.pdf-connectors path,.pdf-doc-scan{animation:none!important;opacity:1!important;transform:translate(-50%,-50%)!important}
+  .pdf-mat-card{transform:none!important}
+  .pdf-doc-scan{display:none}
+}
+@media (max-width:640px){
+  .pdf-stage{height:640px}
+  .pdf-mat-card{width:128px}
+}
+
 /* ── HOW IT WORKS ────────────────────────────────────── */
 .how{
   padding:clamp(80px,10vw,140px) 0;
@@ -871,6 +1012,59 @@ body.no-webgl #hero-canvas{display:none}
       <canvas id="ai-orb-canvas" role="img" aria-label="An animated glowing sphere of tangled light representing LIPRO AI"></canvas>
     </div>
     <a class="btn btn-primary ai-orb-cta" href="https://liproacademyapp.vercel.app/register">Ask LIPRO AI free →</a>
+  </div>
+</section>
+
+<!-- PDF INTELLIGENCE SPOTLIGHT -->
+<section class="pdf-spotlight" id="pdf-spotlight">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="eyebrow">PDF Intelligence</span>
+      <h2>Your PDF becomes a full study kit.</h2>
+      <p>Upload any course PDF — LIPRO AI reads it, then generates notes, a summary, flashcards, and practice questions around it automatically.</p>
+    </div>
+
+    <div class="pdf-stage" id="pdf-stage">
+      <svg class="pdf-connectors" viewBox="0 0 760 560" width="100%" height="100%">
+        <path class="pdf-conn-1" d="M 380,280 C 320,240 220,180 150,120" />
+        <path class="pdf-conn-2" d="M 380,280 C 440,240 540,180 610,120" />
+        <path class="pdf-conn-3" d="M 380,280 C 320,320 220,400 150,460" />
+        <path class="pdf-conn-4" d="M 380,280 C 440,320 540,400 610,460" />
+      </svg>
+
+      <div class="pdf-mat-card pdf-mat-1">
+        <div class="pdf-mat-icon">📝</div>
+        <h4>Smart Notes</h4>
+        <p>Structured, chapter by chapter</p>
+      </div>
+      <div class="pdf-mat-card pdf-mat-2">
+        <div class="pdf-mat-icon">📄</div>
+        <h4>Summary</h4>
+        <p>Key points in under a minute</p>
+      </div>
+      <div class="pdf-mat-card pdf-mat-3">
+        <div class="pdf-mat-icon">🗂️</div>
+        <h4>Flashcards</h4>
+        <p>Ready for spaced repetition</p>
+      </div>
+      <div class="pdf-mat-card pdf-mat-4">
+        <div class="pdf-mat-icon">✅</div>
+        <h4>Practice MCQs</h4>
+        <p>CBT-style, graded instantly</p>
+      </div>
+
+      <div class="pdf-orb-glow"></div>
+      <div class="pdf-orb-ring"></div>
+      <div class="pdf-doc-card">
+        <div class="pdf-doc-scan"></div>
+        <div class="pdf-doc-icon">PDF</div>
+        <div class="pdf-doc-line"></div>
+        <div class="pdf-doc-line"></div>
+        <div class="pdf-doc-line short"></div>
+      </div>
+    </div>
+
+    <a class="btn btn-primary" style="margin-top:8px" href="https://liproacademyapp.vercel.app/register">Try PDF Intelligence free →</a>
   </div>
 </section>
 
@@ -5961,6 +6155,22 @@ three/build/three.module.js:
   } else {
     play();
   }
+})();
+</script>
+
+<!-- PDF spotlight: pause the CSS loop off-screen — same reasoning as
+     the AI orb canvas above, just toggled via a class since this one
+     is pure CSS animation, not a render loop. -->
+<script>
+(function () {
+  var stage = document.getElementById('pdf-stage');
+  if (!stage || !('IntersectionObserver' in window)) return;
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (entry) {
+      stage.classList.toggle('paused', !entry.isIntersecting);
+    });
+  }, { threshold: 0.05 });
+  io.observe(stage);
 })();
 </script>
 </body>
