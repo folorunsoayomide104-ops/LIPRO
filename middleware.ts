@@ -20,7 +20,7 @@ const PUBLIC_API = ["/api/auth/register", "/api/auth/login", "/api/auth/google",
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   if (PUBLIC_API.some((p) => pathname.startsWith(p))) return NextResponse.next();
-  if (PUBLIC_PATHS.includes(pathname) || pathname.startsWith("/_next") || pathname.startsWith("/static") || pathname.match(/\.(svg|png|jpg|ico|css|js|html)$/)) {
+  if (PUBLIC_PATHS.includes(pathname) || pathname.startsWith("/_next") || pathname.startsWith("/static") || pathname.match(/\.(svg|png|webp|jpg|ico|css|js|html)$/)) {
     return NextResponse.next();
   }
   const token = req.cookies.get("lipro_token")?.value;

@@ -191,6 +191,8 @@ nav.links a:hover{color:var(--txt)}
   font-weight:800;
   line-height:.95;
   margin-top:18px;
+  opacity:0;transform:translateY(.4em);
+  transition:opacity .8s var(--ease-out) .22s,transform .8s var(--ease-spring) .22s;
 }
 .hero h1 .line2{
   color:var(--purple);
@@ -327,6 +329,43 @@ nav.links a:hover{color:var(--txt)}
   50%{opacity:1}
   100%{opacity:0;transform:scaleY(1);transform-origin:top}
 }
+
+/* ── HERO SOLID BACKDROP ─────────────────────────────────
+   The crystal canvas + vignette below are position:fixed and shared
+   with Features/CTA (faded in/out by the scroll listener elsewhere in
+   this file) — untouched. This sits between them (z-index 1, same tier
+   as .hero-vignette, later in DOM so it wins the paint order) and
+   opaquely covers the hero's own viewport range only, since it's an
+   absolutely-positioned child of .hero rather than fixed — once
+   scrolled past, it leaves with the rest of the hero box and the
+   canvas/vignette read exactly as before for Features/CTA. */
+.hero-solid-bg{
+  position:absolute;inset:0;z-index:1;
+  background:
+    radial-gradient(ellipse 900px 700px at 82% 32%,rgba(108,71,255,.20),transparent 60%),
+    radial-gradient(ellipse 700px 600px at 8% 85%,rgba(74,46,204,.14),transparent 60%),
+    var(--bg);
+}
+.hero-figure-wrap{
+  display:flex;justify-content:center;align-items:flex-end;
+  opacity:0;transform:translateX(32px);
+  transition:opacity .9s ease .35s,transform .9s var(--ease-out) .35s;
+}
+.hero-figure-wrap img{
+  max-width:100%;height:auto;max-height:74vh;
+  filter:drop-shadow(0 40px 60px rgba(0,0,0,.5));
+  animation:hero-figure-bob 7s ease-in-out infinite;
+}
+@keyframes hero-figure-bob{
+  0%,100%{transform:translateY(0)}
+  50%{transform:translateY(-10px)}
+}
+@media(prefers-reduced-motion: reduce){
+  .hero-figure-wrap img{animation:none}
+}
+.hero-circled{position:relative;display:inline-block;white-space:nowrap;color:var(--purple-lt)}
+.hero-circled svg{position:absolute;left:-8%;top:-14%;width:116%;height:135%;pointer-events:none;z-index:-1}
+.hero-circled path{fill:none;stroke:var(--purple);stroke-width:3;stroke-linecap:round}
 
 /* ── UNI TICKER ──────────────────────────────────────── */
 .uni-ticker{
@@ -672,6 +711,7 @@ body.no-webgl #hero-canvas{display:none}
     <canvas id="hero-canvas"></canvas>
   </div>
   <div class="hero-vignette"></div>
+  <div class="hero-solid-bg"></div>
 
   <div class="hero-content wrap">
     <div class="hero-inner">
@@ -679,12 +719,10 @@ body.no-webgl #hero-canvas{display:none}
         <span class="eyebrow hero-eyebrow" id="heyebrow">
           Built for Nigerian University Students
         </span>
-        <h1 id="hero-h1" aria-label="Master Your Courses. Own Your Grades.">
-          <!-- JS injected -->
-        </h1>
+        <h1 id="hero-h1">Study smarter with<br><span class="hero-circled">LIPRO AI<svg viewBox="0 0 300 90" preserveAspectRatio="none"><path d="M14,46 C10,18 60,6 150,6 C250,6 292,18 286,46 C280,74 220,84 150,84 C70,84 18,74 14,46 Z"/></svg></span></h1>
         <p class="hero-lede" id="hlede">
-          LIPRO Academy gives you AI-assisted CBT practice, PDF intelligence, a smart study
-          planner, and performance analytics — all tailored to your exact university, faculty and department.
+          Upload your course PDFs, get instant CBT-style practice, smart notes, and flashcards —
+          all built around your exact university, faculty and department.
         </p>
         <div class="hero-ctas" id="hctas">
           <a class="btn btn-primary" href="https://liproacademyapp.vercel.app/register">
@@ -701,49 +739,12 @@ body.no-webgl #hero-canvas{display:none}
         </div>
       </div>
 
-      <!-- Floating Dashboard Panel -->
-      <div class="hero-panel-side" id="hpanel">
-        <div class="floating-panel">
-          <div class="panel-header">
-            <span class="panel-title">Your Dashboard</span>
-            <span class="panel-badge">PREMIUM</span>
-          </div>
-          <div class="panel-stat-row">
-            <div class="panel-stat">
-              <span class="val purple">84%</span>
-              <span class="lbl">CBT Score</span>
-            </div>
-            <div class="panel-stat">
-              <span class="val">14h</span>
-              <span class="lbl">Study Time</span>
-            </div>
-            <div class="panel-stat">
-              <span class="val gold">A</span>
-              <span class="lbl">Grade Goal</span>
-            </div>
-          </div>
-          <div class="panel-progress-label">
-            <span>Anatomy — Week 6 Progress</span>
-            <span style="color:var(--purple-lt)">68%</span>
-          </div>
-          <div class="progress-bar-bg">
-            <div class="progress-bar-fill" style="width:68%"></div>
-          </div>
-          <div class="panel-cbt-row">
-            <div class="cbt-q">Which nerve is responsible for plantar flexion of the foot?</div>
-            <div class="cbt-options">
-              <div class="cbt-opt correct">
-                <span class="opt-dot">✓</span> Tibial nerve
-              </div>
-              <div class="cbt-opt">
-                <span class="opt-dot">B</span> Peroneal nerve
-              </div>
-              <div class="cbt-opt">
-                <span class="opt-dot">C</span> Femoral nerve
-              </div>
-            </div>
-          </div>
-        </div>
+      <!-- Hero figure -->
+      <div class="hero-figure-wrap" id="hpanel">
+        <picture>
+          <source srcset="/hero-student.webp" type="image/webp">
+          <img src="/hero-student.png" alt="A LIPRO Academy student studying with a laptop, surrounded by app feature cards for PDF upload, smart notes, LIPRO AI chat, CBT practice, and flashcards" width="1024" height="1536" fetchpriority="high">
+        </picture>
       </div>
     </div>
   </div>
@@ -1266,34 +1267,11 @@ window.addEventListener('scroll', function () {
   if (hvignette) hvignette.style.opacity = opacity;
 }, { passive: true });
 
-/* ── Kinetic headline ── */
+/* ── Hero reveal ── */
 (function () {
-  var h1 = document.getElementById('hero-h1');
-  var lines = [
-    { words: ['Master', 'Your', 'Courses.'], class: '' },
-    { words: ['Own', 'Your', 'Grades.'], class: 'line2' },
-  ];
-  lines.forEach(function (line, li) {
-    var lineSpan = document.createElement('span');
-    lineSpan.style.display = 'block';
-    if (line.class) lineSpan.className = line.class;
-    line.words.forEach(function (w, wi) {
-      var delay = 0.22 + li * 0.38 + wi * 0.13;
-      var ws = document.createElement('span');
-      ws.textContent = w + (wi < line.words.length - 1 ? '\u00a0' : '');
-      ws.style.cssText = 'display:inline-block;opacity:0;transform:translateY(.55em) rotate(2deg);transition:opacity .75s var(--ease-out),transform .8s var(--ease-spring);transition-delay:' + delay + 's';
-      lineSpan.appendChild(ws);
-    });
-    h1.appendChild(lineSpan);
-  });
-
   window.addEventListener('load', function () {
     requestAnimationFrame(function () {
-      h1.querySelectorAll('span > span').forEach(function (s) {
-        s.style.opacity = '1';
-        s.style.transform = 'translateY(0) rotate(0)';
-      });
-      ['heyebrow', 'hlede', 'hctas', 'htags', 'hpanel'].forEach(function (id) {
+      ['hero-h1', 'heyebrow', 'hlede', 'hctas', 'htags', 'hpanel'].forEach(function (id) {
         var el = document.getElementById(id);
         if (el) { el.style.opacity = '1'; el.style.transform = 'none'; }
       });
