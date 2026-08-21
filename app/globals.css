@@ -155,6 +155,28 @@ input[type="checkbox"], input[type="radio"] {
   50% { transform: translateY(-14px) translateX(10px); }
 }
 
+/* CBT practice-mode answer feedback — GPU-safe (transform + opacity only) */
+@keyframes cbt-pulse-correct {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.015); }
+  100% { transform: scale(1); }
+}
+@keyframes cbt-shake-wrong {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+@keyframes cbt-pop-in {
+  0% { opacity: 0; transform: scale(0.75); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.cbt-pulse-correct { animation: cbt-pulse-correct 0.4s ease; }
+.cbt-shake-wrong { animation: cbt-shake-wrong 0.35s ease; }
+.cbt-pop-in { animation: cbt-pop-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+@media (prefers-reduced-motion: reduce) {
+  .cbt-pulse-correct, .cbt-shake-wrong, .cbt-pop-in { animation: none; }
+}
+
 /* Ambient motion backgrounds — GPU-safe (transform + opacity only) */
 @keyframes amb-drift {
   0%, 100% { transform: translate3d(0, 0, 0) scale(1); }

@@ -1,10 +1,10 @@
 'use client';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Clock, Send, ChevronLeft, ChevronRight, CheckCircle2, XCircle, LayoutGrid, Loader2, RefreshCw, LogOut, Cloud, CloudOff } from 'lucide-react';
+import { Clock, Send, ChevronLeft, ChevronRight, CheckCircle2, XCircle, LayoutGrid, Loader2, RefreshCw, LogOut, Cloud, CloudOff, Flame, Star } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAttempt, type AttemptItem } from '@/lib/cbt/use-attempt';
 
@@ -34,6 +34,40 @@ export function ExamRunner({ attemptId }: { attemptId: string }) {
 
   const answeredCount = useMemo(() => items.filter((i) => (i.response ?? '').trim().length > 0).length, [items]);
   const unansweredCount = items.length - answeredCount;
+
+  // Practice-mode running score/streak — purely a motivational UI layer
+  // derived from data useAttempt already provides (item.revealed/isCorrect),
+  // no grading logic touched. A ref tracks which items have already been
+  // counted so re-renders (or checking questions out of order via the nav
+  // grid) never double-count or misattribute a streak to array position.
+  const countedRef = useRef<Set<string>>(new Set());
+  const [practiceScore, setPracticeScore] = useState(0);
+  const [streak, setStreak] = useState(0);
+  const [bestStreak, setBestStreak] = useState(0);
+  const [justRevealed, setJustRevealed] = useState<{ itemId: string; correct: boolean } | null>(null);
+
+  useEffect(() => {
+    for (const it of items) {
+      if (!it.revealed || countedRef.current.has(it.itemId)) continue;
+      countedRef.current.add(it.itemId);
+      if (it.isCorrect) {
+        setPracticeScore((s) => s + (it.awarded ?? it.points));
+        setStreak((s) => {
+          const next = s + 1;
+          setBestStreak((b) => Math.max(b, next));
+          return next;
+        });
+      } else {
+        setStreak(0);
+      }
+      setJustRevealed({ itemId: it.itemId, correct: !!it.isCorrect });
+      // Clear after the animation window so revisiting this question later
+      // (via Previous/Next or the nav grid) doesn't replay the reveal
+      // animation — it should only play at the moment of the real event.
+      const id = it.itemId;
+      setTimeout(() => setJustRevealed((cur) => (cur?.itemId === id ? null : cur)), 500);
+    }
+  }, [items]);
 
   const parseOptions = useCallback((item: AttemptItem): string[] => item.options ?? [], []);
 
@@ -98,6 +132,18 @@ export function ExamRunner({ attemptId }: { attemptId: string }) {
           </p>
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2">
+          {isPractice && (
+            <>
+              {streak >= 2 && (
+                <Badge tone="amber" className="cbt-pop-in">
+                  <Flame className="h-3 w-3" /> {streak} in a row
+                </Badge>
+              )}
+              <Badge tone="purple">
+                <Star className="h-3 w-3" /> {practiceScore} pts
+              </Badge>
+            </>
+          )}
           <Button size="sm" variant="outline" onClick={() => setShowNav((s) => !s)}><LayoutGrid className="h-4 w-4" /> Questions</Button>
           {!isPractice && remaining != null && (
             <Badge tone={timerTone(remaining, attempt.durationSec)} className={cn('shrink-0 text-sm', remaining <= 60 && 'animate-pulse')}>
@@ -139,6 +185,13 @@ export function ExamRunner({ attemptId }: { attemptId: string }) {
         </Card>
       )}
 
+      <div className="h-1.5 overflow-hidden rounded-full bg-lipro-100/60 dark:bg-lipro-900/40">
+        <div
+          className="h-full rounded-full bg-gradient-to-r from-lipro-500 to-lipro-400 transition-all duration-500 ease-out"
+          style={{ width: `${items.length ? (answeredCount / items.length) * 100 : 0}%` }}
+        />
+      </div>
+
       {!item ? (
         <Card><CardContent><p className="text-sm text-lipro-600/70">No questions in this attempt.</p></CardContent></Card>
       ) : (
@@ -147,6 +200,7 @@ export function ExamRunner({ attemptId }: { attemptId: string }) {
           index={current}
           isPractice={isPractice}
           checking={checking === item.itemId}
+          justRevealed={justRevealed?.itemId === item.itemId ? justRevealed.correct : null}
           onAnswer={(v) => setAnswer(item.itemId, v)}
           onCheck={() => doCheck(item)}
         />
@@ -224,12 +278,14 @@ function SubmitControl(props: {
 }
 
 function QuestionCard({
-  item, index, isPractice, checking, onAnswer, onCheck,
+  item, index, isPractice, checking, justRevealed, onAnswer, onCheck,
 }: {
   item: AttemptItem;
   index: number;
   isPractice: boolean;
   checking: boolean;
+  /** true/false right as this item's check result lands, null once the reveal moment has passed. */
+  justRevealed: boolean | null;
   onAnswer: (v: string) => void;
   onCheck: () => void;
 }) {
@@ -271,7 +327,8 @@ function QuestionCard({
                     'tap flex items-center gap-3 rounded-xl border p-3.5 cursor-pointer transition-all',
                     isPractice && done && isAnswer ? 'border-green-400/70 bg-green-50/70 dark:bg-green-950/30'
                     : isPractice && done && isPicked && !isAnswer ? 'border-rose-400/70 bg-rose-50/70 dark:bg-rose-950/30'
-                    : 'border-lipro-200/50 hover:bg-lipro-50/50 dark:border-lipro-700/40 dark:hover:bg-lipro-950/30'
+                    : 'border-lipro-200/50 hover:bg-lipro-50/50 dark:border-lipro-700/40 dark:hover:bg-lipro-950/30',
+                    justRevealed !== null && isPicked && (justRevealed ? 'cbt-pulse-correct' : 'cbt-shake-wrong')
                   )}
                 >
                   <input
