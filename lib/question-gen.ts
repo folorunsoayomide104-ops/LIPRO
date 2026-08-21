@@ -24,12 +24,13 @@ You receive lecture notes and must write questions based ONLY on the material gi
 - Every fact in a question, answer and explanation must come from the material. NEVER invent facts, definitions, figures or names that are not in the material.
 - Keep questions concise and exam-realistic for Nigerian universities.
 - MCQ: exactly 4 options with one correct answer. The correct answer must be verifiable from the material.
+- MCQ "answer" MUST be the full text of the correct option, copied EXACTLY character-for-character from that entry in "options" — never a letter like "A"/"B"/"C"/"D" and never an index. The grader matches "answer" against "options" by exact text; a letter will never match and the question becomes ungradeable.
 - TRUE_FALSE: the answer is exactly "True" or "False", and the statement must be directly answerable from the material.
 - FILL_BLANK: the missing word/phrase goes in the answer, and the blank appears as "___" in the question.
 - THEORY: the answer is a short model answer (2-4 sentences) grounded in the material.
 - Always include a one-sentence explanation citing the material.
 - The "type" field MUST be exactly one of these uppercase tokens: "MCQ", "TRUE_FALSE", "FILL_BLANK", "THEORY". Never use any other value (not "Multiple Choice", not "true/False", not "Essay").
-- Output a JSON array only, like: [{"type":"MCQ","question":"...","options":["A","B","C","D"],"answer":"A","explanation":"..."}]`;
+- Output a JSON array only, like: [{"type":"MCQ","question":"Which nerve controls plantar flexion?","options":["Tibial nerve","Peroneal nerve","Femoral nerve","Radial nerve"],"answer":"Tibial nerve","explanation":"..."}]`;
 
 function buildUserPrompt(text: string, formats: QuestionFormat[], countPerFormat: number): string {
   const list = formats.length ? formats.join(', ') : 'MCQ';
@@ -193,16 +194,58 @@ function normalizeFormatType(raw: unknown): QuestionFormat {
   return FORMAT_ALIASES[key] || 'MCQ';
 }
 
+/**
+ * Safety net for MCQ answers, independent of the prompt instructing the
+ * model to return full option text. Confirmed against real production
+ * data that models still sometimes ignore that instruction and return a
+ * bare option letter/index instead ("A", "B", "1", "2", "Option A") — the
+ * grader (lib/cbt/grading.ts) matches "answer" against "options" by exact
+ * text, so a letter never matches any option and the question becomes
+ * permanently ungradeable: every response, including the objectively
+ * correct one, is marked wrong. Resolves that letter back to the option
+ * it actually refers to; returns null if it can't be resolved at all
+ * (an unresolvable MCQ is dropped rather than shipped ungradeable).
+ */
+function resolveMcqAnswer(answer: string, options: string[]): string | null {
+  const trimmed = answer.trim();
+  if (options.some((o) => o.trim().toLowerCase() === trimmed.toLowerCase())) return trimmed;
+
+  const letterMatch = trimmed.match(/^\(?option\)?\s*([a-d])\)?\.?$/i) || trimmed.match(/^([a-d])[).]?$/i);
+  if (letterMatch) {
+    const idx = letterMatch[1]!.toUpperCase().charCodeAt(0) - 'A'.charCodeAt(0);
+    if (options[idx]) return options[idx]!;
+  }
+
+  const numberMatch = trimmed.match(/^\(?option\)?\s*([1-4])\)?\.?$/i) || trimmed.match(/^([1-4])[).]?$/);
+  if (numberMatch) {
+    const idx = Number(numberMatch[1]) - 1;
+    if (options[idx]) return options[idx]!;
+  }
+
+  return null;
+}
+
 function normalizeQuestions(items: any[]): GeneratedQuestion[] {
   return items
     .filter((q: any) => q && typeof q.question === 'string' && typeof q.answer === 'string')
-    .map((q: any) => ({
-      type: normalizeFormatType(q.type),
-      question: String(q.question),
-      options: Array.isArray(q.options) ? q.options.map(String) : null,
-      answer: String(q.answer),
-      explanation: q.explanation ? String(q.explanation) : '',
-    }));
+    .map((q: any) => {
+      const type = normalizeFormatType(q.type);
+      const options = Array.isArray(q.options) ? q.options.map(String) : null;
+      let answer = String(q.answer);
+      if (type === 'MCQ' && options && options.length >= 2) {
+        const resolved = resolveMcqAnswer(answer, options);
+        if (resolved === null) return null;
+        answer = resolved;
+      }
+      return {
+        type,
+        question: String(q.question),
+        options,
+        answer,
+        explanation: q.explanation ? String(q.explanation) : '',
+      };
+    })
+    .filter((q): q is GeneratedQuestion => q !== null);
 }
 
 export function isDemoMode(apiKey?: string, groqApiKey?: string): boolean {
