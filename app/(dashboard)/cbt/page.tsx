@@ -69,7 +69,7 @@ export default async function CbtIndexPage() {
       )}
 
       <div className="grid gap-4 md:grid-cols-2">
-        <Card><CardHeader><CardTitle>Timed exam from a document</CardTitle><CardDescription>Upload a PDF, generate MCQ questions and start a countdown exam</CardDescription></CardHeader><CardContent>
+        <Card><CardHeader><CardTitle>Practice or exam from a document</CardTitle><CardDescription>Upload a PDF, generate MCQ questions, then practice with instant feedback or start a timed exam</CardDescription></CardHeader><CardContent>
           <PdfExamCreator materials={docs} />
         </CardContent></Card>
         <Card><CardHeader><CardTitle>Recent results</CardTitle><CardDescription>Your last 10 completed sessions</CardDescription></CardHeader><CardContent>

@@ -14,6 +14,7 @@ export function PdfExamCreator({ materials }: { materials: Doc[] }) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
+  const [mode, setMode] = useState<'practice' | 'exam'>('practice');
   const [count, setCount] = useState(25);
   const [durationMin, setDurationMin] = useState(30);
   const [phase, setPhase] = useState<'idle' | 'uploading' | 'generating' | 'starting'>('idle');
@@ -21,7 +22,7 @@ export function PdfExamCreator({ materials }: { materials: Doc[] }) {
   const [error, setError] = useState('');
 
   const startExam = async (materialId: string, durationSec: number) => {
-    const result = await createAttempt({ source: { kind: 'material', id: materialId }, mode: 'exam', count, durationSec });
+    const result = await createAttempt({ source: { kind: 'material', id: materialId }, mode, count, durationSec });
     router.push(`/cbt/${result.attemptId}`);
   };
 
@@ -72,8 +73,8 @@ export function PdfExamCreator({ materials }: { materials: Doc[] }) {
 
   const phaseText = phase === 'uploading' ? 'Uploading document…'
     : phase === 'generating' ? 'Generating questions (can take a minute)…'
-    : phase === 'starting' ? 'Starting timed exam…'
-    : 'Generate & start exam';
+    : phase === 'starting' ? (mode === 'practice' ? 'Starting practice…' : 'Starting timed exam…')
+    : mode === 'practice' ? 'Generate & start practice' : 'Generate & start exam';
 
   const fmtBytes = (b: number) => (b > 1024 * 1024 ? `${(b / (1024 * 1024)).toFixed(1)} MB` : `${(b / 1024).toFixed(0)} KB`);
 
@@ -110,19 +111,38 @@ export function PdfExamCreator({ materials }: { materials: Doc[] }) {
         )}
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className="flex gap-1 rounded-xl border border-lipro-200/60 bg-lipro-50/50 p-1 dark:border-lipro-500/20 dark:bg-lipro-950/30">
+        <button
+          type="button"
+          onClick={() => setMode('practice')}
+          className={`flex-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${mode === 'practice' ? 'bg-lipro-600 text-white shadow-sm' : 'text-lipro-600/80 hover:bg-lipro-100/60 dark:text-lipro-200/70'}`}
+        >
+          Practice
+        </button>
+        <button
+          type="button"
+          onClick={() => setMode('exam')}
+          className={`flex-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${mode === 'exam' ? 'bg-lipro-600 text-white shadow-sm' : 'text-lipro-600/80 hover:bg-lipro-100/60 dark:text-lipro-200/70'}`}
+        >
+          Exam mode
+        </button>
+      </div>
+
+      <div className={`grid grid-cols-1 gap-3 ${mode === 'exam' ? 'sm:grid-cols-2' : ''}`}>
         <div>
           <label className="label">Questions</label>
           <select className="input" value={count} onChange={(e) => setCount(Number(e.target.value))}>
             {QUESTION_COUNTS.map((c) => <option key={c} value={c}>{c} questions</option>)}
           </select>
         </div>
-        <div>
-          <label className="label">Exam duration</label>
-          <select className="input" value={durationMin} onChange={(e) => setDurationMin(Number(e.target.value))}>
-            {DURATION_MINUTES.map((d) => <option key={d} value={d}>{d} minutes</option>)}
-          </select>
-        </div>
+        {mode === 'exam' && (
+          <div>
+            <label className="label">Exam duration</label>
+            <select className="input" value={durationMin} onChange={(e) => setDurationMin(Number(e.target.value))}>
+              {DURATION_MINUTES.map((d) => <option key={d} value={d}>{d} minutes</option>)}
+            </select>
+          </div>
+        )}
       </div>
 
       <Button onClick={generateAndStart} disabled={phase !== 'idle'} className="w-full" size="lg">
@@ -136,7 +156,11 @@ export function PdfExamCreator({ materials }: { materials: Doc[] }) {
         </div>
       )}
       {error && <p className="text-xs text-rose-500">{error}</p>}
-      <p className="text-xs text-lipro-600/60">Generates up to {count} questions from your document and starts a countdown timed exam. Auto-submits when time runs out.</p>
+      <p className="text-xs text-lipro-600/60">
+        {mode === 'practice'
+          ? `Generates up to ${count} questions from your document. Check each answer as you go — no timer, instant feedback, and a running score.`
+          : `Generates up to ${count} questions from your document and starts a countdown timed exam. Auto-submits when time runs out.`}
+      </p>
 
       {materials.length > 0 && (
         <div className="space-y-2 border-t border-lipro-200/40 pt-3">
@@ -155,10 +179,10 @@ export function PdfExamCreator({ materials }: { materials: Doc[] }) {
                   setError('');
                   setPhase('starting');
                   try { await startExam(m.id, durationMin * 60); }
-                  catch (err: any) { setError(err?.message || 'Could not start exam'); setPhase('idle'); }
+                  catch (err: any) { setError(err?.message || 'Could not start attempt'); setPhase('idle'); }
                 }}
               >
-                <Play className="h-3.5 w-3.5" /> Exam
+                <Play className="h-3.5 w-3.5" /> {mode === 'practice' ? 'Practice' : 'Exam'}
               </Button>
             </div>
           ))}
