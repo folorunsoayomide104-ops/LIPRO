@@ -4,23 +4,38 @@ import { useRouter } from 'next/navigation';
 import { upload as blobUpload } from '@vercel/blob/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { FileUp, FileText, Loader2, Play, Zap } from 'lucide-react';
+import { FileUp, FileText, Loader2, Play, Zap, ListChecks, ToggleLeft, PenLine, NotebookPen, Sparkles } from 'lucide-react';
 import { createAttempt } from '@/lib/cbt/client';
 import { QUESTION_COUNTS, DURATION_MINUTES } from '@/lib/cbt/constants';
+import type { QuestionFormat } from '@/lib/question-gen';
 
 type Doc = { id: string; originalName: string; sizeBytes: number; questionCount: number; createdAt: string };
+
+const FORMAT_OPTIONS: Array<{ value: QuestionFormat; label: string; hint: string; icon: typeof ListChecks }> = [
+  { value: 'MCQ', label: 'Multiple Choice', hint: '4 options, one correct answer', icon: ListChecks },
+  { value: 'TRUE_FALSE', label: 'True / False', hint: 'Quick recall of key statements', icon: ToggleLeft },
+  { value: 'FILL_BLANK', label: 'Fill in the Gap', hint: 'Recall exact terms and definitions', icon: PenLine },
+  { value: 'THEORY', label: 'Theory / Essay', hint: 'Explain concepts in your own words', icon: NotebookPen },
+];
 
 export function PdfExamCreator({ materials }: { materials: Doc[] }) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
+  const [format, setFormat] = useState<QuestionFormat>('MCQ');
   const [mode, setMode] = useState<'practice' | 'exam'>('practice');
   const [count, setCount] = useState(25);
   const [durationMin, setDurationMin] = useState(30);
-  const [phase, setPhase] = useState<'idle' | 'uploading' | 'generating' | 'starting'>('idle');
+  const [phase, setPhase] = useState<'idle' | 'uploading' | 'analyzing' | 'generating' | 'starting'>('idle');
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState('');
 
+  // Starting from an already-uploaded document reuses whatever question(s)
+  // were generated for it, regardless of the format picker above — that
+  // picker controls what gets GENERATED for a fresh upload, and the
+  // existing-documents list doesn't expose a per-format breakdown of what's
+  // already saved, so filtering here could silently produce "no questions
+  // available" for a document that has plenty, just not in this format.
   const startExam = async (materialId: string, durationSec: number) => {
     const result = await createAttempt({ source: { kind: 'material', id: materialId }, mode, count, durationSec });
     router.push(`/cbt/${result.attemptId}`);
@@ -54,17 +69,24 @@ export function PdfExamCreator({ materials }: { materials: Doc[] }) {
       if (!up.ok) throw new Error(upData?.error || 'Upload failed');
       materialId = upData.material.id;
 
-      setPhase('generating');
+      // "analyzing" reflects what actually happens server-side now: the
+      // document is scanned for exam-likely concepts before any question in
+      // the chosen format is written, rather than pulling straight from
+      // whatever text happens to fall in a chunk.
+      setPhase('analyzing');
+      setTimeout(() => setPhase((p) => (p === 'analyzing' ? 'generating' : p)), 1400);
       const gen = await fetch(`/api/materials/${materialId}/questions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ formats: ['MCQ'], count, save: true }),
+        body: JSON.stringify({ formats: [format], count, save: true }),
       });
       const genData = await gen.json().catch(() => null);
       if (!gen.ok) throw new Error(genData?.error || 'Question generation failed');
 
       setPhase('starting');
-      await startExam(materialId, durationMin * 60);
+      const durationSec = durationMin * 60;
+      const result = await createAttempt({ source: { kind: 'material', id: materialId }, mode, count, durationSec, types: [format] });
+      router.push(`/cbt/${result.attemptId}`);
     } catch (err: any) {
       setError(err?.message || 'Something went wrong');
       setPhase('idle');
@@ -72,9 +94,10 @@ export function PdfExamCreator({ materials }: { materials: Doc[] }) {
   };
 
   const phaseText = phase === 'uploading' ? 'Uploading document…'
-    : phase === 'generating' ? 'Generating questions (can take a minute)…'
+    : phase === 'analyzing' ? 'Analyzing document for exam-likely concepts…'
+    : phase === 'generating' ? `Writing ${FORMAT_OPTIONS.find((f) => f.value === format)!.label.toLowerCase()} questions…`
     : phase === 'starting' ? (mode === 'practice' ? 'Starting practice…' : 'Starting timed exam…')
-    : mode === 'practice' ? 'Generate & start practice' : 'Generate & start exam';
+    : mode === 'practice' ? 'Analyze & start practice' : 'Analyze & start exam';
 
   const fmtBytes = (b: number) => (b > 1024 * 1024 ? `${(b / (1024 * 1024)).toFixed(1)} MB` : `${(b / 1024).toFixed(0)} KB`);
 
@@ -109,6 +132,34 @@ export function PdfExamCreator({ materials }: { materials: Doc[] }) {
             <FileUp className="h-4 w-4" /> Drop a PDF, Word, TXT or MD file here, or click to choose
           </div>
         )}
+      </div>
+
+      <div>
+        <label className="label flex items-center gap-1.5"><Sparkles className="h-3.5 w-3.5 text-lipro-500" /> Question format</label>
+        <div className="grid grid-cols-2 gap-2">
+          {FORMAT_OPTIONS.map((opt) => {
+            const Icon = opt.icon;
+            const active = format === opt.value;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setFormat(opt.value)}
+                disabled={phase !== 'idle'}
+                className={`flex flex-col items-start gap-1 rounded-xl border p-2.5 text-left transition-all disabled:opacity-60 ${
+                  active
+                    ? 'border-lipro-500 bg-lipro-50 dark:border-lipro-400 dark:bg-lipro-950/50'
+                    : 'border-lipro-200/60 hover:border-lipro-300 hover:bg-lipro-50/40 dark:border-lipro-500/20 dark:hover:bg-lipro-950/30'
+                }`}
+              >
+                <span className={`flex items-center gap-1.5 text-sm font-medium ${active ? 'text-lipro-700 dark:text-lipro-200' : ''}`}>
+                  <Icon className="h-4 w-4" /> {opt.label}
+                </span>
+                <span className="text-xs text-lipro-600/60 dark:text-lipro-300/60">{opt.hint}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <div className="flex gap-1 rounded-xl border border-lipro-200/60 bg-lipro-50/50 p-1 dark:border-lipro-500/20 dark:bg-lipro-950/30">
@@ -158,8 +209,8 @@ export function PdfExamCreator({ materials }: { materials: Doc[] }) {
       {error && <p className="text-xs text-rose-500">{error}</p>}
       <p className="text-xs text-lipro-600/60">
         {mode === 'practice'
-          ? `Generates up to ${count} questions from your document. Check each answer as you go — no timer, instant feedback, and a running score.`
-          : `Generates up to ${count} questions from your document and starts a countdown timed exam. Auto-submits when time runs out.`}
+          ? `We'll analyze your document for the concepts most likely to be tested, then write up to ${count} ${FORMAT_OPTIONS.find((f) => f.value === format)!.label.toLowerCase()} question(s) from them. Check each answer as you go — no timer, instant feedback, and a running score.`
+          : `We'll analyze your document for the concepts most likely to be tested, then write up to ${count} ${FORMAT_OPTIONS.find((f) => f.value === format)!.label.toLowerCase()} question(s) and start a countdown timed exam. Auto-submits when time runs out.`}
       </p>
 
       {materials.length > 0 && (

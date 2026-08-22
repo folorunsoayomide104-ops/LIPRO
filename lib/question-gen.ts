@@ -42,6 +42,112 @@ Write ${countPerFormat} accurate question(s) for each of these formats: ${list}.
 Base every question ONLY on the material above. Return a JSON array.`;
 }
 
+/* ------------------------------------------------------------------ *
+ * Document analysis — identify what's actually exam-worthy before
+ * writing any questions, instead of extracting mechanically from
+ * whatever text happens to fall in a given chunk. This is the
+ * difference between "a random question generator" and something that
+ * targets the concepts a real lecturer would test.
+ * ------------------------------------------------------------------ */
+
+export interface ExamTopic {
+  concept: string;
+  context: string;
+}
+
+const ANALYSIS_SYSTEM_PROMPT = `You are an expert Nigerian university examiner reviewing lecture material before setting an exam. You generate ONLY valid JSON — no markdown, no commentary, no code fences.
+
+Identify the concepts in this material that a lecturer is MOST LIKELY to test: key definitions, named principles/laws/theorems, processes and their steps, classifications, comparisons, cause-and-effect relationships, and important numerical facts or formulas. Prioritize specific, testable content over trivial or incidental sentences (do not pick things like introductions, transitions, or "in this chapter we will discuss...").
+
+Output a JSON array of objects, each shaped like:
+[{"concept": "short name of the testable idea", "context": "the exact sentence(s) from the material this is based on, copied verbatim"}]
+
+Return between 3 and 20 concepts depending on how much genuinely testable material is present. Never invent a concept that isn't actually in the text.`;
+
+function buildAnalysisPrompt(text: string, targetCount: number): string {
+  return `Lecture material:
+---
+${text}
+---
+Identify up to ${targetCount} of the most exam-likely concepts from this material. Return a JSON array.`;
+}
+
+function looksLikeTopic(v: any): boolean {
+  return !!v && typeof v === 'object' && !Array.isArray(v) && typeof v.concept === 'string' && typeof v.context === 'string';
+}
+
+function extractTopics(raw: string): ExamTopic[] {
+  let cleaned = raw.trim();
+  const fence = cleaned.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (fence) cleaned = fence[1].trim();
+  try {
+    const direct = JSON.parse(cleaned);
+    if (Array.isArray(direct)) return direct.filter(looksLikeTopic);
+    if (direct && Array.isArray(direct.topics)) return direct.topics.filter(looksLikeTopic);
+  } catch {
+    // fall through to bracket-slicing below
+  }
+  const start = cleaned.indexOf('[');
+  const end = cleaned.lastIndexOf(']');
+  if (start === -1 || end === -1 || end <= start) return [];
+  try {
+    const parsed = JSON.parse(
+      cleaned
+        .slice(start, end + 1)
+        .replace(/,\s*([}\]])/g, '$1')
+        .replace(/[“”]/g, '"')
+        .replace(/’/g, "'")
+    );
+    return Array.isArray(parsed) ? parsed.filter(looksLikeTopic) : [];
+  } catch {
+    return [];
+  }
+}
+
+/** One analysis call per chunk — cheap/fast relative to full question authoring. */
+async function analyzeChunk(text: string, targetCount: number, cfg: AiProviderConfig): Promise<ExamTopic[]> {
+  try {
+    const content = await nvidiaChatCompletion({
+      apiKey: cfg.apiKey,
+      baseURL: cfg.baseURL,
+      model: cfg.model,
+      label: cfg.provider === 'groq' ? 'Groq' : 'NVIDIA NIM',
+      messages: [
+        { role: 'system', content: ANALYSIS_SYSTEM_PROMPT },
+        { role: 'user', content: buildAnalysisPrompt(text, targetCount) },
+      ],
+      temperature: 0.3,
+      maxTokens: Math.min(3000, targetCount * 140 + 400),
+      timeoutMs: 30000,
+      retries: 1,
+    });
+    return extractTopics(content);
+  } catch (err: any) {
+    console.error('Document analysis failed for a chunk:', err?.message || err);
+    return [];
+  }
+}
+
+function dedupeTopics(topics: ExamTopic[]): ExamTopic[] {
+  const seen = new Set<string>();
+  const out: ExamTopic[] = [];
+  for (const t of topics) {
+    const key = normalize(t.concept);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(t);
+  }
+  return out;
+}
+
+function buildUserPromptFromTopics(topics: ExamTopic[], format: QuestionFormat, count: number): string {
+  const list = topics.map((t, i) => `${i + 1}. ${t.concept} — context: "${t.context}"`).join('\n');
+  return `Exam-relevant concepts already identified from the material, in order of importance:
+${list}
+
+Write ${count} ${FORMAT_LABELS[format]} question(s). Each question must be based on a DIFFERENT concept from the list above — cycle back to the start of the list if you need more questions than there are concepts, but vary the angle each time so repeats aren't identical. Use ONLY the "context" text given for each concept; never invent facts beyond it. Return a JSON array of question objects (type "${format}").`;
+}
+
 /** True for an object shaped like one question (as opposed to e.g. `{"options":[...]}`). */
 function looksLikeQuestion(v: any): boolean {
   return !!v && typeof v === 'object' && !Array.isArray(v) && typeof v.question === 'string' && 'answer' in v;
@@ -308,7 +414,8 @@ function normalize(s: string): string {
   return s.toLowerCase().replace(/\s+/g, ' ').trim();
 }
 
-async function callProvider(text: string, formats: QuestionFormat[], count: number, cfg: AiProviderConfig): Promise<GeneratedQuestion[]> {
+/** Raw-chunk fallback path — used only when document analysis (see below) comes up empty. */
+async function callProviderRaw(text: string, formats: QuestionFormat[], count: number, cfg: AiProviderConfig): Promise<GeneratedQuestion[]> {
   const content = await nvidiaChatCompletion({
     apiKey: cfg.apiKey,
     baseURL: cfg.baseURL,
@@ -333,6 +440,25 @@ async function callProvider(text: string, formats: QuestionFormat[], count: numb
   return extractJsonArray(content);
 }
 
+/** Targeted generation: writes questions against pre-identified exam topics rather than raw text. */
+async function callProviderWithTopics(topics: ExamTopic[], format: QuestionFormat, count: number, cfg: AiProviderConfig): Promise<GeneratedQuestion[]> {
+  const content = await nvidiaChatCompletion({
+    apiKey: cfg.apiKey,
+    baseURL: cfg.baseURL,
+    model: cfg.model,
+    label: cfg.provider === 'groq' ? 'Groq' : 'NVIDIA NIM',
+    messages: [
+      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'user', content: buildUserPromptFromTopics(topics, format, count) },
+    ],
+    temperature: 0.4,
+    maxTokens: Math.min(6000, count * 220 + 600),
+    timeoutMs: 45000,
+    retries: 1,
+  });
+  return extractJsonArray(content);
+}
+
 function dedupe(list: GeneratedQuestion[]): GeneratedQuestion[] {
   const seen = new Set<string>();
   const out: GeneratedQuestion[] = [];
@@ -345,28 +471,74 @@ function dedupe(list: GeneratedQuestion[]): GeneratedQuestion[] {
   return out;
 }
 
+/**
+ * Two-stage pipeline: analyze the material for what's genuinely exam-worthy,
+ * then write questions targeting those specific concepts — rather than
+ * mechanically extracting from whatever text happens to fall in a chunk.
+ * This is what makes generation feel like real exam preparation instead of
+ * a random-sentence question generator.
+ */
 async function generateFromProvider(text: string, formats: QuestionFormat[], countPerFormat: number, cfg: AiProviderConfig): Promise<GeneratedQuestion[]> {
-  // Run all (format × chunk) asks in parallel so we can generate large counts
-  // (e.g. 100) far more quickly than sequential chunk settling allowed.
   const perCall = 10;
   const numChunks = Math.max(1, Math.min(12, Math.ceil(countPerFormat / perCall)));
   const chunks = numChunks > 1 ? chunkText(text, Math.ceil(text.length / numChunks)) : [text];
 
-  const jobs: Array<{ chunk: string; fmt: QuestionFormat; ask: number }> = [];
+  // Stage 1: analyze every chunk in parallel for exam-likely concepts. Ask
+  // for a bit more than strictly needed per chunk so the merged, deduped
+  // list comfortably covers countPerFormat even after some chunks yield
+  // fewer usable topics than others.
+  const topicsPerChunk = Math.max(3, Math.ceil((countPerFormat * 1.4) / chunks.length));
+  const analyzed = await runWithConcurrency(chunks, Math.max(2, Math.min(8, chunks.length)), (chunk) =>
+    analyzeChunk(chunk, topicsPerChunk, cfg)
+  );
+  const topics = dedupeTopics(analyzed.flat());
+
+  // Analysis came up empty (e.g. very short, list-like, or malformed
+  // material) — fall back to the raw-chunk path rather than generating
+  // nothing at all.
+  if (topics.length === 0) {
+    const jobs: Array<{ chunk: string; fmt: QuestionFormat; ask: number }> = [];
+    for (const fmt of formats) {
+      let need = countPerFormat;
+      for (let ci = 0; ci < chunks.length && need > 0; ci++) {
+        const chunksLeft = chunks.length - ci;
+        const ask = Math.min(Math.ceil(need / chunksLeft), perCall);
+        if (ask <= 0) break;
+        jobs.push({ chunk: chunks[ci], fmt, ask });
+        need -= ask;
+      }
+    }
+    const results = await runWithConcurrency(jobs, Math.max(2, Math.min(16, jobs.length)), async (job) => {
+      try {
+        return await callProviderRaw(job.chunk, [job.fmt], job.ask, cfg);
+      } catch (err: any) {
+        console.error(`Generation failed for ${job.fmt}:`, err?.message || err);
+        return [] as GeneratedQuestion[];
+      }
+    });
+    return dedupe(results.flat()).slice(0, countPerFormat * formats.length + Math.ceil(countPerFormat * 0.2));
+  }
+
+  // Stage 2: write questions against the identified topics. Each job gets a
+  // rotated slice of the topic list (not the same starting point every
+  // time) so parallel batches for the same format don't all anchor on the
+  // same handful of concepts.
+  const jobs: Array<{ fmt: QuestionFormat; ask: number; topicSlice: ExamTopic[] }> = [];
   for (const fmt of formats) {
     let need = countPerFormat;
-    for (let ci = 0; ci < chunks.length && need > 0; ci++) {
-      const chunksLeft = chunks.length - ci;
-      const ask = Math.min(Math.ceil(need / chunksLeft), perCall);
-      if (ask <= 0) break;
-      jobs.push({ chunk: chunks[ci], fmt, ask });
+    let offset = 0;
+    while (need > 0) {
+      const ask = Math.min(need, perCall);
+      const topicSlice = Array.from({ length: Math.min(topics.length, Math.max(ask, 5)) }, (_, i) => topics[(offset + i) % topics.length]);
+      jobs.push({ fmt, ask, topicSlice });
       need -= ask;
+      offset += ask;
     }
   }
 
   const results = await runWithConcurrency(jobs, Math.max(2, Math.min(16, jobs.length)), async (job) => {
     try {
-      return await callProvider(job.chunk, [job.fmt], job.ask, cfg);
+      return await callProviderWithTopics(job.topicSlice, job.fmt, job.ask, cfg);
     } catch (err: any) {
       console.error(`Generation failed for ${job.fmt}:`, err?.message || err);
       return [] as GeneratedQuestion[];
@@ -378,8 +550,8 @@ async function generateFromProvider(text: string, formats: QuestionFormat[], cou
 }
 
 /** Run async tasks with a concurrency cap without pulling in a dependency. */
-async function runWithConcurrency<T>(items: T[], limit: number, worker: (item: T) => Promise<GeneratedQuestion[]>): Promise<GeneratedQuestion[][]> {
-  const out = new Array<GeneratedQuestion[]>(items.length);
+async function runWithConcurrency<T, R>(items: T[], limit: number, worker: (item: T) => Promise<R[]>): Promise<R[][]> {
+  const out = new Array<R[]>(items.length);
   let next = 0;
   const pump = async () => {
     while (next < items.length) {

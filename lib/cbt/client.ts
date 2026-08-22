@@ -14,6 +14,8 @@ export interface CreateAttemptParams {
   mode: 'practice' | 'exam';
   count: number;
   durationSec?: number;
+  /** Restrict the sampled question bank to these formats (e.g. ['MCQ']). Omit for any format. */
+  types?: string[];
 }
 
 export interface CreateAttemptResult {
@@ -33,6 +35,7 @@ export async function createAttempt(params: CreateAttemptParams): Promise<Create
     ...(params.source.kind === 'course' ? { courseId: params.source.id } : { materialId: params.source.id }),
   };
   if (params.mode === 'exam' && params.durationSec) body.durationSec = params.durationSec;
+  if (params.types?.length) body.types = params.types;
 
   const res = await fetch('/api/cbt/attempts', {
     method: 'POST',

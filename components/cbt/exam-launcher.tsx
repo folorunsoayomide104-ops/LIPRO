@@ -5,6 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Brain, Loader2, Timer, ListChecks } from 'lucide-react';
 import { createAttempt, type AttemptSource } from '@/lib/cbt/client';
 import { QUESTION_COUNTS, DURATION_MINUTES } from '@/lib/cbt/constants';
+import { FORMAT_LABELS, type QuestionFormat } from '@/lib/question-gen';
+
+const ALL_FORMATS: QuestionFormat[] = ['MCQ', 'TRUE_FALSE', 'FILL_BLANK', 'THEORY'];
 
 /**
  * Mode/count/duration picker + "Start" button. Replaces the mode/count/
@@ -17,17 +20,22 @@ export function ExamLauncher({
   defaultCount = 10,
   defaultDurationMin = 15,
   startLabel,
+  /** Real per-format question counts already in the bank, e.g. { MCQ: 12, THEORY: 3 }. Formats at 0 (or omitted) are disabled rather than hidden, so a student can see what's missing. */
+  typeCounts,
 }: {
   source: AttemptSource;
   defaultMode?: 'practice' | 'exam';
   defaultCount?: number;
   defaultDurationMin?: number;
   startLabel?: string;
+  typeCounts?: Partial<Record<QuestionFormat, number>>;
 }) {
   const router = useRouter();
   const [mode, setMode] = useState<'practice' | 'exam'>(defaultMode);
   const [count, setCount] = useState(defaultCount);
   const [durationMin, setDurationMin] = useState(defaultDurationMin);
+  const firstAvailable = typeCounts ? ALL_FORMATS.find((f) => (typeCounts[f] || 0) > 0) ?? 'MCQ' : 'MCQ';
+  const [format, setFormat] = useState<QuestionFormat>(firstAvailable);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -40,6 +48,7 @@ export function ExamLauncher({
         mode,
         count,
         durationSec: mode === 'exam' ? durationMin * 60 : undefined,
+        types: typeCounts ? [format] : undefined,
       });
       router.push(`/cbt/${result.attemptId}`);
     } catch (err: any) {
@@ -67,6 +76,18 @@ export function ExamLauncher({
         </button>
       </div>
 
+      {typeCounts && (
+        <label className="flex items-center gap-1.5 text-xs text-lipro-600/80 dark:text-lipro-200/70">
+          Format
+          <select className="input !py-1 text-xs" value={format} onChange={(e) => setFormat(e.target.value as QuestionFormat)} aria-label="Question format">
+            {ALL_FORMATS.map((f) => {
+              const n = typeCounts[f] || 0;
+              return <option key={f} value={f} disabled={n === 0}>{FORMAT_LABELS[f]} ({n})</option>;
+            })}
+          </select>
+        </label>
+      )}
+
       <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-1.5">
         <label className="flex items-center gap-1.5 text-xs text-lipro-600/80 dark:text-lipro-200/70">
           <ListChecks className="h-3.5 w-3.5" />
@@ -84,7 +105,7 @@ export function ExamLauncher({
         )}
       </div>
 
-      <Button size="sm" onClick={start} disabled={loading}>
+      <Button size="sm" onClick={start} disabled={loading || (typeCounts ? (typeCounts[format] || 0) === 0 : false)}>
         {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Brain className="h-4 w-4" />}
         {loading ? 'Starting…' : startLabel || (mode === 'practice' ? 'Start practice' : 'Start exam')}
       </Button>

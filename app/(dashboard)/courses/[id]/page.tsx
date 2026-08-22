@@ -37,6 +37,11 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
 
   const canManage = session.role === 'ADMIN';
 
+  const typeCounts: Record<string, number> = {};
+  for (const q of course.questions) {
+    typeCounts[q.type] = (typeCounts[q.type] || 0) + 1;
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -57,7 +62,7 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
       </Card>
 
       <div className="flex flex-wrap gap-2">
-        <StartExamButton courseId={course.id} />
+        <StartExamButton courseId={course.id} typeCounts={typeCounts} />
         <Link href="/lipro-ai"><Badge tone="purple" className="cursor-pointer">Ask LIPRO AI about this course</Badge></Link>
       </div>
 

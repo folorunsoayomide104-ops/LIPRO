@@ -40,6 +40,19 @@ export default async function CbtIndexPage() {
     createdAt: m.createdAt.toISOString(),
   }));
 
+  // One grouped query for every course's per-format counts, rather than a
+  // query per course row — same pattern used on the admin students page.
+  const typeGroups = courses.length
+    ? await prisma.question.groupBy({ by: ['courseId', 'type'], where: { courseId: { in: courses.map((c) => c.id) } }, _count: true })
+    : [];
+  const typeCountsByCourse = new Map<string, Record<string, number>>();
+  for (const g of typeGroups) {
+    if (!g.courseId) continue;
+    const bucket = typeCountsByCourse.get(g.courseId) || {};
+    bucket[g.type] = g._count;
+    typeCountsByCourse.set(g.courseId, bucket);
+  }
+
   return (
     <div className="space-y-6">
       <div><h1 className="text-2xl font-bold tracking-tight">CBT Engine</h1><p className="text-sm text-lipro-600/70 dark:text-lipro-200/70">Practice with instant feedback or take timed exams — from your courses or your own documents</p></div>
@@ -69,7 +82,7 @@ export default async function CbtIndexPage() {
       )}
 
       <div className="grid gap-4 md:grid-cols-2">
-        <Card><CardHeader><CardTitle>Practice or exam from a document</CardTitle><CardDescription>Upload a PDF, generate MCQ questions, then practice with instant feedback or start a timed exam</CardDescription></CardHeader><CardContent>
+        <Card><CardHeader><CardTitle>Practice or exam from a document</CardTitle><CardDescription>Upload a PDF, choose a question format, then practice with instant feedback or start a timed exam</CardDescription></CardHeader><CardContent>
           <PdfExamCreator materials={docs} />
         </CardContent></Card>
         <Card><CardHeader><CardTitle>Recent results</CardTitle><CardDescription>Your last 10 completed sessions</CardDescription></CardHeader><CardContent>
@@ -92,7 +105,7 @@ export default async function CbtIndexPage() {
             <div key={c.id} className="rounded-xl p-3 glass-hover">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="min-w-0"><div className="truncate text-sm font-medium">{c.code} · {c.title}</div><div className="truncate text-xs text-lipro-600/60">{c._count.questions} questions · By {c.lecturer.fullName}</div></div>
-                <div className="w-full sm:w-auto sm:shrink-0"><StartExamButton courseId={c.id} /></div>
+                <div className="w-full sm:w-auto sm:shrink-0"><StartExamButton courseId={c.id} typeCounts={typeCountsByCourse.get(c.id)} /></div>
               </div>
             </div>
           ))}
