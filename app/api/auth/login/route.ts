@@ -20,7 +20,11 @@ export async function POST(req: Request) {
   const ip = getClientIp(req);
   const ipLimit = await checkRateLimit(`login:ip:${ip}`, 15 * 60 * 1000, 20);
   if (!ipLimit.ok) return rateLimitResponse(ipLimit);
-  const emailLimit = await checkRateLimit(`login:email:${email}`, 15 * 60 * 1000, 8);
+  // Raised from 8 to 30 — 8 was tight enough that a few mistyped-password
+  // attempts (no malice, just human error) could lock someone out of their
+  // own account for 15 minutes. Still low enough to block a real automated
+  // brute-force attempt, just not one that trips over ordinary typos.
+  const emailLimit = await checkRateLimit(`login:email:${email}`, 15 * 60 * 1000, 30);
   if (!emailLimit.ok) return rateLimitResponse(emailLimit);
 
   const user = await prisma.user.findUnique({ where: { email } });
