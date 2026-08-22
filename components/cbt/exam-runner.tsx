@@ -293,7 +293,13 @@ function QuestionCard({
   const done = item.revealed;
   const selected = item.response ?? '';
   const isFreeText = opts.length === 0;
-  const wordCount = isFreeText ? (selected.trim() ? selected.trim().split(/\s+/).length : 0) : 0;
+  // FILL_BLANK is graded by exact text match against a single word/short
+  // phrase (lib/cbt/grading.ts) — a multi-line essay box with a word count
+  // (the THEORY treatment) invites a full sentence that can never match,
+  // so a conceptually correct answer gets marked wrong. Give it its own
+  // compact single-line input instead.
+  const isFillBlank = item.type === 'FILL_BLANK';
+  const wordCount = isFreeText && !isFillBlank ? (selected.trim() ? selected.trim().split(/\s+/).length : 0) : 0;
 
   return (
     <Card>
@@ -346,6 +352,16 @@ function QuestionCard({
               );
             })}
           </div>
+        ) : isFillBlank ? (
+          <input
+            type="text"
+            className="input"
+            placeholder="Type the missing word or phrase…"
+            value={selected}
+            disabled={isPractice && done}
+            onChange={(e) => onAnswer(e.target.value)}
+            autoComplete="off"
+          />
         ) : (
           <div>
             <textarea
