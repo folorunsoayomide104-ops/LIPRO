@@ -25,7 +25,7 @@ export default async function AdminAnnouncementsPage() {
       </div>
 
       <Card>
-        <CardHeader><CardTitle>New announcement</CardTitle><CardDescription>Appears in each matching student's notifications</CardDescription></CardHeader>
+        <CardHeader><CardTitle>New announcement</CardTitle><CardDescription>Appears in each matching student&apos;s notifications</CardDescription></CardHeader>
         <CardContent>
           <AnnouncementForm
             faculties={faculties.map((f) => f.faculty)}
