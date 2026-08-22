@@ -33,6 +33,7 @@ export async function POST(req: Request) {
 
   const token = await signToken({ userId: user.id, email: user.email, role: user.role as any }, { remember });
   await setAuthCookie(token, { remember });
+  await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
 
   return NextResponse.json({ ok: true, role: user.role });
 }

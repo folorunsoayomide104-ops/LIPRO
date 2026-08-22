@@ -59,6 +59,7 @@ export async function GET(req: Request) {
   if (user) {
     const token = await signToken({ userId: user.id, email: user.email, role: user.role as any });
     await setAuthCookie(token);
+    await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
     return NextResponse.redirect(`${APP_URL}/dashboard`);
   }
 

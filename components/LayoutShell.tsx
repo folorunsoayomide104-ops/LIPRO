@@ -3,7 +3,7 @@ import { ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  LayoutDashboard, BookOpen, StickyNote, Layers, Brain, Wallet as WalletIcon, Bell, Settings, LogOut, Menu, Home, ArrowRight, MoreHorizontal, Smartphone, Monitor, Sparkles
+  LayoutDashboard, BookOpen, StickyNote, Layers, Brain, Wallet as WalletIcon, Bell, Settings, LogOut, Menu, Home, ArrowRight, MoreHorizontal, Smartphone, Monitor, Sparkles, ShieldCheck
 } from 'lucide-react';
 import { LiproLogo } from '@/components/LiproLogo';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -19,6 +19,8 @@ import { MobileModeFrame } from '@/components/mobile-mode-frame';
 const REF_ACCENT = '#3559F7';
 const REF_ACCENT_2 = '#545AC5';
 const REF_ELEVATED = '#20212C';
+
+const ADMIN_NAV_ITEM = { label: 'Admin', href: '/admin', icon: ShieldCheck, highlight: false };
 
 const NAV = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -37,7 +39,8 @@ const NAV = [
 const MOBILE_TAB_HREFS = ['/dashboard', '/courses', '/cbt', '/lipro-ai'];
 const MOBILE_TABS = MOBILE_TAB_HREFS.map((href) => NAV.find((item) => item.href === href)!);
 
-export function LayoutShell({ children, roleLabel }: { children: ReactNode; roleLabel?: string }) {
+export function LayoutShell({ children, roleLabel, isAdmin }: { children: ReactNode; roleLabel?: string; isAdmin?: boolean }) {
+  const navItems = isAdmin ? [NAV[0], ADMIN_NAV_ITEM, ...NAV.slice(1)] : NAV;
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -66,9 +69,9 @@ export function LayoutShell({ children, roleLabel }: { children: ReactNode; role
   const firstName = fullName?.split(' ')[0] || 'there';
 
   useEffect(() => {
-    NAV.forEach((item) => router.prefetch(item.href));
+    navItems.forEach((item) => router.prefetch(item.href));
     router.prefetch('/notifications');
-  }, [router]);
+  }, [router, navItems]);
 
   const logout = async () => {
     await fetch('/api/auth/login', { method: 'DELETE' });
@@ -111,7 +114,7 @@ export function LayoutShell({ children, roleLabel }: { children: ReactNode; role
           stay pinned, so nothing gets clipped on shorter phone screens no
           matter how tall this list gets. */}
       <div className="min-h-0 flex-1 space-y-1 overflow-y-auto">
-        {NAV.map((item) => {
+        {navItems.map((item) => {
           const active = pathname === item.href || pathname.startsWith(item.href + '/');
           const Icon = item.icon;
           return (

@@ -40,6 +40,7 @@ export async function POST(req: Request) {
       semester: d.semester,
       role: 'STUDENT',
       isEmailVerified: true, // Google already verified this address
+      lastLoginAt: new Date(),
     },
   });
 

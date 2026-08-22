@@ -27,6 +27,7 @@ model User {
   subscriptionExpiry DateTime?
   walletBalance      Float    @default(0)
   paystackCustomerId String?
+  lastLoginAt        DateTime?
   nvidiaApiKey       String?
   groqApiKey         String?
   createdAt          DateTime @default(now())

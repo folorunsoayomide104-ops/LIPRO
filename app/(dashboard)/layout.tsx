@@ -9,5 +9,5 @@ export default async function DashboardLayout({ children }: { children: React.Re
     STUDENT: 'Student',
     ADMIN: 'Admin',
   }[session.role];
-  return <LayoutShell roleLabel={roleLabel}>{children}</LayoutShell>;
+  return <LayoutShell roleLabel={roleLabel} isAdmin={session.role === 'ADMIN'}>{children}</LayoutShell>;
 }

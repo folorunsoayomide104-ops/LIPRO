@@ -10,15 +10,17 @@ import { formatCurrency } from '@/lib/utils';
 export default async function AdminDashboard() {
   const session = await getSession();
   if (!session) redirect('/login');
-  if (session.role !== 'ADMIN') redirect('/dashboard');
 
-  const [students, admins, courses, questions, totalWallet, recentUsers] = await Promise.all([
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+  const [students, admins, courses, questions, totalWallet, recentUsers, activeThisWeek] = await Promise.all([
     prisma.user.count({ where: { role: 'STUDENT' } }),
     prisma.user.count({ where: { role: 'ADMIN' } }),
     prisma.course.count(),
     prisma.question.count(),
     prisma.user.aggregate({ _sum: { walletBalance: true } }),
     prisma.user.findMany({ orderBy: { createdAt: 'desc' }, take: 6, select: { id: true, fullName: true, email: true, role: true, university: true, createdAt: true } }),
+    prisma.user.count({ where: { role: 'STUDENT', lastLoginAt: { gte: sevenDaysAgo } } }),
   ]);
 
   return (
@@ -30,22 +32,33 @@ export default async function AdminDashboard() {
         </CardHeader>
       </Card>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6">
         <Card><CardHeader><CardDescription>Students</CardDescription><CardTitle className="text-2xl flex items-center gap-2"><Users className="h-5 w-5 text-lipro-500" /> {students}</CardTitle></CardHeader></Card>
+        <Card><CardHeader><CardDescription>Active (7d)</CardDescription><CardTitle className="text-2xl">{activeThisWeek}</CardTitle></CardHeader></Card>
         <Card><CardHeader><CardDescription>Admins</CardDescription><CardTitle className="text-2xl">{admins}</CardTitle></CardHeader></Card>
         <Card><CardHeader><CardDescription>Courses</CardDescription><CardTitle className="text-2xl flex items-center gap-2"><BookOpen className="h-5 w-5 text-lipro-500" /> {courses}</CardTitle></CardHeader></Card>
         <Card><CardHeader><CardDescription>Questions</CardDescription><CardTitle className="text-2xl flex items-center gap-2"><Brain className="h-5 w-5 text-lipro-500" /> {questions}</CardTitle></CardHeader></Card>
         <Card><CardHeader><CardDescription>Wallet volume</CardDescription><CardTitle className="text-2xl flex items-center gap-2"><Wallet className="h-5 w-5 text-lipro-500" /> {formatCurrency(totalWallet._sum.walletBalance || 0)}</CardTitle></CardHeader></Card>
       </div>
 
-      <Card>
-        <CardHeader><CardTitle>Courses</CardTitle><CardDescription>Create courses, author questions, and manage materials</CardDescription></CardHeader>
-        <CardContent>
-          <Link href="/courses" className="inline-flex items-center gap-1 text-sm font-semibold text-lipro-600 hover:underline dark:text-lipro-300">
-            Manage courses <ArrowRight className="h-3.5 w-3.5" />
-          </Link>
-        </CardContent>
-      </Card>
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader><CardTitle>Students</CardTitle><CardDescription>Filter by faculty, department, level, semester, and login activity</CardDescription></CardHeader>
+          <CardContent>
+            <Link href="/admin/students" className="inline-flex items-center gap-1 text-sm font-semibold text-lipro-600 hover:underline dark:text-lipro-300">
+              Manage students <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader><CardTitle>Courses</CardTitle><CardDescription>Create courses, author questions, and manage materials</CardDescription></CardHeader>
+          <CardContent>
+            <Link href="/courses" className="inline-flex items-center gap-1 text-sm font-semibold text-lipro-600 hover:underline dark:text-lipro-300">
+              Manage courses <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
 
       <Card>
         <CardHeader><CardTitle>Recent registrations</CardTitle><CardDescription>Latest users on the platform</CardDescription></CardHeader>

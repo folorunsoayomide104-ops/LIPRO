@@ -35,6 +35,7 @@ export async function POST(req: Request) {
       level: d.level,
       semester: d.semester,
       role: 'STUDENT',
+      lastLoginAt: new Date(),
     },
   });
 
