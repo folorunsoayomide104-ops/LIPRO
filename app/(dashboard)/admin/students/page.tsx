@@ -11,6 +11,19 @@ function courseKey(faculty: string, department: string, level: string, semester:
   return `${faculty}|${department}|${level}|${semester}`;
 }
 
+function formatRelative(date: Date | null | undefined): string {
+  if (!date) return 'Never';
+  const diffMs = Date.now() - date.getTime();
+  const minutes = Math.floor(diffMs / 60000);
+  if (minutes < 1) return 'Just now';
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d ago`;
+  return date.toLocaleDateString();
+}
+
 export default async function AdminStudentsPage({
   searchParams,
 }: {
@@ -74,6 +87,32 @@ export default async function AdminStudentsPage({
     courseCounts.set(key, (courseCounts.get(key) || 0) + 1);
   }
 
+  // "Last activity" — the most recent thing a student actually did, not
+  // just when they last authenticated. lastLoginAt alone understates a
+  // student who logged in once and then spent hours studying. Computed as
+  // the max across every timestamped, per-user action already tracked
+  // elsewhere in the schema — no new write-heavy instrumentation needed.
+  // Four grouped queries scoped to just this page's students (not one
+  // query per row), then merged in JS.
+  const studentIds = students.map((s) => s.id);
+  const [examActivity, noteActivity, flashcardActivity, aiActivity] = await Promise.all([
+    prisma.examSession.groupBy({ by: ['userId'], where: { userId: { in: studentIds } }, _max: { startedAt: true } }),
+    prisma.note.groupBy({ by: ['userId'], where: { userId: { in: studentIds } }, _max: { updatedAt: true } }),
+    prisma.flashcard.groupBy({ by: ['userId'], where: { userId: { in: studentIds }, lastReviewedAt: { not: null } }, _max: { lastReviewedAt: true } }),
+    prisma.aiConversation.groupBy({ by: ['userId'], where: { userId: { in: studentIds } }, _max: { updatedAt: true } }),
+  ]);
+  const lastActivity = new Map<string, Date>();
+  const consider = (userId: string, d: Date | null | undefined) => {
+    if (!d) return;
+    const existing = lastActivity.get(userId);
+    if (!existing || d > existing) lastActivity.set(userId, d);
+  };
+  for (const s of students) consider(s.id, s.lastLoginAt);
+  for (const row of examActivity) consider(row.userId, row._max.startedAt);
+  for (const row of noteActivity) consider(row.userId, row._max.updatedAt);
+  for (const row of flashcardActivity) consider(row.userId, row._max.lastReviewedAt);
+  for (const row of aiActivity) consider(row.userId, row._max.updatedAt);
+
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const buildPageHref = (p: number) => {
     const next = new URLSearchParams(
@@ -120,6 +159,7 @@ export default async function AdminStudentsPage({
                   <th className="px-2 py-3">Semester</th>
                   <th className="px-2 py-3">Matching courses</th>
                   <th className="px-2 py-3">Tier</th>
+                  <th className="px-2 py-3">Last activity</th>
                   <th className="px-2 py-3">Last login</th>
                   <th className="px-4 py-3">Joined</th>
                 </tr>
@@ -148,6 +188,11 @@ export default async function AdminStudentsPage({
                           {s.subscriptionTier}
                         </Badge>
                       </td>
+                      <td className="px-2 py-3">
+                        <span className={lastActivity.get(s.id) ? 'text-lipro-700 dark:text-lipro-100' : 'text-lipro-600/50 dark:text-lipro-300/50'}>
+                          {formatRelative(lastActivity.get(s.id))}
+                        </span>
+                      </td>
                       <td className="px-2 py-3 text-lipro-600/60 dark:text-lipro-200/60">
                         {s.lastLoginAt ? new Date(s.lastLoginAt).toLocaleDateString() : 'Never'}
                       </td>
@@ -156,7 +201,7 @@ export default async function AdminStudentsPage({
                   );
                 })}
                 {students.length === 0 && (
-                  <tr><td colSpan={9} className="px-4 py-10 text-center text-lipro-600/60 dark:text-lipro-200/60">No students match these filters.</td></tr>
+                  <tr><td colSpan={10} className="px-4 py-10 text-center text-lipro-600/60 dark:text-lipro-200/60">No students match these filters.</td></tr>
                 )}
               </tbody>
             </table>
