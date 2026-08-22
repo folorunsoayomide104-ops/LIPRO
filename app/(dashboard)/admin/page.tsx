@@ -41,7 +41,7 @@ export default async function AdminDashboard() {
         <Card><CardHeader><CardDescription>Wallet volume</CardDescription><CardTitle className="text-2xl flex items-center gap-2"><Wallet className="h-5 w-5 text-lipro-500" /> {formatCurrency(totalWallet._sum.walletBalance || 0)}</CardTitle></CardHeader></Card>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader><CardTitle>Students</CardTitle><CardDescription>Filter by faculty, department, level, semester, and login activity</CardDescription></CardHeader>
           <CardContent>
@@ -55,6 +55,14 @@ export default async function AdminDashboard() {
           <CardContent>
             <Link href="/courses" className="inline-flex items-center gap-1 text-sm font-semibold text-lipro-600 hover:underline dark:text-lipro-300">
               Manage courses <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader><CardTitle>Announcements</CardTitle><CardDescription>Send a message to student dashboards</CardDescription></CardHeader>
+          <CardContent>
+            <Link href="/admin/announcements" className="inline-flex items-center gap-1 text-sm font-semibold text-lipro-600 hover:underline dark:text-lipro-300">
+              Send announcement <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </CardContent>
         </Card>
