@@ -325,7 +325,7 @@ export async function nvidiaChatCompletion(params: {
 
       if (res.status === 429 || res.status === 503 || res.status >= 500) {
         lastErr = new Error(`${label} error ${res.status} (attempt ${attempt + 1}/${retries + 1})`);
-        await sleep(2000 * (attempt + 1));
+        await sleep(backoffMs(res, attempt));
         continue;
       }
       if (!res.ok) throw new Error(`${label} error ${res.status}`);
@@ -386,4 +386,43 @@ export async function openNvidiaStream(params: StreamParams): Promise<Response> 
 
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
+}
+
+/** Parses Groq/OpenAI-style durations like "577ms", "2.5s", "1m52.8s" into milliseconds. */
+function parseRetryDuration(raw: string | null): number | null {
+  if (!raw) return null;
+  const minutes = raw.match(/([\d.]+)m(?!s)/);
+  const seconds = raw.match(/([\d.]+)s/);
+  const ms = raw.match(/^([\d.]+)ms$/);
+  if (ms) return parseFloat(ms[1]);
+  if (minutes || seconds) {
+    return (minutes ? parseFloat(minutes[1]) * 60000 : 0) + (seconds ? parseFloat(seconds[1]) * 1000 : 0);
+  }
+  const asNumber = Number(raw);
+  return Number.isFinite(asNumber) ? asNumber * 1000 : null;
+}
+
+/**
+ * Confirmed directly against production: blind exponential backoff
+ * (2s, 4s, 6s…) on a 429 routinely retried into the SAME still-open
+ * rate-limit window and failed again, because this provider's actual
+ * limit is a tight token-per-minute budget (confirmed via a live probe:
+ * 8000 TPM on the model in use), not a simple request-count throttle a
+ * couple of seconds fixes. Groq/OpenAI-compatible 429s carry a
+ * Retry-After header (seconds) and/or x-ratelimit-reset-tokens /
+ * x-ratelimit-reset-requests headers naming exactly when the window
+ * reopens — read whichever the response actually provides instead of
+ * guessing, and only fall back to the exponential guess if none exist.
+ */
+function backoffMs(res: Response, attempt: number): number {
+  const retryAfter = res.headers.get('retry-after');
+  if (retryAfter) {
+    const asSeconds = Number(retryAfter);
+    if (Number.isFinite(asSeconds)) return Math.min(20000, asSeconds * 1000 + 200);
+  }
+  const resetTokens = parseRetryDuration(res.headers.get('x-ratelimit-reset-tokens'));
+  const resetRequests = parseRetryDuration(res.headers.get('x-ratelimit-reset-requests'));
+  const fromHeaders = [resetTokens, resetRequests].filter((v): v is number => v !== null);
+  if (fromHeaders.length > 0) return Math.min(20000, Math.max(...fromHeaders) + 200);
+  return 2000 * (attempt + 1);
 }

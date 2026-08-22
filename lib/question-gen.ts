@@ -3,6 +3,18 @@ export type QuestionFormat = 'MCQ' | 'TRUE_FALSE' | 'FILL_BLANK' | 'THEORY';
 import { nvidiaChatCompletion } from '@/lib/nvidia';
 import type { AiProviderConfig } from '@/lib/ai';
 
+// Confirmed directly against production, then against a live rate-limit
+// probe: this provider's actual constraint is a tight shared token-per-
+// minute budget (8000 TPM on the model in use), not a per-request count a
+// little concurrency comfortably fits under. Firing calls in parallel
+// against a shared token budget just means every parallel job exhausts it
+// and gets 429'd at the same moment — concurrency provides no real
+// throughput here, only simultaneous failure. Serialized to 1 so each call
+// completes (or backs off using the provider's own reported reset time —
+// see lib/nvidia.ts's backoffMs) before the next one spends from the same
+// budget.
+const MAX_CONCURRENCY = 1;
+
 export const FORMAT_LABELS: Record<QuestionFormat, string> = {
   MCQ: 'Multiple Choice',
   TRUE_FALSE: 'True / False',
@@ -119,7 +131,7 @@ async function analyzeChunk(text: string, targetCount: number, cfg: AiProviderCo
       temperature: 0.3,
       maxTokens: Math.min(3000, targetCount * 140 + 400),
       timeoutMs: 30000,
-      retries: 1,
+      retries: 2,
     });
     return extractTopics(content);
   } catch (err: any) {
@@ -140,8 +152,16 @@ function dedupeTopics(topics: ExamTopic[]): ExamTopic[] {
   return out;
 }
 
+/** Model-supplied "context" is meant to be a sentence or two, but nothing stops a
+ *  verbose response from copying a much longer excerpt — cap it so a batch of
+ *  topics can never balloon a single request past a provider's payload limit
+ *  (confirmed directly against production: Groq 413 on an oversized request). */
+function truncateContext(s: string, max = 400): string {
+  return s.length > max ? s.slice(0, max).trimEnd() + '…' : s;
+}
+
 function buildUserPromptFromTopics(topics: ExamTopic[], format: QuestionFormat, count: number): string {
-  const list = topics.map((t, i) => `${i + 1}. ${t.concept} — context: "${t.context}"`).join('\n');
+  const list = topics.map((t, i) => `${i + 1}. ${t.concept} — context: "${truncateContext(t.context)}"`).join('\n');
   return `Exam-relevant concepts already identified from the material, in order of importance:
 ${list}
 
@@ -394,7 +414,11 @@ export async function generateQuestionsFromText(
   }
 }
 
-function chunkText(text: string, chunkSize = 12000): string[] {
+// Halved from 12000 — confirmed directly against production that a
+// 12000-char chunk could trip a Groq 413 (request payload too large) on
+// the raw-fallback path. A smaller chunk means more chunks for a long
+// document, but each individual request stays safely under the limit.
+function chunkText(text: string, chunkSize = 6000): string[] {
   const sentences = text.split(/(?<=[.!?])\s+|\n+/).map((s) => s.trim()).filter((s) => s.length > 0);
   const chunks: string[] = [];
   let cur = '';
@@ -428,7 +452,11 @@ async function callProviderRaw(text: string, formats: QuestionFormat[], count: n
     temperature: 0.4,
     maxTokens: Math.min(6000, count * 220 + 600),
     timeoutMs: 45000,
-    retries: 1,
+    // 2 retries (3 attempts total) with the provider helper's existing
+    // exponential-ish 429 backoff (2s, 4s, 6s) — bumped from 1. This path
+    // isn't blocking a live chat reply, so it can afford to wait out a
+    // rate-limit window rather than give up after one retry.
+    retries: 2,
     // No responseFormat here deliberately: `json_object` forces a JSON
     // *object* at the root, which conflicts with the array this prompt asks
     // for. Against meta/llama-3.1-8b-instruct that constraint made the model
@@ -454,7 +482,7 @@ async function callProviderWithTopics(topics: ExamTopic[], format: QuestionForma
     temperature: 0.4,
     maxTokens: Math.min(6000, count * 220 + 600),
     timeoutMs: 45000,
-    retries: 1,
+    retries: 2,
   });
   return extractJsonArray(content);
 }
@@ -488,7 +516,7 @@ async function generateFromProvider(text: string, formats: QuestionFormat[], cou
   // list comfortably covers countPerFormat even after some chunks yield
   // fewer usable topics than others.
   const topicsPerChunk = Math.max(3, Math.ceil((countPerFormat * 1.4) / chunks.length));
-  const analyzed = await runWithConcurrency(chunks, Math.max(2, Math.min(8, chunks.length)), (chunk) =>
+  const analyzed = await runWithConcurrency(chunks, Math.max(1, Math.min(MAX_CONCURRENCY, chunks.length)), (chunk) =>
     analyzeChunk(chunk, topicsPerChunk, cfg)
   );
   const topics = dedupeTopics(analyzed.flat());
@@ -508,7 +536,7 @@ async function generateFromProvider(text: string, formats: QuestionFormat[], cou
         need -= ask;
       }
     }
-    const results = await runWithConcurrency(jobs, Math.max(2, Math.min(16, jobs.length)), async (job) => {
+    const results = await runWithConcurrency(jobs, Math.max(1, Math.min(MAX_CONCURRENCY, jobs.length)), async (job) => {
       try {
         return await callProviderRaw(job.chunk, [job.fmt], job.ask, cfg);
       } catch (err: any) {
@@ -536,7 +564,7 @@ async function generateFromProvider(text: string, formats: QuestionFormat[], cou
     }
   }
 
-  const results = await runWithConcurrency(jobs, Math.max(2, Math.min(16, jobs.length)), async (job) => {
+  const results = await runWithConcurrency(jobs, Math.max(1, Math.min(MAX_CONCURRENCY, jobs.length)), async (job) => {
     try {
       return await callProviderWithTopics(job.topicSlice, job.fmt, job.ask, cfg);
     } catch (err: any) {
