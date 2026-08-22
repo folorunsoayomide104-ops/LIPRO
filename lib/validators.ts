@@ -35,6 +35,7 @@ export const courseSchema = z.object({
   code: z.string().min(2),
   title: z.string().min(2),
   description: z.string().min(5),
+  syllabus: z.string().max(20000).nullable().optional(),
   faculty: z.string().min(2),
   department: z.string().min(2),
   level: z.string().min(1),

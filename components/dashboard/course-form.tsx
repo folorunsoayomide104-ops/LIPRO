@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input, Label } from '@/components/ui/input';
+import { Input, Label, Textarea } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Plus } from 'lucide-react';
 
@@ -9,8 +9,8 @@ export function CourseForm() {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [form, setForm] = useState({ code: '', title: '', description: '', faculty: '', department: '', level: '300', semester: 'First' });
-  const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setForm({ ...form, [k]: e.target.value });
+  const [form, setForm] = useState({ code: '', title: '', description: '', syllabus: '', faculty: '', department: '', level: '300', semester: 'First' });
+  const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setForm({ ...form, [k]: e.target.value });
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,6 +33,10 @@ export function CourseForm() {
           <div><Label>Code</Label><Input value={form.code} onChange={set('code')} placeholder="CSC401" required /></div>
           <div><Label>Title</Label><Input value={form.title} onChange={set('title')} required /></div>
           <div className="md:col-span-2"><Label>Description</Label><Input value={form.description} onChange={set('description')} required /></div>
+          <div className="md:col-span-2">
+            <Label>Syllabus <span className="font-normal text-lipro-600/60 dark:text-lipro-300/60">(optional)</span></Label>
+            <Textarea value={form.syllabus} onChange={set('syllabus')} rows={5} placeholder="Course outline, topics by week, recommended texts…" />
+          </div>
           <div><Label>Faculty</Label><Input value={form.faculty} onChange={set('faculty')} required /></div>
           <div><Label>Department</Label><Input value={form.department} onChange={set('department')} required /></div>
           <div><Label>Level</Label>

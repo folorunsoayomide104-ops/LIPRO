@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { guard } from '@/lib/api-guard';
+import { canAccess } from '@/lib/auth';
 import { MAX_UPLOAD_BYTES } from '@/lib/pdf';
 import { ingestMaterial, type IngestedMaterial } from '@/lib/materials/ingest';
 import { isTrustedBlobUrl } from '@/lib/blob-url';
@@ -8,6 +9,22 @@ export const maxDuration = 120;
 
 function shapeResponse(material: IngestedMaterial) {
   return { ...material, createdAt: material.createdAt.toISOString(), _count: { questions: 0 } };
+}
+
+/**
+ * Attaching a material to a course (as opposed to a student's own private
+ * upload) makes it visible to everyone browsing that course, so only an
+ * admin can do it — otherwise any authenticated user could post files into
+ * a course they don't manage.
+ */
+/** Returns an error NextResponse if courseId is present but invalid/unauthorized, otherwise null. */
+function courseIdError(role: string, courseId: unknown): NextResponse | null {
+  if (!courseId) return null;
+  if (typeof courseId !== 'string') return NextResponse.json({ error: 'Invalid courseId' }, { status: 422 });
+  if (!canAccess('ADMIN', role as any)) {
+    return NextResponse.json({ error: 'Only an admin can attach a material to a course' }, { status: 403 });
+  }
+  return null;
 }
 
 export async function POST(req: Request) {
@@ -27,6 +44,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid file URL' }, { status: 400 });
     }
 
+    const courseIdErr = courseIdError(user.role, body.courseId);
+    if (courseIdErr) return courseIdErr;
+    const courseId = typeof body.courseId === 'string' ? body.courseId : null;
+
     const blobRes = await fetch(blobUrl).catch(() => null);
     if (!blobRes || !blobRes.ok) {
       return NextResponse.json({ error: 'Could not download the uploaded file' }, { status: 422 });
@@ -38,6 +59,7 @@ export async function POST(req: Request) {
       buffer,
       originalName,
       declaredMimeType: body.mimeType,
+      courseId,
     });
     if ('error' in result) return NextResponse.json({ error: result.error }, { status: result.status });
     return NextResponse.json({ material: shapeResponse(result.material) }, { status: 201 });
@@ -49,12 +71,18 @@ export async function POST(req: Request) {
   const file = form.get('file');
   if (!(file instanceof File)) return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
 
+  const rawCourseId = form.get('courseId');
+  const courseIdErr = courseIdError(user.role, rawCourseId);
+  if (courseIdErr) return courseIdErr;
+  const courseId = typeof rawCourseId === 'string' ? rawCourseId : null;
+
   const buffer = Buffer.from(await file.arrayBuffer());
   const result = await ingestMaterial({
     userId: user.userId,
     buffer,
     originalName: file.name,
     declaredMimeType: file.type,
+    courseId,
   });
   if ('error' in result) return NextResponse.json({ error: result.error }, { status: result.status });
   return NextResponse.json({ material: shapeResponse(result.material) }, { status: 201 });

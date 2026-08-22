@@ -7,6 +7,8 @@ import Link from 'next/link';
 import { NoteEditor } from '@/components/dashboard/note-editor';
 import { QuestionManager } from '@/components/cbt/question-manager';
 import { StartExamButton } from '@/components/cbt/start-exam-button';
+import { SyllabusEditor } from '@/components/dashboard/syllabus-editor';
+import { CourseMaterialsManager } from '@/components/dashboard/course-materials-manager';
 
 export default async function CourseDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -23,6 +25,10 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
       questions: {
         orderBy: { createdAt: 'desc' },
         select: { id: true, type: true, question: true, points: true, imageUrl: true, createdAt: true },
+      },
+      materials: {
+        orderBy: { createdAt: 'desc' },
+        select: { id: true, originalName: true, sizeBytes: true, createdAt: true },
       },
       _count: { select: { questions: true, notes: true } },
     },
@@ -42,6 +48,13 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
         <p className="mt-1 text-sm text-lipro-600/70 dark:text-lipro-200/70">{course.description}</p>
         <p className="mt-2 text-xs text-lipro-600/60">By {course.lecturer.fullName} · {course.faculty} / {course.department}</p>
       </div>
+
+      <Card>
+        <CardHeader><CardTitle>Syllabus</CardTitle><CardDescription>Course outline and structure</CardDescription></CardHeader>
+        <CardContent>
+          <SyllabusEditor courseId={course.id} initialSyllabus={course.syllabus} canManage={canManage} />
+        </CardContent>
+      </Card>
 
       <div className="flex flex-wrap gap-2">
         <StartExamButton courseId={course.id} />
@@ -82,6 +95,17 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader><CardTitle>Course materials ({course.materials.length})</CardTitle><CardDescription>{canManage ? 'Upload PDFs and files for this course' : 'Files shared for this course'}</CardDescription></CardHeader>
+        <CardContent>
+          <CourseMaterialsManager
+            courseId={course.id}
+            materials={course.materials.map((m) => ({ ...m, createdAt: m.createdAt.toISOString() }))}
+            canManage={canManage}
+          />
+        </CardContent>
+      </Card>
     </div>
   );
 }
