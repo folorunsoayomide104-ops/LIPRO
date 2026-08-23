@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { guard } from '@/lib/api-guard';
 import { chatSchema } from '@/lib/validators';
-import { resolveAiProvider } from '@/lib/ai';
+import { resolveAiProviders, type AiProviderConfig } from '@/lib/ai';
 import { MAX_UPLOAD_BYTES } from '@/lib/pdf';
 import { ingestMaterial } from '@/lib/materials/ingest';
 import { isTrustedBlobUrl } from '@/lib/blob-url';
@@ -53,7 +53,12 @@ export async function POST(req: Request) {
 
   // Resolved once and reused both for ingestion (so uploads embed with the same
   // provider that will answer the message) and the pipeline call below.
-  const provider = await resolveAiProvider(user.userId);
+  // `providers` is the full priority-ordered list — see generateQuestionsFromText
+  // in lib/question-gen.ts for why the pipeline needs to try more than the
+  // first one (Groq's free tier 429s persistently once its daily quota is
+  // spent, and this account also has a working NVIDIA key configured).
+  const providers = await resolveAiProviders(user.userId);
+  const provider: AiProviderConfig = providers[0] ?? { provider: 'none', apiKey: '', baseURL: '', model: '' };
 
   const allDocContexts: DocContext[] = [];
   const materialIds: string[] = [];
@@ -186,19 +191,25 @@ export async function POST(req: Request) {
   const shouldStream = wantStream && apiKey.trim().length > 0;
 
   if (shouldStream) {
-    return handleStream(user.userId, conversation, history, message, docs, materialIds, failedFiles, pipelineInput);
+    return handleStream(user.userId, conversation, history, message, docs, materialIds, failedFiles, pipelineInput, providers);
   }
   let replyText: string;
   let usedFallback = false;
 
   if (apiKey && apiKey.trim().length > 0) {
-    try {
-      const result = await runLiproAiPipeline(pipelineInput);
-      replyText = result.reply;
-    } catch (err: any) {
-      console.error('LIPRO AI error:', err?.message || err);
-      replyText = nvidiaDownReply(message, docs[0]?.name);
-      usedFallback = true;
+    replyText = nvidiaDownReply(message, docs[0]?.name);
+    usedFallback = true;
+    // Try every configured provider in order — see generateQuestionsFromText
+    // in lib/question-gen.ts for the same pattern and why it's needed.
+    for (const cfg of providers) {
+      try {
+        const result = await runLiproAiPipeline({ ...pipelineInput, provider: cfg });
+        replyText = result.reply;
+        usedFallback = false;
+        break;
+      } catch (err: any) {
+        console.error(`LIPRO AI error on ${cfg.provider}:`, err?.message || err);
+      }
     }
   } else {
     replyText = fallbackReply(message, docs[0]?.name);
@@ -222,7 +233,8 @@ async function handleStream(
   docs: DocContext[] = [],
   materialIds: string[] = [],
   failedFiles: Array<{ name: string; reason: string }> = [],
-  pipelineInput: PipelineInput
+  pipelineInput: PipelineInput,
+  providers: AiProviderConfig[]
 ): Promise<Response> {
   // Persist the thread up-front (user message only) so we have a conversationId for the client.
   let convId: string;
@@ -260,23 +272,48 @@ async function handleStream(
       controller.enqueue(encoder2.encode(`data: ${JSON.stringify({ conversationId: convId, materialIds, failedFiles })}\n\n`));
 
       let finalText = '';
-      let usedFallback = false;
-      try {
-        const result = await runLiproAiPipeline({
-          ...pipelineInput,
-          onDelta: (text) => {
-            finalText += text;
-            controller.enqueue(encoder2.encode(`data: ${JSON.stringify({ text })}\n\n`));
-          },
-        });
-        // The reasoning stage streamed the draft above; if self-eval didn't
-        // touch it (streaming replies aren't corrected retroactively, see
-        // runLiproAiPipeline), result.reply already equals finalText.
-        finalText = result.reply || finalText;
-      } catch (err: any) {
-        console.error('LIPRO AI stream error:', err?.message || err);
+      // 'success' = a provider completed cleanly. 'partial' = a provider
+      // streamed real content but then errored — keep what already reached
+      // the client rather than appending a fallback message on top of it.
+      // 'none' = nothing usable came back from any provider.
+      let outcome: 'success' | 'partial' | 'none' = 'none';
+      // Try every configured provider in order — see generateQuestionsFromText
+      // in lib/question-gen.ts for the same pattern. Only move on to the next
+      // candidate if THIS attempt failed before streaming anything to the
+      // client — once tokens have gone out, a silent retry would duplicate
+      // or garble what the user already sees, so a mid-stream failure keeps
+      // the partial text instead of trying another provider.
+      for (const cfg of providers) {
+        let streamedAny = false;
+        let attemptText = '';
+        try {
+          const result = await runLiproAiPipeline({
+            ...pipelineInput,
+            provider: cfg,
+            onDelta: (text) => {
+              streamedAny = true;
+              attemptText += text;
+              controller.enqueue(encoder2.encode(`data: ${JSON.stringify({ text })}\n\n`));
+            },
+          });
+          // The reasoning stage streamed the draft above; if self-eval didn't
+          // touch it (streaming replies aren't corrected retroactively, see
+          // runLiproAiPipeline), result.reply already equals attemptText.
+          finalText = result.reply || attemptText;
+          outcome = 'success';
+          break;
+        } catch (err: any) {
+          console.error(`LIPRO AI stream error on ${cfg.provider}:`, err?.message || err);
+          if (streamedAny) {
+            finalText = attemptText;
+            outcome = 'partial';
+            break;
+          }
+        }
+      }
+      const usedFallback = outcome === 'none';
+      if (usedFallback) {
         finalText = nvidiaDownReply(firstUserMsg, docs[0]?.name);
-        usedFallback = true;
         controller.enqueue(encoder2.encode(`data: ${JSON.stringify({ text: finalText })}\n\n`));
       }
 
