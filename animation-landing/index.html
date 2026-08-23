@@ -1374,14 +1374,32 @@ body.no-webgl #hero-canvas{display:none}
       <!-- Contact form -->
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:36px 32px;">
         <h3 style="font-family:'Syne',sans-serif;font-size:1.2rem;font-weight:700;color:var(--txt);margin-bottom:24px">Send us a message</h3>
-        <div style="display:flex;flex-direction:column;gap:16px;">
-          <input type="text" placeholder="Full Name" style="background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:10px;padding:14px 16px;color:var(--txt);font-size:.92rem;font-family:'DM Sans',sans-serif;outline:none;width:100%">
-          <input type="email" placeholder="Email Address" style="background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:10px;padding:14px 16px;color:var(--txt);font-size:.92rem;font-family:'DM Sans',sans-serif;outline:none;width:100%">
-          <input type="text" placeholder="Subject" style="background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:10px;padding:14px 16px;color:var(--txt);font-size:.92rem;font-family:'DM Sans',sans-serif;outline:none;width:100%">
-          <textarea placeholder="Message" rows="4" style="background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:10px;padding:14px 16px;color:var(--txt);font-size:.92rem;font-family:'DM Sans',sans-serif;outline:none;width:100%;resize:vertical"></textarea>
-          <a href="mailto:liproacademy96@gmail.com" class="btn btn-primary" style="justify-content:center;margin-top:4px">Send Message →</a>
-        </div>
+        <form id="contact-form" style="display:flex;flex-direction:column;gap:16px;">
+          <input type="text" id="cf-name" placeholder="Full Name" required style="background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:10px;padding:14px 16px;color:var(--txt);font-size:.92rem;font-family:'DM Sans',sans-serif;outline:none;width:100%">
+          <input type="email" id="cf-email" placeholder="Email Address" required style="background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:10px;padding:14px 16px;color:var(--txt);font-size:.92rem;font-family:'DM Sans',sans-serif;outline:none;width:100%">
+          <input type="text" id="cf-subject" placeholder="Subject" required style="background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:10px;padding:14px 16px;color:var(--txt);font-size:.92rem;font-family:'DM Sans',sans-serif;outline:none;width:100%">
+          <textarea id="cf-message" placeholder="Message" rows="4" required style="background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:10px;padding:14px 16px;color:var(--txt);font-size:.92rem;font-family:'DM Sans',sans-serif;outline:none;width:100%;resize:vertical"></textarea>
+          <button type="submit" class="btn btn-primary" style="justify-content:center;margin-top:4px;cursor:pointer;border:none">Send Message →</button>
+        </form>
       </div>
+      <script>
+        (function(){
+          var form = document.getElementById('contact-form');
+          if (!form) return;
+          form.addEventListener('submit', function(e){
+            e.preventDefault();
+            var name = document.getElementById('cf-name').value.trim();
+            var email = document.getElementById('cf-email').value.trim();
+            var subject = document.getElementById('cf-subject').value.trim();
+            var message = document.getElementById('cf-message').value.trim();
+            var body = 'From: ' + name + ' (' + email + ')\n\n' + message;
+            var url = 'mailto:liproacademy96@gmail.com'
+              + '?subject=' + encodeURIComponent(subject || 'Message from LIPRO Academy website')
+              + '&body=' + encodeURIComponent(body);
+            window.location.href = url;
+          });
+        })();
+      </script>
     </div>
     <style>
       @media(max-width:860px){
