@@ -29,14 +29,15 @@ export const GROQ_BASE_URL = process.env.GROQ_BASE_URL || 'https://api.groq.com/
 // current flagship production model and supports tool calling.
 export const GROQ_MODEL = process.env.GROQ_MODEL || 'openai/gpt-oss-120b';
 export const NVIDIA_BASE_URL = process.env.NVIDIA_BASE_URL || 'https://integrate.api.nvidia.com/v1';
-// Reverted a same-day attempt to upgrade this to meta/llama-3.3-70b-instruct
-// for better answer quality (the 8B model can give weak/off-topic answers).
-// Confirmed directly against production: 70B consistently blew the LIPRO AI
-// chat pipeline's 40s-per-attempt reasoning-stage timeout ("NVIDIA NIM
-// (reasoning) timed out after 40s"), which is a hard failure — no reply at
-// all — strictly worse than 8B's occasional weak answer. 8B is the model
-// that's actually proven to fit this route's latency budget.
-export const NVIDIA_MODEL = process.env.NVIDIA_MODEL || 'meta/llama-3.1-8b-instruct';
+// meta/llama-3.1-8b-instruct gave weak/off-topic answers as the fallback
+// model; meta/llama-3.3-70b-instruct fixed quality but blew the LIPRO AI
+// chat pipeline's 40s-per-attempt reasoning-stage timeout — confirmed
+// directly against production ("NVIDIA NIM (reasoning) timed out after
+// 40s"), a hard failure that's worse than 8B's weak-but-real answer. Trying
+// a speed-optimized model next: deepseek-ai/deepseek-v4-flash-0731 is built
+// for low latency, which is what this route actually needs more than raw
+// size — if this also blows the budget, revert to meta/llama-3.1-8b-instruct.
+export const NVIDIA_MODEL = process.env.NVIDIA_MODEL || 'deepseek-ai/deepseek-v4-flash-0731';
 
 export async function resolveAiProvider(userId: string): Promise<AiProviderConfig> {
   const [primary] = await resolveAiProviders(userId);
