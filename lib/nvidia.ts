@@ -325,7 +325,11 @@ export async function nvidiaChatCompletion(params: {
 
       if (res.status === 429 || res.status === 503 || res.status >= 500) {
         lastErr = new Error(`${label} error ${res.status} (attempt ${attempt + 1}/${retries + 1})`);
-        await sleep(backoffMs(res, attempt));
+        // Only wait out the backoff if another attempt will actually follow —
+        // sleeping (up to 20s) before the loop ends anyway just delays the
+        // throw for nothing, which matters a lot when retries is 0 (a
+        // deliberately fast-fail call because another provider is queued).
+        if (attempt < retries) await sleep(backoffMs(res, attempt));
         continue;
       }
       if (!res.ok) throw new Error(`${label} error ${res.status}`);
@@ -339,7 +343,7 @@ export async function nvidiaChatCompletion(params: {
       if (err?.name === 'AbortError') {
         lastErr = new Error(`${label} timed out after ${Math.round(timeoutMs / 1000)}s`);
       }
-      await sleep(1000 * (attempt + 1));
+      if (attempt < retries) await sleep(1000 * (attempt + 1));
     } finally {
       clearTimeout(timer);
     }

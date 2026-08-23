@@ -117,7 +117,7 @@ function extractTopics(raw: string): ExamTopic[] {
 }
 
 /** One analysis call per chunk — cheap/fast relative to full question authoring. */
-async function analyzeChunk(text: string, targetCount: number, cfg: AiProviderConfig): Promise<ExamTopic[]> {
+async function analyzeChunk(text: string, targetCount: number, cfg: AiProviderConfig, retries = 2): Promise<ExamTopic[]> {
   try {
     const content = await nvidiaChatCompletion({
       apiKey: cfg.apiKey,
@@ -131,7 +131,7 @@ async function analyzeChunk(text: string, targetCount: number, cfg: AiProviderCo
       temperature: 0.3,
       maxTokens: Math.min(3000, targetCount * 140 + 400),
       timeoutMs: 30000,
-      retries: 2,
+      retries,
     });
     return extractTopics(content);
   } catch (err: any) {
@@ -421,10 +421,15 @@ export async function generateQuestionsFromText(
   // A provider that's persistently rate-limited (Groq's free tier 429s all
   // day once its quota is spent, regardless of retries/backoff within a
   // single request) shouldn't take down generation when another real
-  // provider is available.
-  for (const cfg of candidates) {
+  // provider is available. Only the LAST candidate gets the full retry
+  // budget — retrying an already-failing provider with backoff before
+  // falling through wastes the whole request on a provider that's already
+  // proven bad, leaving no time to actually reach the working fallback.
+  for (let i = 0; i < candidates.length; i++) {
+    const cfg = candidates[i];
+    const retries = i === candidates.length - 1 ? 2 : 0;
     try {
-      const questions = await generateFromProvider(text, targets, countPerFormat, cfg);
+      const questions = await generateFromProvider(text, targets, countPerFormat, cfg, retries);
       if (questions.length > 0) return { questions, usedFallback: false };
       console.error(`Question generation returned empty from ${cfg.provider}.`);
     } catch (err: any) {
@@ -461,7 +466,7 @@ function normalize(s: string): string {
 }
 
 /** Raw-chunk fallback path — used only when document analysis (see below) comes up empty. */
-async function callProviderRaw(text: string, formats: QuestionFormat[], count: number, cfg: AiProviderConfig): Promise<GeneratedQuestion[]> {
+async function callProviderRaw(text: string, formats: QuestionFormat[], count: number, cfg: AiProviderConfig, retries = 2): Promise<GeneratedQuestion[]> {
   const content = await nvidiaChatCompletion({
     apiKey: cfg.apiKey,
     baseURL: cfg.baseURL,
@@ -474,11 +479,13 @@ async function callProviderRaw(text: string, formats: QuestionFormat[], count: n
     temperature: 0.4,
     maxTokens: Math.min(6000, count * 220 + 600),
     timeoutMs: 45000,
-    // 2 retries (3 attempts total) with the provider helper's existing
-    // exponential-ish 429 backoff (2s, 4s, 6s) — bumped from 1. This path
-    // isn't blocking a live chat reply, so it can afford to wait out a
-    // rate-limit window rather than give up after one retry.
-    retries: 2,
+    // Retries (with the provider helper's existing exponential-ish 429
+    // backoff) default to 2, but generateQuestionsFromText passes 0 here
+    // whenever another real provider is queued behind this one — retrying
+    // the same already-failing provider with a growing backoff wastes the
+    // whole request budget before the working fallback ever gets a turn.
+    // Only the last configured provider gets the full retry budget.
+    retries,
     // No responseFormat here deliberately: `json_object` forces a JSON
     // *object* at the root, which conflicts with the array this prompt asks
     // for. Against meta/llama-3.1-8b-instruct that constraint made the model
@@ -491,7 +498,7 @@ async function callProviderRaw(text: string, formats: QuestionFormat[], count: n
 }
 
 /** Targeted generation: writes questions against pre-identified exam topics rather than raw text. */
-async function callProviderWithTopics(topics: ExamTopic[], format: QuestionFormat, count: number, cfg: AiProviderConfig): Promise<GeneratedQuestion[]> {
+async function callProviderWithTopics(topics: ExamTopic[], format: QuestionFormat, count: number, cfg: AiProviderConfig, retries = 2): Promise<GeneratedQuestion[]> {
   const content = await nvidiaChatCompletion({
     apiKey: cfg.apiKey,
     baseURL: cfg.baseURL,
@@ -504,7 +511,7 @@ async function callProviderWithTopics(topics: ExamTopic[], format: QuestionForma
     temperature: 0.4,
     maxTokens: Math.min(6000, count * 220 + 600),
     timeoutMs: 45000,
-    retries: 2,
+    retries,
   });
   return extractJsonArray(content);
 }
@@ -528,7 +535,7 @@ function dedupe(list: GeneratedQuestion[]): GeneratedQuestion[] {
  * This is what makes generation feel like real exam preparation instead of
  * a random-sentence question generator.
  */
-async function generateFromProvider(text: string, formats: QuestionFormat[], countPerFormat: number, cfg: AiProviderConfig): Promise<GeneratedQuestion[]> {
+async function generateFromProvider(text: string, formats: QuestionFormat[], countPerFormat: number, cfg: AiProviderConfig, retries = 2): Promise<GeneratedQuestion[]> {
   const perCall = 10;
   const numChunks = Math.max(1, Math.min(12, Math.ceil(countPerFormat / perCall)));
   const chunks = numChunks > 1 ? chunkText(text, Math.ceil(text.length / numChunks)) : [text];
@@ -539,7 +546,7 @@ async function generateFromProvider(text: string, formats: QuestionFormat[], cou
   // fewer usable topics than others.
   const topicsPerChunk = Math.max(3, Math.ceil((countPerFormat * 1.4) / chunks.length));
   const analyzed = await runWithConcurrency(chunks, Math.max(1, Math.min(MAX_CONCURRENCY, chunks.length)), (chunk) =>
-    analyzeChunk(chunk, topicsPerChunk, cfg)
+    analyzeChunk(chunk, topicsPerChunk, cfg, retries)
   );
   const topics = dedupeTopics(analyzed.flat());
 
@@ -560,7 +567,7 @@ async function generateFromProvider(text: string, formats: QuestionFormat[], cou
     }
     const results = await runWithConcurrency(jobs, Math.max(1, Math.min(MAX_CONCURRENCY, jobs.length)), async (job) => {
       try {
-        return await callProviderRaw(job.chunk, [job.fmt], job.ask, cfg);
+        return await callProviderRaw(job.chunk, [job.fmt], job.ask, cfg, retries);
       } catch (err: any) {
         console.error(`Generation failed for ${job.fmt}:`, err?.message || err);
         return [] as GeneratedQuestion[];
@@ -588,7 +595,7 @@ async function generateFromProvider(text: string, formats: QuestionFormat[], cou
 
   const results = await runWithConcurrency(jobs, Math.max(1, Math.min(MAX_CONCURRENCY, jobs.length)), async (job) => {
     try {
-      return await callProviderWithTopics(job.topicSlice, job.fmt, job.ask, cfg);
+      return await callProviderWithTopics(job.topicSlice, job.fmt, job.ask, cfg, retries);
     } catch (err: any) {
       console.error(`Generation failed for ${job.fmt}:`, err?.message || err);
       return [] as GeneratedQuestion[];

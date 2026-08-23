@@ -146,7 +146,7 @@ function chunkText(text: string, chunkSize = 12000): string[] {
   return chunks.filter((c) => c.length > 0);
 }
 
-async function callProvider(text: string, count: number, cfg: AiProviderConfig): Promise<GeneratedFlashcard[]> {
+async function callProvider(text: string, count: number, cfg: AiProviderConfig, retries = 1): Promise<GeneratedFlashcard[]> {
   const content = await nvidiaChatCompletion({
     apiKey: cfg.apiKey,
     baseURL: cfg.baseURL,
@@ -159,7 +159,7 @@ async function callProvider(text: string, count: number, cfg: AiProviderConfig):
     temperature: 0.4,
     maxTokens: Math.min(4000, count * 120 + 400),
     timeoutMs: 45000,
-    retries: 1,
+    retries,
     // No responseFormat: json_object here either — see the identical note in
     // lib/question-gen.ts, same root cause (forces an object root, collapses
     // the requested array to a single bare card against this model).
@@ -181,7 +181,7 @@ async function runWithConcurrency<T>(items: T[], limit: number, worker: (item: T
   return out;
 }
 
-async function generateFromProvider(text: string, count: number, cfg: AiProviderConfig): Promise<GeneratedFlashcard[]> {
+async function generateFromProvider(text: string, count: number, cfg: AiProviderConfig, retries = 1): Promise<GeneratedFlashcard[]> {
   const perCall = 10;
   const numChunks = Math.max(1, Math.min(12, Math.ceil(count / perCall)));
   const chunks = numChunks > 1 ? chunkText(text, Math.ceil(text.length / numChunks)) : [text];
@@ -198,7 +198,7 @@ async function generateFromProvider(text: string, count: number, cfg: AiProvider
 
   const results = await runWithConcurrency(jobs, Math.max(2, Math.min(16, jobs.length)), async (job) => {
     try {
-      return await callProvider(job.chunk, job.ask, cfg);
+      return await callProvider(job.chunk, job.ask, cfg, retries);
     } catch (err: any) {
       console.error('Flashcard generation failed for a chunk:', err?.message || err);
       return [] as GeneratedFlashcard[];
@@ -251,10 +251,13 @@ export async function generateFlashcardsFromText(
 
   // Try every configured provider in order — see generateQuestionsFromText
   // in lib/question-gen.ts for why (a persistently rate-limited Groq
-  // shouldn't take down generation when NVIDIA is also configured).
-  for (const cfg of candidates) {
+  // shouldn't take down generation when NVIDIA is also configured, and why
+  // only the last candidate gets the full retry budget).
+  for (let i = 0; i < candidates.length; i++) {
+    const cfg = candidates[i];
+    const retries = i === candidates.length - 1 ? 1 : 0;
     try {
-      const cards = await generateFromProvider(text, count, cfg);
+      const cards = await generateFromProvider(text, count, cfg, retries);
       if (cards.length > 0) return { cards, usedFallback: false };
       console.error(`Flashcard generation returned empty from ${cfg.provider}.`);
     } catch (err: any) {

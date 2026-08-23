@@ -129,7 +129,7 @@ function fallbackSection(pageText: string): GuideSection {
   };
 }
 
-async function callProvider(pageText: string, cfg: AiProviderConfig): Promise<GuideSection | null> {
+async function callProvider(pageText: string, cfg: AiProviderConfig, retries = 1): Promise<GuideSection | null> {
   const content = await nvidiaChatCompletion({
     apiKey: cfg.apiKey,
     baseURL: cfg.baseURL,
@@ -142,7 +142,7 @@ async function callProvider(pageText: string, cfg: AiProviderConfig): Promise<Gu
     temperature: 0.3,
     maxTokens: 700,
     timeoutMs: 30000,
-    retries: 1,
+    retries,
   });
   return extractGuideSection(content);
 }
@@ -187,10 +187,13 @@ export async function generateRevisionGuide(
     if (!hasProvider) return { ...page, ...fallbackSection(page.text) };
     // Try every configured provider in order — see generateQuestionsFromText
     // in lib/question-gen.ts for why (a persistently rate-limited Groq
-    // shouldn't take down generation when NVIDIA is also configured).
-    for (const cfg of candidates) {
+    // shouldn't take down generation when NVIDIA is also configured, and why
+    // only the last candidate gets the full retry budget).
+    for (let i = 0; i < candidates.length; i++) {
+      const cfg = candidates[i];
+      const retries = i === candidates.length - 1 ? 1 : 0;
       try {
-        const section = await callProvider(page.text, cfg);
+        const section = await callProvider(page.text, cfg, retries);
         if (section) return { ...page, ...section };
       } catch (err: any) {
         console.error(`Revision guide generation failed for a page on ${cfg.provider}:`, err?.message || err);
