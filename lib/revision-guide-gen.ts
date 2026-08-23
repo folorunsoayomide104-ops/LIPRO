@@ -164,33 +164,40 @@ async function runWithConcurrency<T, R>(items: T[], limit: number, worker: (item
 export async function generateRevisionGuide(
   text: string,
   pageOffsets: number[] | null | undefined,
-  provider?: AiProviderConfig
+  provider?: AiProviderConfig | AiProviderConfig[]
 ): Promise<{ pages: GeneratedGuidePage[]; usedFallback: boolean; totalPages: number; truncated: boolean }> {
   const { pages: textPages, totalAvailable } = splitIntoPages(text, pageOffsets);
   if (textPages.length === 0) {
     return { pages: [], usedFallback: true, totalPages: 0, truncated: false };
   }
 
-  const cfg = provider ?? {
+  const defaultCfg: AiProviderConfig = {
     provider: 'nvidia' as const,
     apiKey: (process.env.NVIDIA_API_KEY ?? '').trim(),
     baseURL: 'https://integrate.api.nvidia.com/v1',
     model: 'meta/llama-3.1-8b-instruct',
   };
-  const key = cfg.apiKey.trim();
+  const candidates = (Array.isArray(provider) ? provider : provider ? [provider] : [defaultCfg]).filter(
+    (c) => c.apiKey.trim().length > 0
+  );
+  const hasProvider = candidates.length > 0;
 
-  let usedFallback = !key;
-  const results = await runWithConcurrency(textPages, key ? 4 : textPages.length, async (page): Promise<GeneratedGuidePage | null> => {
-    if (!key) return { ...page, ...fallbackSection(page.text) };
-    try {
-      const section = await callProvider(page.text, cfg);
-      if (!section) return null;
-      return { ...page, ...section };
-    } catch (err: any) {
-      console.error('Revision guide generation failed for a page, using fallback:', err?.message || err);
-      usedFallback = true;
-      return { ...page, ...fallbackSection(page.text) };
+  let usedFallback = !hasProvider;
+  const results = await runWithConcurrency(textPages, hasProvider ? 4 : textPages.length, async (page): Promise<GeneratedGuidePage | null> => {
+    if (!hasProvider) return { ...page, ...fallbackSection(page.text) };
+    // Try every configured provider in order — see generateQuestionsFromText
+    // in lib/question-gen.ts for why (a persistently rate-limited Groq
+    // shouldn't take down generation when NVIDIA is also configured).
+    for (const cfg of candidates) {
+      try {
+        const section = await callProvider(page.text, cfg);
+        if (section) return { ...page, ...section };
+      } catch (err: any) {
+        console.error(`Revision guide generation failed for a page on ${cfg.provider}:`, err?.message || err);
+      }
     }
+    usedFallback = true;
+    return { ...page, ...fallbackSection(page.text) };
   });
 
   const pages = results.filter((r): r is GeneratedGuidePage => r !== null);

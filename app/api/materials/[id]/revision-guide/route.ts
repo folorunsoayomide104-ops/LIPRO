@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { guard } from '@/lib/api-guard';
-import { resolveAiProvider } from '@/lib/ai';
+import { resolveAiProviders } from '@/lib/ai';
 import { generateRevisionGuide, assembleGuideMarkdown, type GeneratedGuidePage } from '@/lib/revision-guide-gen';
 
 export const maxDuration = 300;
@@ -29,14 +29,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     if (!course) return NextResponse.json({ error: 'Course not found' }, { status: 404 });
   }
 
-  const provider = await resolveAiProvider(user.userId);
+  const providers = await resolveAiProviders(user.userId);
 
   // Same reasoning as app/api/materials/[id]/questions/route.ts: this route
   // declares maxDuration = 300 above, so guard generation against that
   // budget (minus headroom), not a stale 60s assumption that was silently
   // forcing real requests into the demo fallback.
   const result = await Promise.race([
-    generateRevisionGuide(material.text, material.pageOffsets, provider),
+    generateRevisionGuide(material.text, material.pageOffsets, providers),
     new Promise<{ pages: GeneratedGuidePage[]; usedFallback: boolean; totalPages: number; truncated: boolean }>((resolve) =>
       setTimeout(() => resolve({ pages: [], usedFallback: true, totalPages: 0, truncated: false }), 280000)
     ),

@@ -400,34 +400,40 @@ export async function generateQuestionsFromText(
   text: string,
   formats: QuestionFormat[],
   countPerFormat = 2,
-  provider?: AiProviderConfig
+  provider?: AiProviderConfig | AiProviderConfig[]
 ): Promise<{ questions: GeneratedQuestion[]; usedFallback: boolean }> {
-  const cfg = provider ?? {
+  const defaultCfg: AiProviderConfig = {
     provider: 'nvidia',
     apiKey: (process.env.NVIDIA_API_KEY ?? '').trim(),
     baseURL: 'https://integrate.api.nvidia.com/v1',
     model: 'meta/llama-3.1-8b-instruct',
   };
-  const key = cfg.apiKey.trim();
+  const candidates = (Array.isArray(provider) ? provider : provider ? [provider] : [defaultCfg]).filter(
+    (c) => c.apiKey.trim().length > 0
+  );
   const targets = formats.length ? formats : (['MCQ'] as QuestionFormat[]);
 
-  if (!key) {
+  if (candidates.length === 0) {
     return { questions: fallbackGenerate(text, targets, countPerFormat), usedFallback: true };
   }
 
-  try {
-    const questions = await generateFromProvider(text, targets, countPerFormat, cfg);
-    if (questions.length === 0) {
-      // Provider succeeded but produced nothing usable — fall back so the user
-      // always gets a usable set instead of a hard error.
-      console.error('Question generation returned empty; using demo fallback.');
-      return { questions: fallbackGenerate(text, targets, countPerFormat), usedFallback: true };
+  // Try every configured provider in order before giving up to demo content.
+  // A provider that's persistently rate-limited (Groq's free tier 429s all
+  // day once its quota is spent, regardless of retries/backoff within a
+  // single request) shouldn't take down generation when another real
+  // provider is available.
+  for (const cfg of candidates) {
+    try {
+      const questions = await generateFromProvider(text, targets, countPerFormat, cfg);
+      if (questions.length > 0) return { questions, usedFallback: false };
+      console.error(`Question generation returned empty from ${cfg.provider}.`);
+    } catch (err: any) {
+      console.error(`Question generation failed on ${cfg.provider}:`, err?.message || err);
     }
-    return { questions, usedFallback: false };
-  } catch (err: any) {
-    console.error('Question generation failed, using fallback:', err?.message || err);
-    return { questions: fallbackGenerate(text, targets, countPerFormat), usedFallback: true };
   }
+
+  console.error('Question generation exhausted all providers; using demo fallback.');
+  return { questions: fallbackGenerate(text, targets, countPerFormat), usedFallback: true };
 }
 
 // Halved from 12000 — confirmed directly against production that a

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { guard } from '@/lib/api-guard';
 import { generateQuestionsFromText, fallbackGenerate, type QuestionFormat, type GeneratedQuestion } from '@/lib/question-gen';
-import { resolveAiProvider } from '@/lib/ai';
+import { resolveAiProviders } from '@/lib/ai';
 import { pointsFor } from '@/lib/cbt/constants';
 
 export const maxDuration = 300;
@@ -48,7 +48,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: 'This document has no readable text.' }, { status: 422 });
   }
 
-  const provider = await resolveAiProvider(user.userId);
+  const providers = await resolveAiProviders(user.userId);
 
   // This route declares maxDuration = 300 above, so guard the whole generation
   // against *that* budget (minus headroom for the DB write that follows), not
@@ -66,7 +66,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   // (flagged `[demo]` in its explanation) whenever `save` was requested, so
   // `saved` always reflects what's actually in the database.
   const result = await Promise.race([
-    generateQuestionsFromText(material.text, formats, perFormatTarget, provider),
+    generateQuestionsFromText(material.text, formats, perFormatTarget, providers),
     new Promise<{ questions: GeneratedQuestion[]; usedFallback: boolean }>((resolve) =>
       setTimeout(() => resolve({ questions: [], usedFallback: true }), 280000)
     ),

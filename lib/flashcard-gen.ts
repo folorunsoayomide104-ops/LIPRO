@@ -233,29 +233,35 @@ export function fallbackGenerate(text: string, count: number): GeneratedFlashcar
 export async function generateFlashcardsFromText(
   text: string,
   count = 10,
-  provider?: AiProviderConfig
+  provider?: AiProviderConfig | AiProviderConfig[]
 ): Promise<{ cards: GeneratedFlashcard[]; usedFallback: boolean }> {
-  const cfg = provider ?? {
+  const defaultCfg: AiProviderConfig = {
     provider: 'nvidia',
     apiKey: (process.env.NVIDIA_API_KEY ?? '').trim(),
     baseURL: 'https://integrate.api.nvidia.com/v1',
     model: 'meta/llama-3.1-8b-instruct',
   };
-  const key = cfg.apiKey.trim();
+  const candidates = (Array.isArray(provider) ? provider : provider ? [provider] : [defaultCfg]).filter(
+    (c) => c.apiKey.trim().length > 0
+  );
 
-  if (!key) {
+  if (candidates.length === 0) {
     return { cards: fallbackGenerate(text, count), usedFallback: true };
   }
 
-  try {
-    const cards = await generateFromProvider(text, count, cfg);
-    if (cards.length === 0) {
-      console.error('Flashcard generation returned empty; using demo fallback.');
-      return { cards: fallbackGenerate(text, count), usedFallback: true };
+  // Try every configured provider in order — see generateQuestionsFromText
+  // in lib/question-gen.ts for why (a persistently rate-limited Groq
+  // shouldn't take down generation when NVIDIA is also configured).
+  for (const cfg of candidates) {
+    try {
+      const cards = await generateFromProvider(text, count, cfg);
+      if (cards.length > 0) return { cards, usedFallback: false };
+      console.error(`Flashcard generation returned empty from ${cfg.provider}.`);
+    } catch (err: any) {
+      console.error(`Flashcard generation failed on ${cfg.provider}:`, err?.message || err);
     }
-    return { cards, usedFallback: false };
-  } catch (err: any) {
-    console.error('Flashcard generation failed, using fallback:', err?.message || err);
-    return { cards: fallbackGenerate(text, count), usedFallback: true };
   }
+
+  console.error('Flashcard generation exhausted all providers; using demo fallback.');
+  return { cards: fallbackGenerate(text, count), usedFallback: true };
 }

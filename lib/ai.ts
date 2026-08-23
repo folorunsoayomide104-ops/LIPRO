@@ -32,10 +32,24 @@ export const NVIDIA_BASE_URL = process.env.NVIDIA_BASE_URL || 'https://integrate
 export const NVIDIA_MODEL = process.env.NVIDIA_MODEL || 'meta/llama-3.1-8b-instruct';
 
 export async function resolveAiProvider(userId: string): Promise<AiProviderConfig> {
+  const [primary] = await resolveAiProviders(userId);
+  return primary ?? { provider: 'none', apiKey: '', baseURL: NVIDIA_BASE_URL, model: NVIDIA_MODEL };
+}
+
+/**
+ * Every usable provider for this user, in priority order (Groq first, then
+ * NVIDIA). Lets generation callers retry on a second real provider instead
+ * of dropping straight to demo content when the preferred one is down or
+ * rate-limited — Groq's free tier 429s persistently once its daily quota is
+ * spent, and retrying the *same* provider (even with backoff) never
+ * recovers from that within a single request.
+ */
+export async function resolveAiProviders(userId: string): Promise<AiProviderConfig[]> {
   const [groqKey, nvidiaKey] = await Promise.all([resolveGroqApiKey(userId), resolveNvidiaApiKey(userId)]);
-  if (groqKey) return { provider: 'groq', apiKey: groqKey, baseURL: GROQ_BASE_URL, model: GROQ_MODEL };
-  if (nvidiaKey) return { provider: 'nvidia', apiKey: nvidiaKey, baseURL: NVIDIA_BASE_URL, model: NVIDIA_MODEL };
-  return { provider: 'none', apiKey: '', baseURL: NVIDIA_BASE_URL, model: NVIDIA_MODEL };
+  const list: AiProviderConfig[] = [];
+  if (groqKey) list.push({ provider: 'groq', apiKey: groqKey, baseURL: GROQ_BASE_URL, model: GROQ_MODEL });
+  if (nvidiaKey) list.push({ provider: 'nvidia', apiKey: nvidiaKey, baseURL: NVIDIA_BASE_URL, model: NVIDIA_MODEL });
+  return list;
 }
 
 export function maskApiKey(key: string): string {

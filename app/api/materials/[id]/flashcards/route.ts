@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { guard } from '@/lib/api-guard';
 import { generateFlashcardsFromText, fallbackGenerate, type GeneratedFlashcard } from '@/lib/flashcard-gen';
-import { resolveAiProvider } from '@/lib/ai';
+import { resolveAiProviders } from '@/lib/ai';
 
 export const maxDuration = 300;
 
@@ -24,14 +24,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: 'This document has no readable text.' }, { status: 422 });
   }
 
-  const provider = await resolveAiProvider(user.userId);
+  const providers = await resolveAiProviders(user.userId);
 
   // Same reasoning as app/api/materials/[id]/questions/route.ts: this route
   // declares maxDuration = 300 above, so guard generation against that
   // budget (minus headroom), not a stale 60s assumption that was silently
   // forcing real requests into the demo fallback.
   const result = await Promise.race([
-    generateFlashcardsFromText(material.text, count, provider),
+    generateFlashcardsFromText(material.text, count, providers),
     new Promise<{ cards: GeneratedFlashcard[]; usedFallback: boolean }>((resolve) =>
       setTimeout(() => resolve({ cards: [], usedFallback: true }), 280000)
     ),
