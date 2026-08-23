@@ -5,7 +5,11 @@ import { MAX_UPLOAD_BYTES } from '@/lib/pdf';
 import { ingestMaterial, type IngestedMaterial } from '@/lib/materials/ingest';
 import { isTrustedBlobUrl } from '@/lib/blob-url';
 
-export const maxDuration = 120;
+// 120s was too tight for a real scanned multi-page PDF going through OCR —
+// confirmed directly against production (a 3.5MB scanned document timed
+// out mid-upload). Matches the CBT questions route's proven-working
+// ceiling on this same Vercel plan.
+export const maxDuration = 300;
 
 function shapeResponse(material: IngestedMaterial) {
   return { ...material, createdAt: material.createdAt.toISOString(), _count: { questions: 0 } };

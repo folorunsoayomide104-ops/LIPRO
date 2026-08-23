@@ -152,16 +152,29 @@ export async function extractText(buffer: Buffer, mimeType: string, userId?: str
       }
 
       const images = await renderPdfPagesToPng(buffer, MAX_OCR_PAGES);
-      const ocrPages: string[] = [];
+      // Sequential OCR (one vision-model call per page, awaited one at a
+      // time) blew this route's 120s budget on real multi-page scanned
+      // PDFs — confirmed directly against production (a 30-page document
+      // times out well before the last page even starts). Run pages
+      // concurrently, capped, to keep wall-clock time roughly (pages /
+      // OCR_CONCURRENCY) instead of (pages) call-durations.
+      const OCR_CONCURRENCY = 4;
+      const ocrPages: string[] = new Array(images.length).fill('');
       let lastOcrError: string | null = null;
-      for (const img of images) {
-        try {
-          ocrPages.push(collapse(await extractTextFromImage(img, userId)));
-        } catch (err: any) {
-          lastOcrError = err?.message || null;
-          ocrPages.push(''); // one unreadable page shouldn't sink the whole document
+      let nextIndex = 0;
+      async function ocrWorker() {
+        while (true) {
+          const i = nextIndex++;
+          if (i >= images.length) return;
+          try {
+            ocrPages[i] = collapse(await extractTextFromImage(images[i], userId));
+          } catch (err: any) {
+            lastOcrError = err?.message || null;
+            ocrPages[i] = ''; // one unreadable page shouldn't sink the whole document
+          }
         }
       }
+      await Promise.all(Array.from({ length: Math.min(OCR_CONCURRENCY, images.length) }, ocrWorker));
       const nonEmpty = ocrPages.filter((t) => t.length > 0);
       if (nonEmpty.length === 0) {
         // Both native extraction (watermark-only) and OCR came back empty.

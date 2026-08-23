@@ -10,7 +10,9 @@ import { fetchRelevantChunks, buildRagContext } from '@/lib/rag';
 import { runLiproAiPipeline } from '@/lib/lipro/pipeline';
 import type { PipelineInput } from '@/lib/lipro/types';
 
-export const maxDuration = 120;
+// Matches app/api/materials/route.ts — a chat-attached scanned PDF goes
+// through the same OCR ingestion path and needs the same higher ceiling.
+export const maxDuration = 300;
 export const dynamic = 'force-dynamic';
 
 type HistoryMsg = { role: string; content: string };
