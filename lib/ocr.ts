@@ -1,28 +1,36 @@
-import { resolveAiProvider } from './ai';
+import { resolveNvidiaApiKey, NVIDIA_BASE_URL } from './ai';
 
-const VISION_MODELS: Record<string, string> = {
-  groq: process.env.GROQ_VISION_MODEL || 'llama-3.2-11b-vision-preview',
-  nvidia: process.env.NVIDIA_VISION_MODEL || 'meta/llama-3.2-11b-vision-instruct',
-};
+const VISION_MODEL = process.env.NVIDIA_VISION_MODEL || 'meta/llama-3.2-11b-vision-instruct';
 
+/**
+ * Vision/OCR is resolved independently of the chat provider — same
+ * reasoning as embeddings (lib/embeddings.ts). Confirmed directly against
+ * Groq's live model catalog: it currently offers no vision-capable model
+ * at all (the previous default, llama-3.2-11b-vision-preview, no longer
+ * exists there), so routing through whichever provider is configured for
+ * chat silently broke every image/scanned-PDF read for a Groq-configured
+ * account — including this app's own server-level key. NVIDIA NIM is the
+ * only provider integrated here that actually hosts a working vision
+ * model, so this always uses an NVIDIA key regardless of what's set for
+ * chat, and fails with a clear message when no NVIDIA key exists.
+ */
 export async function extractTextFromImage(buffer: Buffer, userId: string): Promise<string> {
-  const provider = await resolveAiProvider(userId);
-  if (provider.provider === 'none' || !provider.apiKey) {
-    throw new Error('No AI provider configured. Add a Groq or NVIDIA API key in Settings to read images.');
+  const apiKey = await resolveNvidiaApiKey(userId);
+  if (!apiKey) {
+    throw new Error('Reading images/scanned documents needs an NVIDIA API key specifically — Groq does not offer a vision model. Add one in Settings.');
   }
 
   const mimeType = sniffMimeType(buffer);
   const base64 = buffer.toString('base64');
-  const model = VISION_MODELS[provider.provider] || VISION_MODELS.nvidia;
 
-  const res = await fetch(`${provider.baseURL}/chat/completions`, {
+  const res = await fetch(`${NVIDIA_BASE_URL}/chat/completions`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${provider.apiKey}`,
+      Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model,
+      model: VISION_MODEL,
       temperature: 0.1,
       max_tokens: 4000,
       messages: [

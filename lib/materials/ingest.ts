@@ -94,7 +94,7 @@ export async function ingestMaterial(params: IngestMaterialParams): Promise<Inge
     if (info.isImage) {
       text = await extractTextFromImage(buffer, userId);
     } else {
-      const extracted = await extractText(buffer, info.mimeType);
+      const extracted = await extractText(buffer, info.mimeType, userId);
       text = extracted.text;
       pageOffsets = extracted.pageOffsets ?? [];
     }

@@ -1,6 +1,23 @@
 export const MAX_UPLOAD_BYTES = 100 * 1024 * 1024;
 export const MAX_TEXT_CHARS = 60000;
 
+// A phone-scanned PDF (CamScanner, Adobe Scan, etc.) has no real text
+// layer — each "page" is a raster image wrapped in a PDF container. Some
+// scanner apps still embed a tiny text layer containing only their own
+// watermark ("CamScanner" repeated once per page), so pdf-parse doesn't
+// come back literally empty; it comes back with a handful of characters
+// per page that pass the empty-string check but aren't the document's
+// actual content. Confirmed directly against a real production upload
+// (19-page PDF, 190 total extracted characters, every one of them the
+// word "CamScanner"). Below this average chars-per-page, treat native
+// extraction as unusable and fall back to OCR instead of shipping
+// watermark text as if it were the lecture material.
+const SPARSE_TEXT_CHARS_PER_PAGE = 40;
+// Cap how many pages get OCR'd per document — each page is a real vision-
+// model call (cost + latency), and a lecture PDF beyond this is already an
+// edge case worth a clearer error than a multi-minute upload.
+const MAX_OCR_PAGES = 30;
+
 const g = globalThis as Record<string, unknown>;
 async function ensureDomPolyfills() {
   if (g.DOMMatrix && g.ImageData && g.Path2D) return;
@@ -12,6 +29,41 @@ async function ensureDomPolyfills() {
   } catch {
     // @napi-rs/canvas unavailable — pdf-parse may still work for text-only PDFs.
   }
+}
+
+/**
+ * Renders every page of a PDF to a PNG buffer using pdfjs-dist (already a
+ * transitive dependency of pdf-parse) + @napi-rs/canvas (already a direct
+ * dependency for pdf-parse's own DOM polyfills) — no new packages needed.
+ */
+async function renderPdfPagesToPng(buffer: Buffer, maxPages: number): Promise<Buffer[]> {
+  await ensureDomPolyfills();
+  const { createCanvas } = await import('@napi-rs/canvas');
+  const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+
+  const loadingTask = pdfjs.getDocument({
+    data: new Uint8Array(buffer),
+    isEvalSupported: false,
+    useSystemFonts: true,
+  });
+  const doc = await loadingTask.promise;
+  const pageCount = Math.min(doc.numPages, maxPages);
+  const images: Buffer[] = [];
+
+  try {
+    for (let i = 1; i <= pageCount; i++) {
+      const page = await doc.getPage(i);
+      const viewport = page.getViewport({ scale: 2.0 }); // 2x for legible OCR on small text
+      const canvas = createCanvas(Math.ceil(viewport.width), Math.ceil(viewport.height));
+      const ctx = canvas.getContext('2d');
+      await page.render({ canvasContext: ctx as any, viewport, canvas: canvas as any }).promise;
+      images.push(canvas.toBuffer('image/png'));
+      page.cleanup();
+    }
+  } finally {
+    await doc.destroy().catch(() => undefined);
+  }
+  return images;
 }
 
 export type ExtractResult = {
@@ -40,17 +92,25 @@ function looksLikeDocx(buffer: Buffer, mimeType: string): boolean {
   return mimeType === DOCX_MIME || isZipSignature(buffer);
 }
 
-export async function extractText(buffer: Buffer, mimeType: string): Promise<ExtractResult> {
+/**
+ * @param userId Required to OCR a scanned PDF (the vision model call is
+ *   billed against the user's configured provider) — without it, a scanned
+ *   PDF still fails with the same "no readable text" error as before, just
+ *   without the extra OCR attempt in between.
+ */
+export async function extractText(buffer: Buffer, mimeType: string, userId?: string): Promise<ExtractResult> {
   let raw = '';
   let pageOffsets: number[] | undefined;
 
   if (mimeType === 'application/pdf' || buffer.subarray(0, 5).toString('latin1') === '%PDF-') {
+    let rawPageCount = 0;
     try {
       await ensureDomPolyfills();
       const { PDFParse } = await import('pdf-parse');
       const parser = new PDFParse({ data: buffer });
       const parsed = await parser.getText();
       await parser.destroy().catch(() => undefined);
+      rawPageCount = parsed.pages?.length || 0;
 
       // Collapse each page independently, then join, so offsets computed here
       // stay valid in the final collapsed text — collapsing the whole
@@ -70,6 +130,56 @@ export async function extractText(buffer: Buffer, mimeType: string): Promise<Ext
       }
     } catch (err: any) {
       throw new Error(`Could not read this PDF: ${err?.message || 'unknown error'}`);
+    }
+
+    // Native extraction succeeded but the result is suspiciously thin for
+    // the page count — almost certainly a phone-scanned PDF with no real
+    // text layer (see SPARSE_TEXT_CHARS_PER_PAGE above). OCR each page
+    // instead of shipping scanner-app watermark text as the material.
+    const avgCharsPerPage = rawPageCount > 0 ? raw.length / rawPageCount : raw.length;
+    if (userId && rawPageCount > 0 && avgCharsPerPage < SPARSE_TEXT_CHARS_PER_PAGE) {
+      const { extractTextFromImage } = await import('./ocr');
+      const { resolveNvidiaApiKey } = await import('./ai');
+
+      // Check for a working vision provider BEFORE rendering any pages —
+      // rendering N pages just to have every OCR call fail identically for
+      // the same reason (no NVIDIA key) wastes real compute, and looping
+      // per-page swallows the actual "why" into a vague generic message.
+      // Fail fast with the real reason instead.
+      const hasVisionProvider = !!(await resolveNvidiaApiKey(userId));
+      if (!hasVisionProvider) {
+        throw new Error('This looks like a scanned document (a phone-scanned PDF with no real text layer). Reading it needs an NVIDIA API key specifically — add one in Settings, or upload a text-based PDF instead.');
+      }
+
+      const images = await renderPdfPagesToPng(buffer, MAX_OCR_PAGES);
+      const ocrPages: string[] = [];
+      let lastOcrError: string | null = null;
+      for (const img of images) {
+        try {
+          ocrPages.push(collapse(await extractTextFromImage(img, userId)));
+        } catch (err: any) {
+          lastOcrError = err?.message || null;
+          ocrPages.push(''); // one unreadable page shouldn't sink the whole document
+        }
+      }
+      const nonEmpty = ocrPages.filter((t) => t.length > 0);
+      if (nonEmpty.length === 0) {
+        // Both native extraction (watermark-only) and OCR came back empty.
+        // Falling through here would let the ~190-char watermark text pass
+        // the collapsed.length === 0 check below and ship as if it were
+        // real content — the exact bug this whole path exists to fix — so
+        // fail explicitly instead, surfacing the real OCR error if there
+        // was one rather than a generic message.
+        throw new Error(lastOcrError || 'This looks like a scanned document, and no text could be read from any page. Try a clearer scan or a text-based PDF.');
+      }
+      const offsets: number[] = [];
+      let acc = '';
+      for (const pageText of ocrPages) {
+        offsets.push(acc.length);
+        acc = acc ? `${acc}\n\n${pageText}` : pageText;
+      }
+      raw = acc;
+      pageOffsets = offsets;
     }
   } else if (looksLikeDocx(buffer, mimeType)) {
     try {
