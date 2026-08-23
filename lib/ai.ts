@@ -29,7 +29,14 @@ export const GROQ_BASE_URL = process.env.GROQ_BASE_URL || 'https://api.groq.com/
 // current flagship production model and supports tool calling.
 export const GROQ_MODEL = process.env.GROQ_MODEL || 'openai/gpt-oss-120b';
 export const NVIDIA_BASE_URL = process.env.NVIDIA_BASE_URL || 'https://integrate.api.nvidia.com/v1';
-export const NVIDIA_MODEL = process.env.NVIDIA_MODEL || 'meta/llama-3.1-8b-instruct';
+// Upgraded from meta/llama-3.1-8b-instruct: the 8B model produced noticeably
+// weak/off-topic answers when acting as the fallback provider (e.g. describing
+// a question's format instead of answering it) — confirmed directly against
+// production. 70B is available on this account's NVIDIA catalog and gives
+// meaningfully better answer quality for the same OpenAI-compatible API shape,
+// at some cost to latency; acceptable since NVIDIA is the fallback path, not
+// the default (Groq is preferred whenever it's healthy).
+export const NVIDIA_MODEL = process.env.NVIDIA_MODEL || 'meta/llama-3.3-70b-instruct';
 
 export async function resolveAiProvider(userId: string): Promise<AiProviderConfig> {
   const [primary] = await resolveAiProviders(userId);
