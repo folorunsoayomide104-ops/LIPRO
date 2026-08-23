@@ -29,14 +29,14 @@ export const GROQ_BASE_URL = process.env.GROQ_BASE_URL || 'https://api.groq.com/
 // current flagship production model and supports tool calling.
 export const GROQ_MODEL = process.env.GROQ_MODEL || 'openai/gpt-oss-120b';
 export const NVIDIA_BASE_URL = process.env.NVIDIA_BASE_URL || 'https://integrate.api.nvidia.com/v1';
-// Upgraded from meta/llama-3.1-8b-instruct: the 8B model produced noticeably
-// weak/off-topic answers when acting as the fallback provider (e.g. describing
-// a question's format instead of answering it) — confirmed directly against
-// production. 70B is available on this account's NVIDIA catalog and gives
-// meaningfully better answer quality for the same OpenAI-compatible API shape,
-// at some cost to latency; acceptable since NVIDIA is the fallback path, not
-// the default (Groq is preferred whenever it's healthy).
-export const NVIDIA_MODEL = process.env.NVIDIA_MODEL || 'meta/llama-3.3-70b-instruct';
+// Reverted a same-day attempt to upgrade this to meta/llama-3.3-70b-instruct
+// for better answer quality (the 8B model can give weak/off-topic answers).
+// Confirmed directly against production: 70B consistently blew the LIPRO AI
+// chat pipeline's 40s-per-attempt reasoning-stage timeout ("NVIDIA NIM
+// (reasoning) timed out after 40s"), which is a hard failure — no reply at
+// all — strictly worse than 8B's occasional weak answer. 8B is the model
+// that's actually proven to fit this route's latency budget.
+export const NVIDIA_MODEL = process.env.NVIDIA_MODEL || 'meta/llama-3.1-8b-instruct';
 
 export async function resolveAiProvider(userId: string): Promise<AiProviderConfig> {
   const [primary] = await resolveAiProviders(userId);
