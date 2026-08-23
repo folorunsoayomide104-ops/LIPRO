@@ -14,6 +14,7 @@ const PUBLIC_PATHS = [
   "/login", "/register", "/forgot-password", "/reset-password",
   "/help-center", "/documentation", "/support", "/cookie-policy",
   "/manifest.webmanifest", // PWA manifest — browsers fetch this unauthenticated
+  "/robots.txt", "/sitemap.xml", // crawlers fetch these unauthenticated
 ];
 const PUBLIC_API = ["/api/auth/register", "/api/auth/login", "/api/auth/google", "/api/auth/reset-password", "/api/paystack/webhook"];
 
