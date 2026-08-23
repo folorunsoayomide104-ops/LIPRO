@@ -4,6 +4,7 @@ import { guard } from '@/lib/api-guard';
 import { generateQuestionsFromText, fallbackGenerate, type QuestionFormat, type GeneratedQuestion } from '@/lib/question-gen';
 import { resolveAiProviders } from '@/lib/ai';
 import { pointsFor } from '@/lib/cbt/constants';
+import { checkRateLimit, rateLimitResponse } from '@/lib/rate-limit';
 
 export const maxDuration = 300;
 
@@ -25,6 +26,13 @@ function toRow(q: GeneratedQuestion, materialId: string, authorId: string, demo:
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { ok, user, response } = await guard();
   if (!ok || !user) return response!;
+
+  // The most expensive AI call in the app — a full two-stage analyze-then-
+  // generate pipeline, potentially across multiple providers/chunks per
+  // request. Cap per-user volume so it can't be looped into a large bill.
+  const genLimit = await checkRateLimit(`question-gen:${user.userId}`, 60 * 60 * 1000, 15);
+  if (!genLimit.ok) return rateLimitResponse(genLimit);
+
   const { id } = await params;
 
   const material = await prisma.material.findUnique({ where: { id } });

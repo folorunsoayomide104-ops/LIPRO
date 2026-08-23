@@ -9,6 +9,7 @@ import { isTrustedBlobUrl } from '@/lib/blob-url';
 import { fetchRelevantChunks, buildRagContext } from '@/lib/rag';
 import { runLiproAiPipeline } from '@/lib/lipro/pipeline';
 import type { PipelineInput } from '@/lib/lipro/types';
+import { checkRateLimit, rateLimitResponse } from '@/lib/rate-limit';
 
 // Matches app/api/materials/route.ts — a chat-attached scanned PDF goes
 // through the same OCR ingestion path and needs the same higher ceiling.
@@ -43,6 +44,12 @@ async function persistConversation(userId: string, conversationId: string | unde
 export async function POST(req: Request) {
   const { ok, user, response } = await guard();
   if (!ok || !user) return response!;
+
+  // Each message can trigger a paid AI call (and, with attached files, OCR/
+  // embedding calls too) — cap per-user volume so a runaway client loop or
+  // deliberate abuse can't run up the AI bill unchecked.
+  const chatLimit = await checkRateLimit(`ai-chat:${user.userId}`, 10 * 60 * 1000, 30);
+  if (!chatLimit.ok) return rateLimitResponse(chatLimit);
 
   const body = await req.json().catch(() => null);
   if (!body) return NextResponse.json({ error: 'Invalid body' }, { status: 400 });

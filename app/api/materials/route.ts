@@ -4,6 +4,7 @@ import { canAccess } from '@/lib/auth';
 import { MAX_UPLOAD_BYTES } from '@/lib/pdf';
 import { ingestMaterial, type IngestedMaterial } from '@/lib/materials/ingest';
 import { isTrustedBlobUrl } from '@/lib/blob-url';
+import { checkRateLimit, rateLimitResponse } from '@/lib/rate-limit';
 
 // 120s was too tight for a real scanned multi-page PDF going through OCR —
 // confirmed directly against production (a 3.5MB scanned document timed
@@ -34,6 +35,12 @@ function courseIdError(role: string, courseId: unknown): NextResponse | null {
 export async function POST(req: Request) {
   const { ok, user, response } = await guard();
   if (!ok || !user) return response!;
+
+  // Each upload runs real text extraction and, for scanned PDFs, per-page
+  // vision-model OCR calls plus embedding calls — all paid AI usage. Cap
+  // per-user volume so repeated large uploads can't run up the bill.
+  const uploadLimit = await checkRateLimit(`materials-upload:${user.userId}`, 60 * 60 * 1000, 20);
+  if (!uploadLimit.ok) return rateLimitResponse(uploadLimit);
 
   const contentType = req.headers.get('content-type') || '';
   if (contentType.includes('application/json')) {
