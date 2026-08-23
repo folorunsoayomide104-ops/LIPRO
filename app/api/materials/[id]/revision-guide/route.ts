@@ -31,13 +31,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const provider = await resolveAiProvider(user.userId);
 
-  // Same reasoning as app/api/materials/[id]/flashcards/route.ts: guard the
-  // whole generation against Vercel's ~60s function ceiling so a caller that
-  // asked to save always gets a truthful `saved` flag instead of a 504.
+  // Same reasoning as app/api/materials/[id]/questions/route.ts: this route
+  // declares maxDuration = 300 above, so guard generation against that
+  // budget (minus headroom), not a stale 60s assumption that was silently
+  // forcing real requests into the demo fallback.
   const result = await Promise.race([
     generateRevisionGuide(material.text, material.pageOffsets, provider),
     new Promise<{ pages: GeneratedGuidePage[]; usedFallback: boolean; totalPages: number; truncated: boolean }>((resolve) =>
-      setTimeout(() => resolve({ pages: [], usedFallback: true, totalPages: 0, truncated: false }), 55000)
+      setTimeout(() => resolve({ pages: [], usedFallback: true, totalPages: 0, truncated: false }), 280000)
     ),
   ]);
 

@@ -50,9 +50,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const provider = await resolveAiProvider(user.userId);
 
-  // Vercel Hobby caps function execution at ~60s. Guard the whole generation so
-  // we always return a response (real questions or a fallback) instead of
-  // letting the platform kill the request with a 504 after the client waits.
+  // This route declares maxDuration = 300 above, so guard the whole generation
+  // against *that* budget (minus headroom for the DB write that follows), not
+  // an old Hobby-plan 60s assumption — the two-stage topic-analysis pipeline
+  // legitimately needs several sequential AI calls at MAX_CONCURRENCY=1 (to
+  // respect Groq's tight per-minute token budget), which routinely took
+  // longer than 55s and was silently forcing every request into the demo
+  // fallback even with a real API key configured. Verified against production:
+  // real generation was completing around 90-150s for a 25-question request.
   //
   // Previously, hitting this timeout returned `saved: false` even when the
   // caller asked to save — so a caller like the PDF exam creator would then
@@ -63,7 +68,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const result = await Promise.race([
     generateQuestionsFromText(material.text, formats, perFormatTarget, provider),
     new Promise<{ questions: GeneratedQuestion[]; usedFallback: boolean }>((resolve) =>
-      setTimeout(() => resolve({ questions: [], usedFallback: true }), 55000)
+      setTimeout(() => resolve({ questions: [], usedFallback: true }), 280000)
     ),
   ]);
 

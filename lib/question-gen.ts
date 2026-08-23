@@ -332,6 +332,14 @@ function normalizeFormatType(raw: unknown): QuestionFormat {
  * it actually refers to; returns null if it can't be resolved at all
  * (an unresolvable MCQ is dropped rather than shipped ungradeable).
  */
+const FALSE_WORDS = new Set(['false', 'f', 'no', 'n', 'incorrect']);
+
+/** Normalizes a model-supplied True/False answer to the canonical option label. */
+function truthyLabel(answer: string): string {
+  const n = answer.trim().toLowerCase();
+  return FALSE_WORDS.has(n) ? 'False' : 'True';
+}
+
 function resolveMcqAnswer(answer: string, options: string[]): string | null {
   const trimmed = answer.trim();
   if (options.some((o) => o.trim().toLowerCase() === trimmed.toLowerCase())) return trimmed;
@@ -356,12 +364,20 @@ function normalizeQuestions(items: any[]): GeneratedQuestion[] {
     .filter((q: any) => q && typeof q.question === 'string' && typeof q.answer === 'string')
     .map((q: any) => {
       const type = normalizeFormatType(q.type);
-      const options = Array.isArray(q.options) ? q.options.map(String) : null;
+      let options = Array.isArray(q.options) ? q.options.map(String) : null;
       let answer = String(q.answer);
       if (type === 'MCQ' && options && options.length >= 2) {
         const resolved = resolveMcqAnswer(answer, options);
         if (resolved === null) return null;
         answer = resolved;
+      }
+      if (type === 'TRUE_FALSE') {
+        // The model is never asked to supply options for this format (the prompt only
+        // specifies the answer is "True"/"False"), so q.options is always absent here.
+        // Without options, exam-runner.tsx treats the item as free-text and renders a
+        // textarea instead of True/False radio buttons — force them explicitly.
+        options = ['True', 'False'];
+        answer = truthyLabel(answer);
       }
       return {
         type,
@@ -619,7 +635,7 @@ export function fallbackGenerate(text: string, formats: QuestionFormat[], countP
         questions.push({
           type,
           question: `${sentence}`,
-          options: null,
+          options: ['True', 'False'],
           answer: 'True',
           explanation: 'This statement is drawn directly from the uploaded material.',
         });
