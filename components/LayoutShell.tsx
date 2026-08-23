@@ -39,7 +39,7 @@ const NAV = [
 const MOBILE_TAB_HREFS = ['/dashboard', '/courses', '/cbt', '/lipro-ai'];
 const MOBILE_TABS = MOBILE_TAB_HREFS.map((href) => NAV.find((item) => item.href === href)!);
 
-export function LayoutShell({ children, roleLabel, isAdmin }: { children: ReactNode; roleLabel?: string; isAdmin?: boolean }) {
+export function LayoutShell({ children, roleLabel, isAdmin, unreadCount = 0 }: { children: ReactNode; roleLabel?: string; isAdmin?: boolean; unreadCount?: number }) {
   const navItems = isAdmin ? [NAV[0], ADMIN_NAV_ITEM, ...NAV.slice(1)] : NAV;
   const pathname = usePathname();
   const router = useRouter();
@@ -180,7 +180,14 @@ export function LayoutShell({ children, roleLabel, isAdmin }: { children: ReactN
                 {viewMode === 'mobile' ? 'Desktop' : 'Mobile'}
               </button>
             )}
-            <Link href="/notifications" className="tap grid h-10 w-10 place-items-center rounded-xl glass-hover" aria-label="Notifications"><Bell className="h-5 w-5" /></Link>
+            <Link href="/notifications" className="tap relative grid h-10 w-10 place-items-center rounded-xl glass-hover" aria-label={unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications'}>
+              <Bell className="h-5 w-5" />
+              {unreadCount > 0 && (
+                <span className="absolute right-1.5 top-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-rose-500 px-1 text-[10px] font-semibold leading-none text-white">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </Link>
             <Link href="/settings" className="tap ml-1 flex items-center gap-2 rounded-xl glass px-3 py-1.5" aria-label="Account">
               <div className="grid h-7 w-7 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-lipro-500 to-lipro-700 text-xs font-bold text-white">
                 {avatarUrl ? <img src={avatarUrl} alt="Avatar" className="h-full w-full object-cover" /> : 'U'}

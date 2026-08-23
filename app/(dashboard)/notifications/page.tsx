@@ -9,6 +9,10 @@ export default async function NotificationsPage() {
   const session = await getSession();
   if (!session) redirect('/login');
   const notifications = await prisma.notification.findMany({ where: { userId: session.userId }, orderBy: { createdAt: 'desc' }, take: 50 });
+  // Mark read after fetching (not before) so the "New" badges below still
+  // reflect what was actually unread at the moment the student opened this
+  // page, while the nav bell's count clears on their next navigation.
+  await prisma.notification.updateMany({ where: { userId: session.userId, isRead: false }, data: { isRead: true } });
   return (
     <div className="space-y-6">
       <div><h1 className="text-2xl font-bold tracking-tight">Notifications</h1><p className="text-sm text-lipro-600/70 dark:text-lipro-200/70">Stay informed about your activity</p></div>

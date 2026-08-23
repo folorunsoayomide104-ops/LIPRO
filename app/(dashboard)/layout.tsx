@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
 import { LayoutShell } from '@/components/LayoutShell';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -9,5 +10,6 @@ export default async function DashboardLayout({ children }: { children: React.Re
     STUDENT: 'Student',
     ADMIN: 'Admin',
   }[session.role];
-  return <LayoutShell roleLabel={roleLabel} isAdmin={session.role === 'ADMIN'}>{children}</LayoutShell>;
+  const unreadCount = await prisma.notification.count({ where: { userId: session.userId, isRead: false } });
+  return <LayoutShell roleLabel={roleLabel} isAdmin={session.role === 'ADMIN'} unreadCount={unreadCount}>{children}</LayoutShell>;
 }
