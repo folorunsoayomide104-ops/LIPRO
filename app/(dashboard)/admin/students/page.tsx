@@ -72,7 +72,7 @@ export default async function AdminStudentsPage({
       select: {
         id: true, fullName: true, email: true, matricNumber: true, university: true,
         faculty: true, department: true, level: true, semester: true,
-        subscriptionTier: true, lastLoginAt: true, createdAt: true,
+        subscriptionTier: true, subscriptionExpiry: true, lastLoginAt: true, createdAt: true,
       },
     }),
     // Small catalogue (confirmed elsewhere in this codebase) — fetching every
@@ -95,12 +95,28 @@ export default async function AdminStudentsPage({
   // Four grouped queries scoped to just this page's students (not one
   // query per row), then merged in JS.
   const studentIds = students.map((s) => s.id);
-  const [examActivity, noteActivity, flashcardActivity, aiActivity] = await Promise.all([
+  const [examActivity, noteActivity, flashcardActivity, aiActivity, subscriptionPayments] = await Promise.all([
     prisma.examSession.groupBy({ by: ['userId'], where: { userId: { in: studentIds } }, _max: { startedAt: true } }),
     prisma.note.groupBy({ by: ['userId'], where: { userId: { in: studentIds } }, _max: { updatedAt: true } }),
     prisma.flashcard.groupBy({ by: ['userId'], where: { userId: { in: studentIds }, lastReviewedAt: { not: null } }, _max: { lastReviewedAt: true } }),
     prisma.aiConversation.groupBy({ by: ['userId'], where: { userId: { in: studentIds } }, _max: { updatedAt: true } }),
+    // DEBIT WalletTxn rows are subscription payments (both the live Paystack
+    // webhook and the demo-mode fallback in /api/paystack/initialize write
+    // them this way — CREDIT is wallet funding, a different thing). Fetched
+    // as full rows rather than a groupBy aggregate because we want each
+    // student's most recent payment amount, not just a sum.
+    prisma.walletTxn.findMany({
+      where: { userId: { in: studentIds }, type: 'DEBIT' },
+      orderBy: { createdAt: 'desc' },
+      select: { userId: true, amount: true, createdAt: true },
+    }),
   ]);
+  const lastPayment = new Map<string, { amount: number; createdAt: Date }>();
+  const totalPaid = new Map<string, number>();
+  for (const txn of subscriptionPayments) {
+    if (!lastPayment.has(txn.userId)) lastPayment.set(txn.userId, { amount: txn.amount, createdAt: txn.createdAt });
+    totalPaid.set(txn.userId, (totalPaid.get(txn.userId) || 0) + txn.amount);
+  }
   const lastActivity = new Map<string, Date>();
   const consider = (userId: string, d: Date | null | undefined) => {
     if (!d) return;
@@ -158,7 +174,8 @@ export default async function AdminStudentsPage({
                   <th className="px-2 py-3">Level</th>
                   <th className="px-2 py-3">Semester</th>
                   <th className="px-2 py-3">Matching courses</th>
-                  <th className="px-2 py-3">Tier</th>
+                  <th className="px-2 py-3">Plan</th>
+                  <th className="px-2 py-3">Total paid</th>
                   <th className="px-2 py-3">Last activity</th>
                   <th className="px-2 py-3">Last login</th>
                   <th className="px-4 py-3">Joined</th>
@@ -187,6 +204,23 @@ export default async function AdminStudentsPage({
                         <Badge tone={s.subscriptionTier === 'FREE' ? 'purple' : s.subscriptionTier === 'PREMIUM' ? 'amber' : 'green'}>
                           {s.subscriptionTier}
                         </Badge>
+                        {s.subscriptionTier !== 'FREE' && s.subscriptionExpiry && (
+                          <div className="mt-1 text-xs text-lipro-600/60 dark:text-lipro-200/60">
+                            {new Date(s.subscriptionExpiry) > new Date() ? 'renews' : 'expired'} {new Date(s.subscriptionExpiry).toLocaleDateString()}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-2 py-3">
+                        {totalPaid.has(s.id) ? (
+                          <>
+                            <div className="font-medium tabular-nums">₦{totalPaid.get(s.id)!.toLocaleString()}</div>
+                            <div className="text-xs text-lipro-600/60 dark:text-lipro-200/60">
+                              last ₦{lastPayment.get(s.id)!.amount.toLocaleString()} on {new Date(lastPayment.get(s.id)!.createdAt).toLocaleDateString()}
+                            </div>
+                          </>
+                        ) : (
+                          <span className="text-lipro-600/50 dark:text-lipro-300/50">—</span>
+                        )}
                       </td>
                       <td className="px-2 py-3">
                         <span className={lastActivity.get(s.id) ? 'text-lipro-700 dark:text-lipro-100' : 'text-lipro-600/50 dark:text-lipro-300/50'}>
@@ -201,7 +235,7 @@ export default async function AdminStudentsPage({
                   );
                 })}
                 {students.length === 0 && (
-                  <tr><td colSpan={10} className="px-4 py-10 text-center text-lipro-600/60 dark:text-lipro-200/60">No students match these filters.</td></tr>
+                  <tr><td colSpan={11} className="px-4 py-10 text-center text-lipro-600/60 dark:text-lipro-200/60">No students match these filters.</td></tr>
                 )}
               </tbody>
             </table>
