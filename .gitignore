@@ -50,3 +50,7 @@ coverage/
 # TypeScript
 *.tsbuildinfo
 .env*
+
+# Scratch/test files from AI-assisted debugging sessions — never real project files
+scratch-*
+.env.prod-check
