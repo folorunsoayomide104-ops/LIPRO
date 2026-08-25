@@ -4,16 +4,27 @@ import { nvidiaChatCompletion } from '@/lib/nvidia';
 import type { AiProviderConfig } from '@/lib/ai';
 
 // Confirmed directly against production, then against a live rate-limit
-// probe: this provider's actual constraint is a tight shared token-per-
-// minute budget (8000 TPM on the model in use), not a per-request count a
-// little concurrency comfortably fits under. Firing calls in parallel
-// against a shared token budget just means every parallel job exhausts it
-// and gets 429'd at the same moment — concurrency provides no real
-// throughput here, only simultaneous failure. Serialized to 1 so each call
-// completes (or backs off using the provider's own reported reset time —
-// see lib/nvidia.ts's backoffMs) before the next one spends from the same
+// probe: Groq's actual constraint is a tight shared token-per-minute budget
+// (8000 TPM on the model in use), not a per-request count a little
+// concurrency comfortably fits under. Firing calls in parallel against a
+// shared token budget just means every parallel job exhausts it and gets
+// 429'd at the same moment — concurrency provides no real throughput there,
+// only simultaneous failure. Serialized to 1 so each call completes (or
+// backs off using the provider's own reported reset time — see
+// lib/nvidia.ts's backoffMs) before the next one spends from the same
 // budget.
-const MAX_CONCURRENCY = 1;
+//
+// NVIDIA has no equivalent shared-budget constraint, and generateQuestionsFromText
+// falls through to it whenever Groq is exhausted — running NVIDIA's own
+// two-stage pipeline at concurrency 1 too meant a large document (20-30+
+// chunks) could easily exceed the route's 280s budget even when NVIDIA
+// itself was working fine, silently landing on demo-content fallback.
+// Confirmed directly against production: a 20-page document's chunk
+// analysis alone ran past 280s serialized. Concurrency 4 for NVIDIA cuts
+// that by roughly 4x with no observed rate-limit errors.
+function concurrencyFor(cfg: AiProviderConfig): number {
+  return cfg.provider === 'groq' ? 1 : 4;
+}
 
 export const FORMAT_LABELS: Record<QuestionFormat, string> = {
   MCQ: 'Multiple Choice',
@@ -545,7 +556,7 @@ async function generateFromProvider(text: string, formats: QuestionFormat[], cou
   // list comfortably covers countPerFormat even after some chunks yield
   // fewer usable topics than others.
   const topicsPerChunk = Math.max(3, Math.ceil((countPerFormat * 1.4) / chunks.length));
-  const analyzed = await runWithConcurrency(chunks, Math.max(1, Math.min(MAX_CONCURRENCY, chunks.length)), (chunk) =>
+  const analyzed = await runWithConcurrency(chunks, Math.max(1, Math.min(concurrencyFor(cfg), chunks.length)), (chunk) =>
     analyzeChunk(chunk, topicsPerChunk, cfg, retries)
   );
   const topics = dedupeTopics(analyzed.flat());
@@ -565,7 +576,7 @@ async function generateFromProvider(text: string, formats: QuestionFormat[], cou
         need -= ask;
       }
     }
-    const results = await runWithConcurrency(jobs, Math.max(1, Math.min(MAX_CONCURRENCY, jobs.length)), async (job) => {
+    const results = await runWithConcurrency(jobs, Math.max(1, Math.min(concurrencyFor(cfg), jobs.length)), async (job) => {
       try {
         return await callProviderRaw(job.chunk, [job.fmt], job.ask, cfg, retries);
       } catch (err: any) {
@@ -593,7 +604,7 @@ async function generateFromProvider(text: string, formats: QuestionFormat[], cou
     }
   }
 
-  const results = await runWithConcurrency(jobs, Math.max(1, Math.min(MAX_CONCURRENCY, jobs.length)), async (job) => {
+  const results = await runWithConcurrency(jobs, Math.max(1, Math.min(concurrencyFor(cfg), jobs.length)), async (job) => {
     try {
       return await callProviderWithTopics(job.topicSlice, job.fmt, job.ask, cfg, retries);
     } catch (err: any) {
