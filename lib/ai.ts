@@ -38,6 +38,14 @@ export const NVIDIA_BASE_URL = process.env.NVIDIA_BASE_URL || 'https://integrate
 // for low latency, which is what this route actually needs more than raw
 // size — if this also blows the budget, revert to meta/llama-3.1-8b-instruct.
 export const NVIDIA_MODEL = process.env.NVIDIA_MODEL || 'deepseek-ai/deepseek-v4-flash-0731';
+// Question generation (lib/question-gen.ts) shared NVIDIA_MODEL with chat
+// until this was split out — confirmed directly against production that
+// deepseek-v4-flash, while fast on short chat replies, consistently blew the
+// 30s per-chunk analysis timeout once real (non-trivial) academic text was
+// involved: every chunk of a 170K-char real-content test document timed out,
+// forcing the whole generation to demo fallback. meta/llama-3.1-8b-instruct
+// is the model this pipeline was actually built and proven against.
+export const NVIDIA_QUESTIONGEN_MODEL = process.env.NVIDIA_QUESTIONGEN_MODEL || 'meta/llama-3.1-8b-instruct';
 
 export async function resolveAiProvider(userId: string): Promise<AiProviderConfig> {
   const [primary] = await resolveAiProviders(userId);
@@ -51,12 +59,16 @@ export async function resolveAiProvider(userId: string): Promise<AiProviderConfi
  * rate-limited — Groq's free tier 429s persistently once its daily quota is
  * spent, and retrying the *same* provider (even with backoff) never
  * recovers from that within a single request.
+ *
+ * This is currently only called from the CBT question-generation route, so
+ * the NVIDIA entry uses NVIDIA_QUESTIONGEN_MODEL (not NVIDIA_MODEL, which is
+ * chat's) — see that constant's comment for why they need to differ.
  */
 export async function resolveAiProviders(userId: string): Promise<AiProviderConfig[]> {
   const [groqKey, nvidiaKey] = await Promise.all([resolveGroqApiKey(userId), resolveNvidiaApiKey(userId)]);
   const list: AiProviderConfig[] = [];
   if (groqKey) list.push({ provider: 'groq', apiKey: groqKey, baseURL: GROQ_BASE_URL, model: GROQ_MODEL });
-  if (nvidiaKey) list.push({ provider: 'nvidia', apiKey: nvidiaKey, baseURL: NVIDIA_BASE_URL, model: NVIDIA_MODEL });
+  if (nvidiaKey) list.push({ provider: 'nvidia', apiKey: nvidiaKey, baseURL: NVIDIA_BASE_URL, model: NVIDIA_QUESTIONGEN_MODEL });
   return list;
 }
 
