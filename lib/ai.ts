@@ -14,7 +14,16 @@ export async function resolveGroqApiKey(userId: string): Promise<string> {
   return process.env.GROQ_API_KEY?.trim() || '';
 }
 
-export type AiProvider = 'groq' | 'nvidia' | 'none';
+// Env-only (no per-user override column, unlike Groq/NVIDIA) — added as a
+// third fallback provider after a day where Groq's daily quota and NVIDIA's
+// account credits were both exhausted simultaneously, leaving zero working
+// providers. Google AI Studio's free tier is generous and needs no billing
+// setup, making it a reasonable free backstop rather than a primary choice.
+export async function resolveGeminiApiKey(): Promise<string> {
+  return process.env.GEMINI_API_KEY?.trim() || '';
+}
+
+export type AiProvider = 'groq' | 'nvidia' | 'gemini' | 'none';
 
 export interface AiProviderConfig {
   provider: AiProvider;
@@ -65,21 +74,37 @@ export const NVIDIA_QUESTIONGEN_MODEL_CHAIN = (
   'nvidia/mistral-nemo-minitron-8b-8k-instruct',
 ];
 
+// Google's OpenAI-compatible endpoint — confirmed directly with a live
+// request that this exact base URL + model + Bearer-token auth works with
+// the same request/response shape already used for Groq/NVIDIA, so no new
+// client code was needed, only a new provider entry.
+export const GEMINI_BASE_URL = process.env.GEMINI_BASE_URL || 'https://generativelanguage.googleapis.com/v1beta/openai';
+// gemini-2.0-flash reached end of life; gemini-3.6-flash is what Google's
+// own 404 response pointed to as the current replacement — confirmed live.
+export const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
+
 export async function resolveAiProvider(userId: string): Promise<AiProviderConfig> {
-  const [groqKey, nvidiaKey] = await Promise.all([resolveGroqApiKey(userId), resolveNvidiaApiKey(userId)]);
+  const [groqKey, nvidiaKey, geminiKey] = await Promise.all([
+    resolveGroqApiKey(userId),
+    resolveNvidiaApiKey(userId),
+    resolveGeminiApiKey(),
+  ]);
   if (groqKey) return { provider: 'groq', apiKey: groqKey, baseURL: GROQ_BASE_URL, model: GROQ_MODEL };
   if (nvidiaKey) return { provider: 'nvidia', apiKey: nvidiaKey, baseURL: NVIDIA_BASE_URL, model: NVIDIA_MODEL };
+  if (geminiKey) return { provider: 'gemini', apiKey: geminiKey, baseURL: GEMINI_BASE_URL, model: GEMINI_MODEL };
   return { provider: 'none', apiKey: '', baseURL: NVIDIA_BASE_URL, model: NVIDIA_MODEL };
 }
 
 /**
  * Every usable provider+model combination for this user, in priority order:
- * Groq first, then each model in NVIDIA_QUESTIONGEN_MODEL_CHAIN in turn.
+ * Groq, then each model in NVIDIA_QUESTIONGEN_MODEL_CHAIN, then Gemini last.
  * Lets generation callers fail over to another real option instead of
  * dropping straight to demo content when the preferred one is down, rate-
- * limited, or (as happened twice this session) simply too slow for this
- * workload on this document — retrying the *same* provider/model rarely
- * recovers from any of those within a single request.
+ * limited, or (as happened multiple times this session — including once
+ * where Groq's daily quota AND NVIDIA's account credits were both exhausted
+ * on the same day) simply unavailable — retrying the *same* provider/model
+ * rarely recovers from any of those within a single request. Gemini is last
+ * because it's the newest, least battle-tested-for-this-workload addition.
  *
  * Currently only called from the CBT question-generation route — chat uses
  * the singular resolveAiProvider above with its own NVIDIA_MODEL, kept
@@ -87,7 +112,11 @@ export async function resolveAiProvider(userId: string): Promise<AiProviderConfi
  * shared model constant broke question generation once already).
  */
 export async function resolveAiProviders(userId: string): Promise<AiProviderConfig[]> {
-  const [groqKey, nvidiaKey] = await Promise.all([resolveGroqApiKey(userId), resolveNvidiaApiKey(userId)]);
+  const [groqKey, nvidiaKey, geminiKey] = await Promise.all([
+    resolveGroqApiKey(userId),
+    resolveNvidiaApiKey(userId),
+    resolveGeminiApiKey(),
+  ]);
   const list: AiProviderConfig[] = [];
   if (groqKey) list.push({ provider: 'groq', apiKey: groqKey, baseURL: GROQ_BASE_URL, model: GROQ_MODEL });
   if (nvidiaKey) {
@@ -95,6 +124,7 @@ export async function resolveAiProviders(userId: string): Promise<AiProviderConf
       list.push({ provider: 'nvidia', apiKey: nvidiaKey, baseURL: NVIDIA_BASE_URL, model });
     }
   }
+  if (geminiKey) list.push({ provider: 'gemini', apiKey: geminiKey, baseURL: GEMINI_BASE_URL, model: GEMINI_MODEL });
   return list;
 }
 

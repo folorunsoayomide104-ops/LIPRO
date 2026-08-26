@@ -3,6 +3,12 @@ export type QuestionFormat = 'MCQ' | 'TRUE_FALSE' | 'FILL_BLANK' | 'THEORY';
 import { nvidiaChatCompletion } from '@/lib/nvidia';
 import type { AiProviderConfig } from '@/lib/ai';
 
+function providerLabel(cfg: AiProviderConfig): string {
+  if (cfg.provider === 'groq') return 'Groq';
+  if (cfg.provider === 'gemini') return 'Gemini';
+  return 'NVIDIA NIM';
+}
+
 // Confirmed directly against production, then against a live rate-limit
 // probe: Groq's actual constraint is a tight shared token-per-minute budget
 // (8000 TPM on the model in use), not a per-request count a little
@@ -134,7 +140,7 @@ async function analyzeChunk(text: string, targetCount: number, cfg: AiProviderCo
       apiKey: cfg.apiKey,
       baseURL: cfg.baseURL,
       model: cfg.model,
-      label: cfg.provider === 'groq' ? 'Groq' : 'NVIDIA NIM',
+      label: providerLabel(cfg),
       messages: [
         { role: 'system', content: ANALYSIS_SYSTEM_PROMPT },
         { role: 'user', content: buildAnalysisPrompt(text, targetCount) },
@@ -482,7 +488,7 @@ async function callProviderRaw(text: string, formats: QuestionFormat[], count: n
     apiKey: cfg.apiKey,
     baseURL: cfg.baseURL,
     model: cfg.model,
-    label: cfg.provider === 'groq' ? 'Groq' : 'NVIDIA NIM',
+    label: providerLabel(cfg),
     messages: [
       { role: 'system', content: SYSTEM_PROMPT },
       { role: 'user', content: buildUserPrompt(text, formats, count) },
@@ -514,7 +520,7 @@ async function callProviderWithTopics(topics: ExamTopic[], format: QuestionForma
     apiKey: cfg.apiKey,
     baseURL: cfg.baseURL,
     model: cfg.model,
-    label: cfg.provider === 'groq' ? 'Groq' : 'NVIDIA NIM',
+    label: providerLabel(cfg),
     messages: [
       { role: 'system', content: SYSTEM_PROMPT },
       { role: 'user', content: buildUserPromptFromTopics(topics, format, count) },
