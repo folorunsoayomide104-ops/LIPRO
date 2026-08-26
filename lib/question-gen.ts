@@ -40,6 +40,29 @@ function concurrencyFor(cfg: AiProviderConfig): number {
   return 4;
 }
 
+// How many questions to ask for in a single completion call. Serializing
+// Gemini (concurrency 1, above) stopped the 429 storm, but a 100-question
+// request still split into 10 sequential jobs at the old perCall=10 — each
+// one waiting through Gemini's own rate-limit backoff — and blew the 280s
+// route budget outright for 50 and 100. Raising perCall for Gemini trades
+// request *count* for request *size*: a 100-question request becomes ~4
+// serialized calls instead of ~10, which is what actually matters against a
+// requests-per-minute cap (unlike Groq's token-budget cap, where a bigger
+// request just fails the same way sooner).
+function perCallFor(cfg: AiProviderConfig): number {
+  return cfg.provider === 'gemini' ? 25 : 10;
+}
+
+// Gemini's actual completion limit is well above 6000 tokens (confirmed via
+// its docs, not directly probed) — the 6000 cap was tuned for Groq/NVIDIA.
+// Keeping Gemini's larger perCall batches capped at 6000 would silently
+// truncate the JSON array before it. 12000 comfortably covers a 25-question
+// batch at the existing ~220-token-per-question estimate.
+function maxTokensFor(cfg: AiProviderConfig, count: number): number {
+  const cap = cfg.provider === 'gemini' ? 12000 : 6000;
+  return Math.min(cap, count * 220 + 600);
+}
+
 export const FORMAT_LABELS: Record<QuestionFormat, string> = {
   MCQ: 'Multiple Choice',
   TRUE_FALSE: 'True / False',
@@ -502,7 +525,7 @@ async function callProviderRaw(text: string, formats: QuestionFormat[], count: n
       { role: 'user', content: buildUserPrompt(text, formats, count) },
     ],
     temperature: 0.4,
-    maxTokens: Math.min(6000, count * 220 + 600),
+    maxTokens: maxTokensFor(cfg, count),
     timeoutMs: 45000,
     // Retries (with the provider helper's existing exponential-ish 429
     // backoff) default to 2, but generateQuestionsFromText passes 0 here
@@ -534,7 +557,7 @@ async function callProviderWithTopics(topics: ExamTopic[], format: QuestionForma
       { role: 'user', content: buildUserPromptFromTopics(topics, format, count) },
     ],
     temperature: 0.4,
-    maxTokens: Math.min(6000, count * 220 + 600),
+    maxTokens: maxTokensFor(cfg, count),
     timeoutMs: 45000,
     retries,
   });
@@ -561,7 +584,7 @@ function dedupe(list: GeneratedQuestion[]): GeneratedQuestion[] {
  * a random-sentence question generator.
  */
 async function generateFromProvider(text: string, formats: QuestionFormat[], countPerFormat: number, cfg: AiProviderConfig, retries = 2): Promise<GeneratedQuestion[]> {
-  const perCall = 10;
+  const perCall = perCallFor(cfg);
   const numChunks = Math.max(1, Math.min(12, Math.ceil(countPerFormat / perCall)));
   const chunks = numChunks > 1 ? chunkText(text, Math.ceil(text.length / numChunks)) : [text];
 
