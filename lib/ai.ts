@@ -57,22 +57,21 @@ export const NVIDIA_MODEL = process.env.NVIDIA_MODEL || 'deepseek-ai/deepseek-v4
 export const NVIDIA_QUESTIONGEN_MODEL = process.env.NVIDIA_QUESTIONGEN_MODEL || 'meta/llama-3.1-8b-instruct';
 
 // Model-level failover within NVIDIA, not just provider-level (Groq→NVIDIA).
-// Every entry here was directly confirmed present in a live GET
-// /v1/models response — a wrong model ID 404s instead of failing over, so
-// don't add one without that confirmation. (meta/llama-3.1-8b-instruct
-// itself no longer appears in that listing despite still working when
-// called — NVIDIA's catalog and its listing endpoint can drift — so this
-// list intentionally leans on models confirmed by the listing, not just by
-// having worked once.) Ordered: proven-reliable-for-this-workload first,
-// then two different vendors under the nv-mistralai/nvidia orgs so one
-// vendor's outage/rate-limit can't take out the whole chain.
+// TEMPORARILY EMPTY: all three previous entries were re-verified live and
+// are dead on this account right now — meta/llama-3.1-8b-instruct returns
+// 410 (genuinely end-of-lifed by NVIDIA), and both mistral-nemo variants
+// return 404 "Not found for account" (an entitlement/billing issue on this
+// specific NVIDIA account, not a bad model ID). A dead chain isn't neutral:
+// generateFromProvider still runs its full per-chunk analysis loop against
+// every dead model before moving on, burning 60-100+s of the route's 280s
+// budget for nothing and starving Gemini (the fallback that actually still
+// works) of the time it needs. Leave this empty — resolveAiProviders simply
+// adds no NVIDIA candidates when it's empty — until the NVIDIA account's
+// credits/billing are fixed at build.nvidia.com; re-add real, re-verified
+// model IDs then, not before (a wrong ID here 404s instead of failing over).
 export const NVIDIA_QUESTIONGEN_MODEL_CHAIN = (
   process.env.NVIDIA_QUESTIONGEN_MODEL_CHAIN?.split(',').map((s) => s.trim()).filter(Boolean)
-) || [
-  NVIDIA_QUESTIONGEN_MODEL,
-  'nv-mistralai/mistral-nemo-12b-instruct',
-  'nvidia/mistral-nemo-minitron-8b-8k-instruct',
-];
+) || [];
 
 // Google's OpenAI-compatible endpoint — confirmed directly with a live
 // request that this exact base URL + model + Bearer-token auth works with
