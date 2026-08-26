@@ -324,12 +324,19 @@ export async function nvidiaChatCompletion(params: {
       });
 
       if (res.status === 429 || res.status === 503 || res.status >= 500) {
+        // Gemini (unlike Groq/NVIDIA) puts its retry guidance in the JSON
+        // body, not response headers — a google.rpc.RetryInfo.retryDelay
+        // field, e.g. {"details":[{"@type":"...RetryInfo","retryDelay":"9s"}]}.
+        // Confirmed directly against a live 429 burst test. Read the body
+        // once here (unused otherwise on this error path) so backoffMs can
+        // fall back to it when no header carries the same information.
+        const bodyText = await res.text().catch(() => '');
         lastErr = new Error(`${label} error ${res.status} (attempt ${attempt + 1}/${retries + 1})`);
         // Only wait out the backoff if another attempt will actually follow —
-        // sleeping (up to 20s) before the loop ends anyway just delays the
-        // throw for nothing, which matters a lot when retries is 0 (a
-        // deliberately fast-fail call because another provider is queued).
-        if (attempt < retries) await sleep(backoffMs(res, attempt));
+        // sleeping before the loop ends anyway just delays the throw for
+        // nothing, which matters a lot when retries is 0 (a deliberately
+        // fast-fail call because another provider is queued).
+        if (attempt < retries) await sleep(backoffMs(res, attempt, bodyText));
         continue;
       }
       if (!res.ok) throw new Error(`${label} error ${res.status}`);
@@ -418,15 +425,21 @@ function parseRetryDuration(raw: string | null): number | null {
  * reopens — read whichever the response actually provides instead of
  * guessing, and only fall back to the exponential guess if none exist.
  */
-function backoffMs(res: Response, attempt: number): number {
+function backoffMs(res: Response, attempt: number, bodyText?: string): number {
   const retryAfter = res.headers.get('retry-after');
   if (retryAfter) {
     const asSeconds = Number(retryAfter);
-    if (Number.isFinite(asSeconds)) return Math.min(20000, asSeconds * 1000 + 200);
+    if (Number.isFinite(asSeconds)) return Math.min(40000, asSeconds * 1000 + 200);
   }
   const resetTokens = parseRetryDuration(res.headers.get('x-ratelimit-reset-tokens'));
   const resetRequests = parseRetryDuration(res.headers.get('x-ratelimit-reset-requests'));
   const fromHeaders = [resetTokens, resetRequests].filter((v): v is number => v !== null);
-  if (fromHeaders.length > 0) return Math.min(20000, Math.max(...fromHeaders) + 200);
+  if (fromHeaders.length > 0) return Math.min(40000, Math.max(...fromHeaders) + 200);
+  // Gemini's google.rpc.RetryInfo.retryDelay, e.g. "9.706578417s" — confirmed
+  // live via a 429 burst test. No response headers carry this for Gemini.
+  if (bodyText) {
+    const match = bodyText.match(/"retryDelay"\s*:\s*"([\d.]+)s"/);
+    if (match) return Math.min(40000, parseFloat(match[1]) * 1000 + 200);
+  }
   return 2000 * (attempt + 1);
 }

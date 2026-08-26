@@ -79,9 +79,15 @@ export const NVIDIA_QUESTIONGEN_MODEL_CHAIN = (
 // the same request/response shape already used for Groq/NVIDIA, so no new
 // client code was needed, only a new provider entry.
 export const GEMINI_BASE_URL = process.env.GEMINI_BASE_URL || 'https://generativelanguage.googleapis.com/v1beta/openai';
-// gemini-2.0-flash reached end of life; gemini-3.6-flash is what Google's
-// own 404 response pointed to as the current replacement — confirmed live.
-export const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
+// gemini-3.6-flash's free tier turned out to be capped at 20 requests PER
+// DAY (not per-minute) — confirmed via a live 429 burst test reading the
+// quota error body: quotaId "GenerateRequestsPerDayPerProjectPerModel-
+// FreeTier", quotaValue 20. That's exhausted by a single CBT generation
+// request's own retries, never mind real usage. gemini-3.1-flash-lite's
+// free tier is a proper per-MINUTE cap instead (quotaId "...PerMinute...",
+// quotaValue 15 in the same live test) — the same shape of constraint as
+// Groq's, which the pipeline already knows how to serialize around.
+export const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite';
 
 export async function resolveAiProvider(userId: string): Promise<AiProviderConfig> {
   const [groqKey, nvidiaKey, geminiKey] = await Promise.all([
