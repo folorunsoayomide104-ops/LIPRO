@@ -47,28 +47,54 @@ export const NVIDIA_MODEL = process.env.NVIDIA_MODEL || 'deepseek-ai/deepseek-v4
 // is the model this pipeline was actually built and proven against.
 export const NVIDIA_QUESTIONGEN_MODEL = process.env.NVIDIA_QUESTIONGEN_MODEL || 'meta/llama-3.1-8b-instruct';
 
+// Model-level failover within NVIDIA, not just provider-level (Groq→NVIDIA).
+// Every entry here was directly confirmed present in a live GET
+// /v1/models response — a wrong model ID 404s instead of failing over, so
+// don't add one without that confirmation. (meta/llama-3.1-8b-instruct
+// itself no longer appears in that listing despite still working when
+// called — NVIDIA's catalog and its listing endpoint can drift — so this
+// list intentionally leans on models confirmed by the listing, not just by
+// having worked once.) Ordered: proven-reliable-for-this-workload first,
+// then two different vendors under the nv-mistralai/nvidia orgs so one
+// vendor's outage/rate-limit can't take out the whole chain.
+export const NVIDIA_QUESTIONGEN_MODEL_CHAIN = (
+  process.env.NVIDIA_QUESTIONGEN_MODEL_CHAIN?.split(',').map((s) => s.trim()).filter(Boolean)
+) || [
+  NVIDIA_QUESTIONGEN_MODEL,
+  'nv-mistralai/mistral-nemo-12b-instruct',
+  'nvidia/mistral-nemo-minitron-8b-8k-instruct',
+];
+
 export async function resolveAiProvider(userId: string): Promise<AiProviderConfig> {
-  const [primary] = await resolveAiProviders(userId);
-  return primary ?? { provider: 'none', apiKey: '', baseURL: NVIDIA_BASE_URL, model: NVIDIA_MODEL };
+  const [groqKey, nvidiaKey] = await Promise.all([resolveGroqApiKey(userId), resolveNvidiaApiKey(userId)]);
+  if (groqKey) return { provider: 'groq', apiKey: groqKey, baseURL: GROQ_BASE_URL, model: GROQ_MODEL };
+  if (nvidiaKey) return { provider: 'nvidia', apiKey: nvidiaKey, baseURL: NVIDIA_BASE_URL, model: NVIDIA_MODEL };
+  return { provider: 'none', apiKey: '', baseURL: NVIDIA_BASE_URL, model: NVIDIA_MODEL };
 }
 
 /**
- * Every usable provider for this user, in priority order (Groq first, then
- * NVIDIA). Lets generation callers retry on a second real provider instead
- * of dropping straight to demo content when the preferred one is down or
- * rate-limited — Groq's free tier 429s persistently once its daily quota is
- * spent, and retrying the *same* provider (even with backoff) never
- * recovers from that within a single request.
+ * Every usable provider+model combination for this user, in priority order:
+ * Groq first, then each model in NVIDIA_QUESTIONGEN_MODEL_CHAIN in turn.
+ * Lets generation callers fail over to another real option instead of
+ * dropping straight to demo content when the preferred one is down, rate-
+ * limited, or (as happened twice this session) simply too slow for this
+ * workload on this document — retrying the *same* provider/model rarely
+ * recovers from any of those within a single request.
  *
- * This is currently only called from the CBT question-generation route, so
- * the NVIDIA entry uses NVIDIA_QUESTIONGEN_MODEL (not NVIDIA_MODEL, which is
- * chat's) — see that constant's comment for why they need to differ.
+ * Currently only called from the CBT question-generation route — chat uses
+ * the singular resolveAiProvider above with its own NVIDIA_MODEL, kept
+ * deliberately separate (see NVIDIA_QUESTIONGEN_MODEL's comment for why a
+ * shared model constant broke question generation once already).
  */
 export async function resolveAiProviders(userId: string): Promise<AiProviderConfig[]> {
   const [groqKey, nvidiaKey] = await Promise.all([resolveGroqApiKey(userId), resolveNvidiaApiKey(userId)]);
   const list: AiProviderConfig[] = [];
   if (groqKey) list.push({ provider: 'groq', apiKey: groqKey, baseURL: GROQ_BASE_URL, model: GROQ_MODEL });
-  if (nvidiaKey) list.push({ provider: 'nvidia', apiKey: nvidiaKey, baseURL: NVIDIA_BASE_URL, model: NVIDIA_QUESTIONGEN_MODEL });
+  if (nvidiaKey) {
+    for (const model of NVIDIA_QUESTIONGEN_MODEL_CHAIN) {
+      list.push({ provider: 'nvidia', apiKey: nvidiaKey, baseURL: NVIDIA_BASE_URL, model });
+    }
+  }
   return list;
 }
 
