@@ -28,8 +28,16 @@ function providerLabel(cfg: AiProviderConfig): string {
 // Confirmed directly against production: a 20-page document's chunk
 // analysis alone ran past 280s serialized. Concurrency 4 for NVIDIA cuts
 // that by roughly 4x with no observed rate-limit errors.
+//
+// Gemini's free tier turned out to have the same shape of constraint as
+// Groq (a tight requests-per-minute cap, not Groq's token budget, but the
+// same practical effect) — confirmed directly against production: with a
+// 100-question request split into ~10 parallel jobs at concurrency 4,
+// nearly every job 429'd even after 3 retries each, and only 1 question
+// out of 100 actually made it through. Serialized to 1, same as Groq.
 function concurrencyFor(cfg: AiProviderConfig): number {
-  return cfg.provider === 'groq' ? 1 : 4;
+  if (cfg.provider === 'groq' || cfg.provider === 'gemini') return 1;
+  return 4;
 }
 
 export const FORMAT_LABELS: Record<QuestionFormat, string> = {
