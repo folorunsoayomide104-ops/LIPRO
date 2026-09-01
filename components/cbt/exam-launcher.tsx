@@ -7,7 +7,13 @@ import { createAttempt, type AttemptSource } from '@/lib/cbt/client';
 import { QUESTION_COUNTS, DURATION_MINUTES } from '@/lib/cbt/constants';
 import { FORMAT_LABELS, type QuestionFormat } from '@/lib/question-gen';
 
-const ALL_FORMATS: QuestionFormat[] = ['MCQ', 'TRUE_FALSE', 'FILL_BLANK', 'THEORY'];
+// THEORY/ESSAY excluded from selection while AI grading is disabled
+// (lib/ai.ts's AI_FEATURES_ENABLED) — a student starting a session with
+// this format would land on questions that grade as "pending manual
+// review" forever, since there's no admin screen yet to actually grade
+// them. Manually-authored THEORY questions still exist in the bank; they're
+// just not offered as a startable format right now.
+const ALL_FORMATS: QuestionFormat[] = ['MCQ', 'TRUE_FALSE', 'FILL_BLANK'];
 
 /**
  * Mode/count/duration picker + "Start" button. Replaces the mode/count/

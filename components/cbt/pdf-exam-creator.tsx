@@ -38,8 +38,19 @@ export function PdfExamCreator({ materials }: { materials: Doc[] }) {
   // existing-documents list doesn't expose a per-format breakdown of what's
   // already saved, so filtering here could silently produce "no questions
   // available" for a document that has plenty, just not in this format.
+  // THEORY is the one exception: documents can now have manually-authored
+  // THEORY questions (QuestionManager's sourceId path) even while AI is
+  // disabled, and those grade as "pending manual review" forever — no admin
+  // screen exists yet to actually clear that queue. Excluded here so a
+  // student can't land on one until that screen exists.
   const startExam = async (materialId: string, durationSec: number) => {
-    const result = await createAttempt({ source: { kind: 'material', id: materialId }, mode, count, durationSec });
+    const result = await createAttempt({
+      source: { kind: 'material', id: materialId },
+      mode,
+      count,
+      durationSec,
+      types: ['MCQ', 'TRUE_FALSE', 'FILL_BLANK'],
+    });
     router.push(`/cbt/${result.attemptId}`);
   };
 
