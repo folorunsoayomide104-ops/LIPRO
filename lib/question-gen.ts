@@ -180,6 +180,7 @@ async function analyzeChunk(text: string, targetCount: number, cfg: AiProviderCo
       maxTokens: Math.min(3000, targetCount * 140 + 400),
       timeoutMs: 30000,
       retries,
+      reasoningEffort: cfg.provider === 'gemini' ? 'none' : undefined,
     });
     return extractTopics(content);
   } catch (err: any) {
@@ -534,6 +535,7 @@ async function callProviderRaw(text: string, formats: QuestionFormat[], count: n
     // whole request budget before the working fallback ever gets a turn.
     // Only the last configured provider gets the full retry budget.
     retries,
+    reasoningEffort: cfg.provider === 'gemini' ? 'none' : undefined,
     // No responseFormat here deliberately: `json_object` forces a JSON
     // *object* at the root, which conflicts with the array this prompt asks
     // for. Against meta/llama-3.1-8b-instruct that constraint made the model
@@ -560,6 +562,7 @@ async function callProviderWithTopics(topics: ExamTopic[], format: QuestionForma
     maxTokens: maxTokensFor(cfg, count),
     timeoutMs: 45000,
     retries,
+    reasoningEffort: cfg.provider === 'gemini' ? 'none' : undefined,
   });
   return extractJsonArray(content);
 }

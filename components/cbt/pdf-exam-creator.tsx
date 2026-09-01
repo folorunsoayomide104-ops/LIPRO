@@ -8,6 +8,7 @@ import { FileUp, FileText, Loader2, Play, Zap, ListChecks, ToggleLeft, PenLine, 
 import { createAttempt } from '@/lib/cbt/client';
 import { QUESTION_COUNTS, DURATION_MINUTES } from '@/lib/cbt/constants';
 import type { QuestionFormat } from '@/lib/question-gen';
+import { QuestionManager } from '@/components/cbt/question-manager';
 
 type Doc = { id: string; originalName: string; sizeBytes: number; questionCount: number; createdAt: string };
 
@@ -28,6 +29,7 @@ export function PdfExamCreator({ materials }: { materials: Doc[] }) {
   const [durationMin, setDurationMin] = useState(30);
   const [phase, setPhase] = useState<'idle' | 'uploading' | 'analyzing' | 'generating' | 'starting'>('idle');
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [managingId, setManagingId] = useState<string | null>(null);
   const [error, setError] = useState('');
 
   // Starting from an already-uploaded document reuses whatever question(s)
@@ -217,24 +219,40 @@ export function PdfExamCreator({ materials }: { materials: Doc[] }) {
         <div className="space-y-2 border-t border-lipro-200/40 pt-3">
           <div className="label">Your documents</div>
           {materials.map((m) => (
-            <div key={m.id} className="flex items-center justify-between gap-2 rounded-xl p-2.5 glass-hover">
-              <div className="min-w-0">
-                <div className="truncate text-sm font-medium">{m.originalName}</div>
-                <div className="text-xs text-lipro-600/60">{m.questionCount} questions</div>
+            <div key={m.id} className="rounded-xl p-2.5 glass-hover">
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-medium">{m.originalName}</div>
+                  <div className="text-xs text-lipro-600/60">{m.questionCount} questions</div>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setManagingId((id) => (id === m.id ? null : m.id))}
+                  >
+                    {managingId === m.id ? 'Close' : 'Manage questions'}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={m.questionCount === 0 || phase !== 'idle'}
+                    onClick={async () => {
+                      setError('');
+                      setPhase('starting');
+                      try { await startExam(m.id, durationMin * 60); }
+                      catch (err: any) { setError(err?.message || 'Could not start attempt'); setPhase('idle'); }
+                    }}
+                  >
+                    <Play className="h-3.5 w-3.5" /> {mode === 'practice' ? 'Practice' : 'Exam'}
+                  </Button>
+                </div>
               </div>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={m.questionCount === 0 || phase !== 'idle'}
-                onClick={async () => {
-                  setError('');
-                  setPhase('starting');
-                  try { await startExam(m.id, durationMin * 60); }
-                  catch (err: any) { setError(err?.message || 'Could not start attempt'); setPhase('idle'); }
-                }}
-              >
-                <Play className="h-3.5 w-3.5" /> {mode === 'practice' ? 'Practice' : 'Exam'}
-              </Button>
+              {managingId === m.id && (
+                <div className="mt-3 border-t border-lipro-200/40 pt-3">
+                  <QuestionManager sourceId={m.id} />
+                </div>
+              )}
             </div>
           ))}
         </div>

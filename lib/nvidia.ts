@@ -300,8 +300,20 @@ export async function nvidiaChatCompletion(params: {
   timeoutMs?: number;
   retries?: number;
   responseFormat?: { type: 'json_object' | 'text' };
+  // Gemini-specific: its OpenAI-compatible endpoint runs "thinking" by
+  // default, spending a chunk of maxTokens on invisible reasoning tokens
+  // before ever producing visible output — confirmed directly against
+  // production, this is exactly why a 100-question request only ever
+  // yielded 10: the model hit its token budget mid-thought, truncating the
+  // actual JSON array long before the requested count. Passing
+  // reasoning_effort: 'none' (confirmed live) eliminates that overhead
+  // entirely for a structured-extraction task like this that needs no
+  // visible reasoning. Other providers ignore an unrecognized field, so
+  // this is safe to pass unconditionally, but callers only opt in when they
+  // know they're talking to Gemini.
+  reasoningEffort?: 'none';
 }): Promise<string> {
-  const { apiKey, baseURL, model, label = 'AI provider', messages, temperature, maxTokens, timeoutMs = 60000, retries = 2, responseFormat } = params;
+  const { apiKey, baseURL, model, label = 'AI provider', messages, temperature, maxTokens, timeoutMs = 60000, retries = 2, responseFormat, reasoningEffort } = params;
   const url = `${baseURL || process.env.NVIDIA_BASE_URL || 'https://integrate.api.nvidia.com/v1'}/chat/completions`;
   const mdl = model || process.env.NVIDIA_MODEL || 'meta/llama-3.1-8b-instruct';
 
@@ -319,6 +331,7 @@ export async function nvidiaChatCompletion(params: {
           temperature: temperature ?? 0.7,
           max_tokens: maxTokens ?? 800,
           ...(responseFormat ? { response_format: responseFormat } : {}),
+          ...(reasoningEffort ? { reasoning_effort: reasoningEffort } : {}),
         }),
         signal: controller.signal,
       });
