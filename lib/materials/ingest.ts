@@ -3,7 +3,7 @@ import { extractText, isDocxName, DOCX_MIME, MAX_UPLOAD_BYTES } from '@/lib/pdf'
 import { extractTextFromImage } from '@/lib/ocr';
 import { chunkText } from '@/lib/chunkText';
 import { generateEmbeddings } from '@/lib/embeddings';
-import { resolveNvidiaApiKey } from '@/lib/ai';
+import { resolveNvidiaApiKey, AI_FEATURES_ENABLED } from '@/lib/ai';
 
 /**
  * Single entry point for turning an uploaded file into a searchable Material.
@@ -88,6 +88,14 @@ export async function ingestMaterial(params: IngestMaterialParams): Promise<Inge
     };
   }
 
+  if (info.isImage && !AI_FEATURES_ENABLED) {
+    return {
+      ok: false,
+      status: 415,
+      error: 'Reading images/scanned documents needs AI, which is temporarily disabled. Upload a text-based PDF, DOCX, TXT, or MD file instead.',
+    };
+  }
+
   let text: string;
   let pageOffsets: number[] = [];
   try {
@@ -125,7 +133,7 @@ export async function ingestMaterial(params: IngestMaterialParams): Promise<Inge
     // Groq has no embeddings endpoint — so the gate checks for an NVIDIA key
     // directly rather than params.provider, which may be a Groq chat
     // provider that can't actually embed anything.
-    const hasEmbeddingProvider = !!(await resolveNvidiaApiKey(userId));
+    const hasEmbeddingProvider = AI_FEATURES_ENABLED && !!(await resolveNvidiaApiKey(userId));
 
     // DocumentChunk.embedding is NOT NULL at the database level (verified
     // against the actual schema — confirmed by a real 23502 constraint

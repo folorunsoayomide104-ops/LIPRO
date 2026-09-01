@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { guard } from '@/lib/api-guard';
-import { resolveAiProvider } from '@/lib/ai';
+import { resolveAiProvider, AI_FEATURES_ENABLED } from '@/lib/ai';
 import { examCheckSchema } from '@/lib/validators';
 import { enforceDeadline, loadOwnedAttempt } from '@/lib/cbt/attempt';
 import { isFreeText } from '@/lib/cbt/constants';
@@ -44,12 +44,23 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const given = parsed.data.response;
 
-  let ratio: number;
   let feedback: string | null = null;
   let method: string;
   let confidence: number | null = null;
 
-  if (isFreeText(item.type)) {
+  let isGraded = true;
+  let isCorrect = false;
+  let awarded = 0;
+
+  if (isFreeText(item.type) && !AI_FEATURES_ENABLED) {
+    // AI grading is off for launch — leave this genuinely ungraded rather
+    // than silently auto-scoring it with the heuristic fallback. A student
+    // still sees the model answer/explanation for reference, just no
+    // correct/incorrect verdict or awarded points until an admin grades it.
+    isGraded = false;
+    method = 'ungraded';
+    feedback = 'This answer needs manual review — theory/essay grading is currently disabled.';
+  } else if (isFreeText(item.type)) {
     const [result] = await gradeFreeTextBatch({
       provider: await resolveAiProvider(user.userId),
       items: [
@@ -64,17 +75,18 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       ],
       deadlineMs: Date.now() + 20000,
     });
-    ratio = result?.ratio ?? 0;
+    const ratio = result?.ratio ?? 0;
     feedback = result?.feedback ?? null;
     method = result?.method ?? 'heuristic';
     confidence = result?.confidence ?? null;
+    awarded = Math.round(ratio * item.points * 100) / 100;
+    isCorrect = ratio >= 0.999;
   } else {
-    ratio = gradeObjective(item.type, item.correctAnswer, given).ratio;
+    const ratio = gradeObjective(item.type, item.correctAnswer, given).ratio;
     method = 'exact';
+    awarded = Math.round(ratio * item.points * 100) / 100;
+    isCorrect = ratio >= 0.999;
   }
-
-  const awarded = Math.round(ratio * item.points * 100) / 100;
-  const isCorrect = ratio >= 0.999;
 
   const updated = await prisma.examAnswer.update({
     where: { id: item.id },
@@ -82,8 +94,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       response: given,
       answeredAt: given?.trim() ? new Date() : null,
       revealed: true,
-      isGraded: true,
-      isCorrect,
+      isGraded,
+      isCorrect: isGraded ? isCorrect : null,
       awarded,
       gradeMethod: method,
       feedback,

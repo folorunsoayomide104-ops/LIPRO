@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma';
-import { resolveAiProvider } from '@/lib/ai';
+import { resolveAiProvider, AI_FEATURES_ENABLED } from '@/lib/ai';
 import { GRADE_BUDGET_MS, isFreeText } from './constants';
 import { gradeFreeTextBatch, type GradableItem } from './grading';
 import { recomputeScore } from './attempt';
@@ -54,6 +54,26 @@ export async function runGrading(attemptId: string): Promise<GradeOutcome | null
         data: { gradingStatus: 'complete', gradedAt: new Date() },
       });
       return { gradingStatus: 'complete', graded: 0, score, totalPoints };
+    }
+
+    if (!AI_FEATURES_ENABLED) {
+      // Leave these genuinely ungraded rather than silently auto-scoring
+      // with the heuristic fallback — mark them explicitly so results pages
+      // can tell "pending manual review" apart from "answered nothing".
+      await Promise.all(
+        pending.map((item) =>
+          prisma.examAnswer.update({
+            where: { id: item.id },
+            data: { gradeMethod: 'ungraded', feedback: 'Awaiting manual review — theory/essay grading is currently disabled.' },
+          })
+        )
+      );
+      const { score, totalPoints } = await recomputeScore(attempt.id);
+      await prisma.examSession.update({
+        where: { id: attempt.id },
+        data: { gradingStatus: 'pending', gradedAt: new Date() },
+      });
+      return { gradingStatus: 'pending', graded: 0, score, totalPoints };
     }
 
     const provider = await resolveAiProvider(attempt.userId);

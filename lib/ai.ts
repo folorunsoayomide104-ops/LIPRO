@@ -1,5 +1,18 @@
 import { prisma } from '@/lib/prisma';
 
+// Single kill switch for every AI call in the app. Launch strategy: ship
+// fully working without any AI-dependent feature first, add AI back once
+// there's revenue to fund it reliably (this session spent a long stretch
+// fighting Groq/NVIDIA/Gemini all failing simultaneously — AI availability
+// isn't something this app can promise students on day one). Every route
+// that calls an AI provider (chat, CBT question generation, flashcard/
+// revision-guide generation, free-text grading, OCR, embeddings) must check
+// this FIRST, before resolving a provider or importing an AI client, so a
+// disabled state genuinely makes zero network calls rather than routing to
+// a "none" provider that still enters AI-shaped code. Flip AI_FEATURES_ENABLED=true
+// in Vercel env to turn everything back on without a code change.
+export const AI_FEATURES_ENABLED = process.env.AI_FEATURES_ENABLED === 'true';
+
 export async function resolveNvidiaApiKey(userId: string): Promise<string> {
   const u = await prisma.user.findUnique({ where: { id: userId }, select: { nvidiaApiKey: true } });
   const saved = u?.nvidiaApiKey?.trim();

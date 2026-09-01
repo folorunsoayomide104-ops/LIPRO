@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { guard } from '@/lib/api-guard';
 import { chatSchema } from '@/lib/validators';
-import { resolveAiProviders, type AiProviderConfig } from '@/lib/ai';
+import { resolveAiProviders, type AiProviderConfig, AI_FEATURES_ENABLED } from '@/lib/ai';
 import { MAX_UPLOAD_BYTES } from '@/lib/pdf';
 import { ingestMaterial } from '@/lib/materials/ingest';
 import { isTrustedBlobUrl } from '@/lib/blob-url';
@@ -44,6 +44,13 @@ async function persistConversation(userId: string, conversationId: string | unde
 export async function POST(req: Request) {
   const { ok, user, response } = await guard();
   if (!ok || !user) return response!;
+
+  if (!AI_FEATURES_ENABLED) {
+    return NextResponse.json(
+      { error: 'LIPRO AI is temporarily unavailable while we launch without AI features. It will return soon.' },
+      { status: 503 }
+    );
+  }
 
   // Each message can trigger a paid AI call (and, with attached files, OCR/
   // embedding calls too) — cap per-user volume so a runaway client loop or

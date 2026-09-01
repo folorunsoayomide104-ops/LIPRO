@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { guard } from '@/lib/api-guard';
-import { resolveAiProviders } from '@/lib/ai';
+import { resolveAiProviders, AI_FEATURES_ENABLED } from '@/lib/ai';
 import { generateRevisionGuide, assembleGuideMarkdown, type GeneratedGuidePage } from '@/lib/revision-guide-gen';
 
 export const maxDuration = 300;
@@ -9,6 +9,14 @@ export const maxDuration = 300;
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { ok, user, response } = await guard();
   if (!ok || !user) return response!;
+
+  if (!AI_FEATURES_ENABLED) {
+    return NextResponse.json(
+      { error: 'AI revision guide generation is temporarily disabled.' },
+      { status: 503 }
+    );
+  }
+
   const { id } = await params;
 
   const material = await prisma.material.findFirst({ where: { id, userId: user.userId } });

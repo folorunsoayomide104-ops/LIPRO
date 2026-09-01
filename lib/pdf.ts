@@ -139,7 +139,11 @@ export async function extractText(buffer: Buffer, mimeType: string, userId?: str
     const avgCharsPerPage = rawPageCount > 0 ? raw.length / rawPageCount : raw.length;
     if (userId && rawPageCount > 0 && avgCharsPerPage < SPARSE_TEXT_CHARS_PER_PAGE) {
       const { extractTextFromImage } = await import('./ocr');
-      const { resolveNvidiaApiKey } = await import('./ai');
+      const { resolveNvidiaApiKey, AI_FEATURES_ENABLED } = await import('./ai');
+
+      if (!AI_FEATURES_ENABLED) {
+        throw new Error('This looks like a scanned document (a phone-scanned PDF with no real text layer). Reading it needs AI, which is temporarily disabled — upload a text-based PDF instead.');
+      }
 
       // Check for a working vision provider BEFORE rendering any pages —
       // rendering N pages just to have every OCR call fail identically for

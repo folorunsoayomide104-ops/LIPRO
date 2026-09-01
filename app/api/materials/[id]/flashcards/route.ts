@@ -2,13 +2,21 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { guard } from '@/lib/api-guard';
 import { generateFlashcardsFromText, fallbackGenerate, type GeneratedFlashcard } from '@/lib/flashcard-gen';
-import { resolveAiProviders } from '@/lib/ai';
+import { resolveAiProviders, AI_FEATURES_ENABLED } from '@/lib/ai';
 
 export const maxDuration = 300;
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { ok, user, response } = await guard();
   if (!ok || !user) return response!;
+
+  if (!AI_FEATURES_ENABLED) {
+    return NextResponse.json(
+      { error: 'AI flashcard generation is temporarily disabled. Create flashcards manually instead.' },
+      { status: 503 }
+    );
+  }
+
   const { id } = await params;
 
   const material = await prisma.material.findUnique({ where: { id } });

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { guard } from '@/lib/api-guard';
 import { generateQuestionsFromText, fallbackGenerate, type QuestionFormat, type GeneratedQuestion } from '@/lib/question-gen';
-import { resolveAiProviders } from '@/lib/ai';
+import { resolveAiProviders, AI_FEATURES_ENABLED } from '@/lib/ai';
 import { pointsFor } from '@/lib/cbt/constants';
 import { checkRateLimit, rateLimitResponse } from '@/lib/rate-limit';
 
@@ -26,6 +26,13 @@ function toRow(q: GeneratedQuestion, materialId: string, authorId: string, demo:
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { ok, user, response } = await guard();
   if (!ok || !user) return response!;
+
+  if (!AI_FEATURES_ENABLED) {
+    return NextResponse.json(
+      { error: 'AI question generation is temporarily disabled. Add questions manually from the "Manage questions" panel instead.' },
+      { status: 503 }
+    );
+  }
 
   // The most expensive AI call in the app — a full two-stage analyze-then-
   // generate pipeline, potentially across multiple providers/chunks per

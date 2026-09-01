@@ -50,6 +50,9 @@ export function ExamRunner({ attemptId }: { attemptId: string }) {
     for (const it of items) {
       if (!it.revealed || countedRef.current.has(it.itemId)) continue;
       countedRef.current.add(it.itemId);
+      // A pending-review item (AI grading disabled) is neither right nor
+      // wrong yet — don't break the streak or add to the score for it.
+      if (it.gradeMethod === 'ungraded') continue;
       if (it.isCorrect) {
         setPracticeScore((s) => s + (it.awarded ?? it.points));
         setStreak((s) => {
@@ -308,9 +311,11 @@ function QuestionCard({
           <Badge tone="amber">{item.type}</Badge>
           <span className="text-xs">{item.points} pts</span>
           {isPractice && done && (
-            item.isCorrect
-              ? <Badge tone="green"><CheckCircle2 className="h-3 w-3" /> Correct{typeof item.awarded === 'number' && item.awarded > 0 && item.awarded < item.points ? ` (${item.awarded}/${item.points})` : ''}</Badge>
-              : <Badge tone="rose"><XCircle className="h-3 w-3" /> {item.awarded ? `Partial (${item.awarded}/${item.points})` : 'Incorrect'}</Badge>
+            item.gradeMethod === 'ungraded'
+              ? <Badge tone="amber"><Clock className="h-3 w-3" /> Pending manual review</Badge>
+              : item.isCorrect
+                ? <Badge tone="green"><CheckCircle2 className="h-3 w-3" /> Correct{typeof item.awarded === 'number' && item.awarded > 0 && item.awarded < item.points ? ` (${item.awarded}/${item.points})` : ''}</Badge>
+                : <Badge tone="rose"><XCircle className="h-3 w-3" /> {item.awarded ? `Partial (${item.awarded}/${item.points})` : 'Incorrect'}</Badge>
           )}
         </div>
         <h3 className="mt-2 text-base font-medium">{index + 1}. {item.prompt}</h3>

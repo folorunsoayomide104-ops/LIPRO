@@ -18,6 +18,7 @@ export type AttemptItem = {
   feedback?: string | null;
   isCorrect?: boolean | null;
   awarded?: number;
+  gradeMethod?: string | null;
 };
 
 export type AttemptMeta = {
@@ -222,6 +223,7 @@ export function useAttempt(attemptId: string) {
               feedback: data.feedback,
               isCorrect: data.isCorrect,
               awarded: data.awarded,
+              gradeMethod: data.gradeMethod,
             }
           : it
       )
