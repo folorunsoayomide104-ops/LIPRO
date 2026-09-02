@@ -27,7 +27,7 @@ export default async function SettingsPage() {
         <Card><CardHeader><CardDescription>Appearance</CardDescription><CardTitle className="text-base">Theme</CardTitle></CardHeader><CardContent><ThemeToggle /></CardContent></Card>
       </div>
       <Card><CardHeader><CardTitle>Profile</CardTitle><CardDescription>Update your personal information</CardDescription></CardHeader><CardContent><ProfileEditor user={u} /></CardContent></Card>
-      <Card><CardHeader><CardTitle>AI API Key — NVIDIA NIM</CardTitle><CardDescription>Add your own free NVIDIA NIM key to power LIPRO AI, CBT question generation, and PDF Intelligence — using your own key keeps your usage separate from every other student's</CardDescription></CardHeader><CardContent><ApiKeyEditor hasKey={!!u.nvidiaApiKey} masked={u.nvidiaApiKey ? maskApiKey(u.nvidiaApiKey) : null} /></CardContent></Card>
+      <Card><CardHeader><CardTitle>AI API Key — NVIDIA NIM</CardTitle><CardDescription>Add your own free NVIDIA NIM key to power LIPRO AI, CBT question generation, and PDF Intelligence — using your own key keeps your usage separate from every other student&apos;s</CardDescription></CardHeader><CardContent><ApiKeyEditor hasKey={!!u.nvidiaApiKey} masked={u.nvidiaApiKey ? maskApiKey(u.nvidiaApiKey) : null} /></CardContent></Card>
       <Card className="border-rose-200/60 dark:border-rose-500/20"><CardHeader><CardTitle>Sign out</CardTitle><CardDescription>End your session and return to the sign-in page</CardDescription></CardHeader><CardContent><SignOutButton /></CardContent></Card>
       </div>
     </div>
