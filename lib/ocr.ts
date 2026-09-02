@@ -17,7 +17,7 @@ const VISION_MODEL = process.env.NVIDIA_VISION_MODEL || 'meta/llama-3.2-11b-visi
 export async function extractTextFromImage(buffer: Buffer, userId: string): Promise<string> {
   const apiKey = await resolveNvidiaApiKey(userId);
   if (!apiKey) {
-    throw new Error('Reading images/scanned documents needs an NVIDIA API key specifically — Groq does not offer a vision model. Add one in Settings.');
+    throw new Error('Reading images/scanned documents needs an NVIDIA API key. Add one in Settings.');
   }
 
   const mimeType = sniffMimeType(buffer);

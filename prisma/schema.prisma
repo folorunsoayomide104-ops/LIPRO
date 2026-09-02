@@ -29,7 +29,6 @@ model User {
   paystackCustomerId String?
   lastLoginAt        DateTime?
   nvidiaApiKey       String?
-  groqApiKey         String?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 

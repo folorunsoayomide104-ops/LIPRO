@@ -277,7 +277,7 @@ function NoteViewer({ note, onClose }: { note: NoteRow; onClose: () => void }) {
         </div>
         {note.content.startsWith('[demo]') && (
           <p className="mt-4 flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-300">
-            <FileText className="h-3.5 w-3.5" /> Generated in demo mode — add a Groq or NVIDIA API key in Settings for a fully AI-written guide.
+            <FileText className="h-3.5 w-3.5" /> Generated in demo mode — add an NVIDIA API key in Settings for a fully AI-written guide.
           </p>
         )}
       </div>

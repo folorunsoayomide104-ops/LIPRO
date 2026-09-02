@@ -151,7 +151,7 @@ async function callProvider(text: string, count: number, cfg: AiProviderConfig, 
     apiKey: cfg.apiKey,
     baseURL: cfg.baseURL,
     model: cfg.model,
-    label: cfg.provider === 'groq' ? 'Groq' : 'NVIDIA NIM',
+    label: cfg.provider === 'gemini' ? 'Gemini' : 'NVIDIA NIM',
     messages: [
       { role: 'system', content: SYSTEM_PROMPT },
       { role: 'user', content: buildUserPrompt(text, count) },
@@ -224,7 +224,7 @@ export function fallbackGenerate(text: string, count: number): GeneratedFlashcar
     const kw = keyword(i + 1);
     cards.push({
       front: `What does the material say about "${kw}"?`,
-      back: sentence || `${kw} is a key concept in this document — add a Groq or NVIDIA API key in Settings for real, generated flashcards.`,
+      back: sentence || `${kw} is a key concept in this document — add a NVIDIA API key in Settings for real, generated flashcards.`,
     });
   }
   return cards;

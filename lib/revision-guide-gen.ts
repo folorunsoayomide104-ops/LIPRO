@@ -124,7 +124,7 @@ function fallbackSection(pageText: string): GuideSection {
   const keyPoints = uniqueWords.length > 0 ? uniqueWords.map((w) => `Review the term "${w}"`) : sentences.slice(2, 5);
   return {
     heading: '',
-    summary: summary || 'Add a Groq or NVIDIA API key in Settings for a real, generated revision guide.',
+    summary: summary || 'Add a NVIDIA API key in Settings for a real, generated revision guide.',
     keyPoints,
   };
 }
@@ -134,7 +134,7 @@ async function callProvider(pageText: string, cfg: AiProviderConfig, retries = 1
     apiKey: cfg.apiKey,
     baseURL: cfg.baseURL,
     model: cfg.model,
-    label: cfg.provider === 'groq' ? 'Groq' : 'NVIDIA NIM',
+    label: cfg.provider === 'gemini' ? 'Gemini' : 'NVIDIA NIM',
     messages: [
       { role: 'system', content: SYSTEM_PROMPT },
       { role: 'user', content: buildUserPrompt(pageText) },

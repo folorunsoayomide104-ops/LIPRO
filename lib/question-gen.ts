@@ -4,39 +4,24 @@ import { nvidiaChatCompletion } from '@/lib/nvidia';
 import type { AiProviderConfig } from '@/lib/ai';
 
 function providerLabel(cfg: AiProviderConfig): string {
-  if (cfg.provider === 'groq') return 'Groq';
   if (cfg.provider === 'gemini') return 'Gemini';
   return 'NVIDIA NIM';
 }
 
-// Confirmed directly against production, then against a live rate-limit
-// probe: Groq's actual constraint is a tight shared token-per-minute budget
-// (8000 TPM on the model in use), not a per-request count a little
-// concurrency comfortably fits under. Firing calls in parallel against a
-// shared token budget just means every parallel job exhausts it and gets
-// 429'd at the same moment — concurrency provides no real throughput there,
-// only simultaneous failure. Serialized to 1 so each call completes (or
-// backs off using the provider's own reported reset time — see
-// lib/nvidia.ts's backoffMs) before the next one spends from the same
-// budget.
+// NVIDIA has no shared-token-budget constraint the way Groq used to —
+// confirmed directly against production: a 20-page document's chunk
+// analysis run serialized at concurrency 1 blew the route's 280s budget
+// even when NVIDIA itself was working fine, silently landing on demo
+// fallback. Concurrency 4 cuts that by roughly 4x with no observed
+// rate-limit errors.
 //
-// NVIDIA has no equivalent shared-budget constraint, and generateQuestionsFromText
-// falls through to it whenever Groq is exhausted — running NVIDIA's own
-// two-stage pipeline at concurrency 1 too meant a large document (20-30+
-// chunks) could easily exceed the route's 280s budget even when NVIDIA
-// itself was working fine, silently landing on demo-content fallback.
-// Confirmed directly against production: a 20-page document's chunk
-// analysis alone ran past 280s serialized. Concurrency 4 for NVIDIA cuts
-// that by roughly 4x with no observed rate-limit errors.
-//
-// Gemini's free tier turned out to have the same shape of constraint as
-// Groq (a tight requests-per-minute cap, not Groq's token budget, but the
-// same practical effect) — confirmed directly against production: with a
-// 100-question request split into ~10 parallel jobs at concurrency 4,
-// nearly every job 429'd even after 3 retries each, and only 1 question
-// out of 100 actually made it through. Serialized to 1, same as Groq.
+// Gemini's free tier has a tight requests-per-minute cap — confirmed
+// directly against production: with a 100-question request split into ~10
+// parallel jobs at concurrency 4, nearly every job 429'd even after 3
+// retries each, and only 1 question out of 100 actually made it through.
+// Serialized to 1.
 function concurrencyFor(cfg: AiProviderConfig): number {
-  if (cfg.provider === 'groq' || cfg.provider === 'gemini') return 1;
+  if (cfg.provider === 'gemini') return 1;
   return 4;
 }
 
@@ -47,8 +32,7 @@ function concurrencyFor(cfg: AiProviderConfig): number {
 // route budget outright for 50 and 100. Raising perCall for Gemini trades
 // request *count* for request *size*: a 100-question request becomes ~4
 // serialized calls instead of ~10, which is what actually matters against a
-// requests-per-minute cap (unlike Groq's token-budget cap, where a bigger
-// request just fails the same way sooner).
+// requests-per-minute cap.
 function perCallFor(cfg: AiProviderConfig): number {
   return cfg.provider === 'gemini' ? 25 : 10;
 }
@@ -439,10 +423,9 @@ function normalizeQuestions(items: any[]): GeneratedQuestion[] {
     .filter((q): q is GeneratedQuestion => q !== null);
 }
 
-export function isDemoMode(apiKey?: string, groqApiKey?: string): boolean {
+export function isDemoMode(apiKey?: string): boolean {
   const key = apiKey ?? process.env.NVIDIA_API_KEY;
-  const gkey = groqApiKey ?? process.env.GROQ_API_KEY;
-  return (!key || key.trim().length === 0) && (!gkey || gkey.trim().length === 0);
+  return !key || key.trim().length === 0;
 }
 
 export async function generateQuestionsFromText(
@@ -719,7 +702,7 @@ export function fallbackGenerate(text: string, formats: QuestionFormat[], countP
           question: `Explain the role of "${kw}" as discussed in this material.`,
           options: null,
           answer: `"${kw}" is a key concept covered in this document. Base your answer on the uploaded material and give a concrete example.`,
-          explanation: 'Full answer depends on the AI tutor — this is a demo question (no Groq or NVIDIA API key set).',
+          explanation: 'Full answer depends on the AI tutor — this is a demo question (no NVIDIA API key set).',
         });
       }
     }

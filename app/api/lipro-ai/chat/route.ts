@@ -365,7 +365,7 @@ function nvidiaDownReply(message: string, fileName?: string): string {
 
 function fallbackReply(message: string, fileName?: string): string {
   if (fileName) {
-    return `I'm currently in demo mode. You can unlock the full AI by adding a Groq or NVIDIA API key in Settings. In the meantime, I saw you asked: "${message}" — feel free to share more details and I'll guide you based on general knowledge!`;
+    return `I'm currently in demo mode. You can unlock the full AI by adding an NVIDIA API key in Settings. In the meantime, I saw you asked: "${message}" — feel free to share more details and I'll guide you based on general knowledge!`;
   }
-  return `I'm in demo mode right now! Add a Groq or NVIDIA API key in Settings to unlock full AI tutoring. You asked: "${message}" — happy to help with general study tips until then!`;
+  return `I'm in demo mode right now! Add an NVIDIA API key in Settings to unlock full AI tutoring. You asked: "${message}" — happy to help with general study tips until then!`;
 }

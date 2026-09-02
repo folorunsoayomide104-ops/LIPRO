@@ -13,18 +13,20 @@ import { prisma } from '@/lib/prisma';
 // in Vercel env to turn everything back on without a code change.
 export const AI_FEATURES_ENABLED = process.env.AI_FEATURES_ENABLED === 'true';
 
+// Per-user key, checked before any shared app-wide key. This is now the
+// PRIMARY access path, not a fallback: a shared NVIDIA_API_KEY serving every
+// request from every student is a single point of failure by design — it's
+// exactly what died (confirmed live: every model returned 401 on the shared
+// key, not just individually-unentitled models) and took every student down
+// with it at once. Each student adding their own free NVIDIA key in Settings
+// isolates their usage/rate-limit to their own account; if a shared
+// NVIDIA_API_KEY is also configured it's used only as a last resort for
+// students who haven't added a personal one yet.
 export async function resolveNvidiaApiKey(userId: string): Promise<string> {
   const u = await prisma.user.findUnique({ where: { id: userId }, select: { nvidiaApiKey: true } });
   const saved = u?.nvidiaApiKey?.trim();
   if (saved) return saved;
   return process.env.NVIDIA_API_KEY?.trim() || '';
-}
-
-export async function resolveGroqApiKey(userId: string): Promise<string> {
-  const u = await prisma.user.findUnique({ where: { id: userId }, select: { groqApiKey: true } });
-  const saved = u?.groqApiKey?.trim();
-  if (saved) return saved;
-  return process.env.GROQ_API_KEY?.trim() || '';
 }
 
 // Env-only (no per-user override column, unlike Groq/NVIDIA) — added as a
@@ -36,7 +38,7 @@ export async function resolveGeminiApiKey(): Promise<string> {
   return process.env.GEMINI_API_KEY?.trim() || '';
 }
 
-export type AiProvider = 'groq' | 'nvidia' | 'gemini' | 'none';
+export type AiProvider = 'nvidia' | 'gemini' | 'none';
 
 export interface AiProviderConfig {
   provider: AiProvider;
@@ -45,46 +47,36 @@ export interface AiProviderConfig {
   model: string;
 }
 
-export const GROQ_BASE_URL = process.env.GROQ_BASE_URL || 'https://api.groq.com/openai/v1';
-// llama-3.3-70b-versatile (the previous default) is deprecated and 404s
-// against the live API — confirmed directly. openai/gpt-oss-120b is Groq's
-// current flagship production model and supports tool calling.
-export const GROQ_MODEL = process.env.GROQ_MODEL || 'openai/gpt-oss-120b';
 export const NVIDIA_BASE_URL = process.env.NVIDIA_BASE_URL || 'https://integrate.api.nvidia.com/v1';
-// meta/llama-3.1-8b-instruct gave weak/off-topic answers as the fallback
-// model; meta/llama-3.3-70b-instruct fixed quality but blew the LIPRO AI
-// chat pipeline's 40s-per-attempt reasoning-stage timeout — confirmed
-// directly against production ("NVIDIA NIM (reasoning) timed out after
-// 40s"), a hard failure that's worse than 8B's weak-but-real answer. Trying
-// a speed-optimized model next: deepseek-ai/deepseek-v4-flash-0731 is built
-// for low latency, which is what this route actually needs more than raw
-// size — if this also blows the budget, revert to meta/llama-3.1-8b-instruct.
-export const NVIDIA_MODEL = process.env.NVIDIA_MODEL || 'deepseek-ai/deepseek-v4-flash-0731';
-// Question generation (lib/question-gen.ts) shared NVIDIA_MODEL with chat
-// until this was split out — confirmed directly against production that
-// deepseek-v4-flash, while fast on short chat replies, consistently blew the
-// 30s per-chunk analysis timeout once real (non-trivial) academic text was
-// involved: every chunk of a 170K-char real-content test document timed out,
-// forcing the whole generation to demo fallback. meta/llama-3.1-8b-instruct
-// is the model this pipeline was actually built and proven against.
-export const NVIDIA_QUESTIONGEN_MODEL = process.env.NVIDIA_QUESTIONGEN_MODEL || 'meta/llama-3.1-8b-instruct';
 
-// Model-level failover within NVIDIA, not just provider-level (Groq→NVIDIA).
-// TEMPORARILY EMPTY: all three previous entries were re-verified live and
-// are dead on this account right now — meta/llama-3.1-8b-instruct returns
-// 410 (genuinely end-of-lifed by NVIDIA), and both mistral-nemo variants
-// return 404 "Not found for account" (an entitlement/billing issue on this
-// specific NVIDIA account, not a bad model ID). A dead chain isn't neutral:
-// generateFromProvider still runs its full per-chunk analysis loop against
-// every dead model before moving on, burning 60-100+s of the route's 280s
-// budget for nothing and starving Gemini (the fallback that actually still
-// works) of the time it needs. Leave this empty — resolveAiProviders simply
-// adds no NVIDIA candidates when it's empty — until the NVIDIA account's
-// credits/billing are fixed at build.nvidia.com; re-add real, re-verified
-// model IDs then, not before (a wrong ID here 404s instead of failing over).
-export const NVIDIA_QUESTIONGEN_MODEL_CHAIN = (
-  process.env.NVIDIA_QUESTIONGEN_MODEL_CHAIN?.split(',').map((s) => s.trim()).filter(Boolean)
-) || [];
+// Groq removed entirely (was: openai/gpt-oss-120b via api.groq.com) — the
+// app now runs on NVIDIA only, with per-user keys as the primary access
+// path (see resolveNvidiaApiKey). NVIDIA_MODEL is kept only as the single
+// model resolveAiProvider (singular, chat's simple picker) reports; real
+// failover happens in NVIDIA_MODEL_CHAIN below, used by resolveAiProviders.
+export const NVIDIA_MODEL = process.env.NVIDIA_MODEL || 'nvidia/llama-3.1-nemotron-70b-instruct';
+
+// Model-level failover within NVIDIA's own catalog (~80 models) — since a
+// model can be individually unentitled, rate-limited, or deprecated on any
+// given user's key independent of every other model, generateQuestionsFromText
+// (and now chat, via resolveAiProviders) tries each of these in order and
+// falls through automatically on a 401/404/410/429/timeout, the same way it
+// already fell through Groq→NVIDIA→Gemini at the provider level. Ordered:
+// Nemotron first (requested explicitly), then other real, currently-listed
+// NVIDIA-catalog instruct models as depth — every ID here was confirmed
+// present in a live GET /v1/models response (a wrong ID 404s outright
+// rather than failing over, so don't add one without that confirmation).
+// Individual-model callability still depends on each user's own account
+// entitlements — that's exactly what this chain exists to fail through.
+export const NVIDIA_MODEL_CHAIN = (
+  process.env.NVIDIA_MODEL_CHAIN?.split(',').map((s) => s.trim()).filter(Boolean)
+) || [
+  'nvidia/llama-3.1-nemotron-70b-instruct',
+  'nvidia/nemotron-3.5-lightning-30b-a3b',
+  'mistralai/mistral-nemotron',
+  'nvidia/llama-3.1-nemotron-51b-instruct',
+  'deepseek-ai/deepseek-v4-flash-0731',
+];
 
 // Google's OpenAI-compatible endpoint — confirmed directly with a live
 // request that this exact base URL + model + Bearer-token auth works with
@@ -102,43 +94,33 @@ export const GEMINI_BASE_URL = process.env.GEMINI_BASE_URL || 'https://generativ
 export const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite';
 
 export async function resolveAiProvider(userId: string): Promise<AiProviderConfig> {
-  const [groqKey, nvidiaKey, geminiKey] = await Promise.all([
-    resolveGroqApiKey(userId),
-    resolveNvidiaApiKey(userId),
-    resolveGeminiApiKey(),
-  ]);
-  if (groqKey) return { provider: 'groq', apiKey: groqKey, baseURL: GROQ_BASE_URL, model: GROQ_MODEL };
-  if (nvidiaKey) return { provider: 'nvidia', apiKey: nvidiaKey, baseURL: NVIDIA_BASE_URL, model: NVIDIA_MODEL };
-  if (geminiKey) return { provider: 'gemini', apiKey: geminiKey, baseURL: GEMINI_BASE_URL, model: GEMINI_MODEL };
-  return { provider: 'none', apiKey: '', baseURL: NVIDIA_BASE_URL, model: NVIDIA_MODEL };
+  const list = await resolveAiProviders(userId);
+  return list[0] ?? { provider: 'none', apiKey: '', baseURL: NVIDIA_BASE_URL, model: NVIDIA_MODEL };
 }
 
 /**
  * Every usable provider+model combination for this user, in priority order:
- * Groq, then each model in NVIDIA_QUESTIONGEN_MODEL_CHAIN, then Gemini last.
- * Lets generation callers fail over to another real option instead of
- * dropping straight to demo content when the preferred one is down, rate-
- * limited, or (as happened multiple times this session — including once
- * where Groq's daily quota AND NVIDIA's account credits were both exhausted
- * on the same day) simply unavailable — retrying the *same* provider/model
- * rarely recovers from any of those within a single request. Gemini is last
- * because it's the newest, least battle-tested-for-this-workload addition.
+ * each model in NVIDIA_MODEL_CHAIN (using the user's own key if they've
+ * added one in Settings, else the shared app-wide key as a last resort),
+ * then Gemini. Lets generation callers fail over to another real option
+ * instead of dropping straight to demo content when the preferred one is
+ * down, unentitled on this account, rate-limited, or simply unavailable —
+ * retrying the *same* provider/model rarely recovers from any of those
+ * within a single request. Gemini is last because it's the newest, least
+ * battle-tested-for-this-workload addition, and per-user keys aren't
+ * supported for it (see resolveGeminiApiKey).
  *
- * Currently only called from the CBT question-generation route — chat uses
- * the singular resolveAiProvider above with its own NVIDIA_MODEL, kept
- * deliberately separate (see NVIDIA_QUESTIONGEN_MODEL's comment for why a
- * shared model constant broke question generation once already).
+ * Used for both chat (resolveAiProvider above just takes the first entry)
+ * and CBT question generation, which needs the full list to fail through.
  */
 export async function resolveAiProviders(userId: string): Promise<AiProviderConfig[]> {
-  const [groqKey, nvidiaKey, geminiKey] = await Promise.all([
-    resolveGroqApiKey(userId),
+  const [nvidiaKey, geminiKey] = await Promise.all([
     resolveNvidiaApiKey(userId),
     resolveGeminiApiKey(),
   ]);
   const list: AiProviderConfig[] = [];
-  if (groqKey) list.push({ provider: 'groq', apiKey: groqKey, baseURL: GROQ_BASE_URL, model: GROQ_MODEL });
   if (nvidiaKey) {
-    for (const model of NVIDIA_QUESTIONGEN_MODEL_CHAIN) {
+    for (const model of NVIDIA_MODEL_CHAIN) {
       list.push({ provider: 'nvidia', apiKey: nvidiaKey, baseURL: NVIDIA_BASE_URL, model });
     }
   }

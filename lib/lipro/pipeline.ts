@@ -21,7 +21,7 @@ function modelFor(provider: AiProviderConfig, stage: 'planner' | 'reasoning' | '
  * client bound to the right model slot.
  * ------------------------------------------------------------------ */
 function labelFor(provider: AiProviderConfig, stage: string): string {
-  if (provider.provider === 'groq') return `Groq (${stage})`;
+  if (provider.provider === 'gemini') return `Gemini (${stage})`;
   return `NVIDIA NIM (${stage})`;
 }
 
