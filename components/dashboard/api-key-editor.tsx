@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input, Label } from '@/components/ui/input';
+import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { KeyRound, CheckCircle2, Loader2, Trash2, ExternalLink } from 'lucide-react';
 
@@ -49,7 +49,7 @@ export function ApiKeyEditor({
             {hasKey ? <Badge tone="green">Configured{masked ? ` · ${masked}` : ''}</Badge> : <Badge tone="amber">Not configured</Badge>}
           </div>
           <p className="mt-1 text-xs text-lipro-600/70 dark:text-lipro-200/70">
-            Powers LIPRO AI chat, CBT question generation, and PDF Intelligence. Your key is stored on your account and used for your own requests only — it isn't shared with other students.
+            Powers LIPRO AI chat, CBT question generation, and PDF Intelligence. Your key is stored on your account and used for your own requests only — it isn&apos;t shared with other students.
           </p>
         </div>
       </div>
