@@ -27,14 +27,31 @@ export async function GET(req: Request) {
   const errorTarget = isResetIntent ? 'forgot-password' : 'login';
   // The Flutter app (flutter_web_auth_2) watches for a redirect to this
   // custom scheme to know the OAuth flow finished — see google_auth_service.dart
-  // in the mobile repo. Every mobile branch below redirects here instead of
+  // in the mobile repo. Every mobile branch below hands off here instead of
   // setting a cookie, since a WebView/Custom-Tab session's cookies aren't
   // visible to the app's own HTTP client the way a browser's are.
   const MOBILE_SCHEME = 'liproacademy://auth';
 
+  // A raw HTTP redirect (Location header) from this HTTPS page straight to
+  // a custom scheme is NOT reliably honored — confirmed live: a real device
+  // ended up stuck on this page's plain web content instead of returning to
+  // the app. Some Android browsers/Custom Tabs implementations only hand a
+  // non-http(s) scheme off to the OS on a user-gesture or client-side
+  // navigation, not an automatic server redirect (an anti-hijack measure).
+  // Returning a tiny HTML page that navigates via JS instead — with a
+  // visible fallback link in case even that's blocked — is the standard
+  // fix for this exact class of problem.
+  const mobileHandoff = (target: string) => {
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Returning to LIPRO Academy…</title></head><body style="font-family:system-ui,sans-serif;background:#0f0a1a;color:#fff;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;text-align:center;padding:24px">
+<div><p>Returning you to the app…</p><p style="opacity:.6;font-size:14px">If nothing happens, <a href="${target}" style="color:#c084fc">tap here to continue</a>.</p></div>
+<script>location.replace(${JSON.stringify(target)});</script>
+</body></html>`;
+    return new NextResponse(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+  };
+
   const errorRedirect = (error: string) =>
     isMobile
-      ? NextResponse.redirect(`${MOBILE_SCHEME}?error=${error}`)
+      ? mobileHandoff(`${MOBILE_SCHEME}?error=${error}`)
       : NextResponse.redirect(`${APP_URL}/${errorTarget}?error=${error}`);
 
   if (!code || !state || !expectedState || state !== expectedState) {
@@ -65,12 +82,12 @@ export async function GET(req: Request) {
     // inventing a separate "reset via Google" code path.
     if (!user) {
       return isMobile
-        ? NextResponse.redirect(`${MOBILE_SCHEME}?error=no_account`)
+        ? mobileHandoff(`${MOBILE_SCHEME}?error=no_account`)
         : NextResponse.redirect(`${APP_URL}/forgot-password?error=no_account`);
     }
     const resetToken = await signResetToken(user.id);
     return isMobile
-      ? NextResponse.redirect(`${MOBILE_SCHEME}?resetToken=${encodeURIComponent(resetToken)}`)
+      ? mobileHandoff(`${MOBILE_SCHEME}?resetToken=${encodeURIComponent(resetToken)}`)
       : NextResponse.redirect(`${APP_URL}/reset-password?token=${encodeURIComponent(resetToken)}`);
   }
 
@@ -82,7 +99,7 @@ export async function GET(req: Request) {
       // session's cookies aren't visible to the app's own HTTP client. See
       // lib/api-guard.ts for the same Bearer-token path email/password login
       // already uses for mobile.
-      return NextResponse.redirect(`${MOBILE_SCHEME}?token=${encodeURIComponent(token)}`);
+      return mobileHandoff(`${MOBILE_SCHEME}?token=${encodeURIComponent(token)}`);
     }
     await setAuthCookie(token);
     return NextResponse.redirect(`${APP_URL}/dashboard`);
@@ -102,7 +119,7 @@ export async function GET(req: Request) {
     fullName: profile.fullName,
   });
   if (isMobile) {
-    return NextResponse.redirect(
+    return mobileHandoff(
       `${MOBILE_SCHEME}?pendingToken=${encodeURIComponent(pendingToken)}&email=${encodeURIComponent(profile.email)}&fullName=${encodeURIComponent(profile.fullName)}`
     );
   }
