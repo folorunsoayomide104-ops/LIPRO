@@ -39,7 +39,10 @@ export async function POST(req: Request) {
   await setAuthCookie(token, { remember });
   await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
 
-  return NextResponse.json({ ok: true, role: user.role });
+  // `token` is included alongside the cookie for the Flutter app (see
+  // lib/api-guard.ts) — harmless for web clients, which never read it and
+  // keep using the cookie as before.
+  return NextResponse.json({ ok: true, role: user.role, token });
 }
 
 export async function DELETE() {

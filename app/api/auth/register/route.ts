@@ -51,5 +51,5 @@ export async function POST(req: Request) {
   const token = await signToken({ userId: user.id, email: user.email, role: user.role as any });
   await setAuthCookie(token);
 
-  return NextResponse.json({ ok: true, userId: user.id });
+  return NextResponse.json({ ok: true, userId: user.id, token });
 }
