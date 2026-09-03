@@ -4,12 +4,22 @@ import { buildGoogleAuthUrl, isGoogleOAuthConfigured } from '@/lib/google-oauth'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://liproacademyapp.vercel.app';
 
-export async function GET() {
+export async function GET(req: Request) {
   if (!isGoogleOAuthConfigured()) {
     return NextResponse.redirect(`${APP_URL.replace(/\/$/, '')}/login?error=google_not_configured`);
   }
 
-  const state = `login.${crypto.randomBytes(24).toString('hex')}`;
+  // Google's registered redirect_uri is fixed to this same HTTPS callback
+  // regardless of caller — there's no separate "mobile" entry in Google
+  // Cloud Console to redirect to instead. The Flutter app is told apart by
+  // a `platform` segment baked into `state` (which we control and get back
+  // unmodified), not by a different redirect_uri. See callback/route.ts:
+  // it's the one that does a SECOND redirect, to this app's own
+  // liproacademy:// scheme, only after Google's redirect has already
+  // landed back here — that second hop is what a mobile OAuth library
+  // (flutter_web_auth_2) is actually watching for.
+  const platform = new URL(req.url).searchParams.get('platform') === 'mobile' ? 'mobile' : 'web';
+  const state = `login.${platform}.${crypto.randomBytes(24).toString('hex')}`;
   const res = NextResponse.redirect(buildGoogleAuthUrl(state));
   // sameSite: 'lax' (not 'none') — this cookie only needs to survive the
   // top-level redirect back from Google, which 'lax' already allows, and

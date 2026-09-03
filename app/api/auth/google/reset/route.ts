@@ -8,12 +8,15 @@ const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || 'https://liproacademyapp.ver
 // the shared callback this is a password-reset request, not a login: on
 // success it should hand back a normal password-reset token instead of
 // signing the browser in — see app/api/auth/google/callback/route.ts.
-export async function GET() {
+export async function GET(req: Request) {
   if (!isGoogleOAuthConfigured()) {
     return NextResponse.redirect(`${APP_URL}/forgot-password?error=google_not_configured`);
   }
 
-  const state = `reset.${crypto.randomBytes(24).toString('hex')}`;
+  // See the matching comment in ../route.ts for why platform is encoded
+  // into `state` rather than a different redirect_uri.
+  const platform = new URL(req.url).searchParams.get('platform') === 'mobile' ? 'mobile' : 'web';
+  const state = `reset.${platform}.${crypto.randomBytes(24).toString('hex')}`;
   const res = NextResponse.redirect(buildGoogleAuthUrl(state));
   res.cookies.set('google_oauth_state', state, {
     httpOnly: true,
