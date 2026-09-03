@@ -24,22 +24,44 @@ export async function middleware(req: NextRequest) {
   if (PUBLIC_PATHS.includes(pathname) || pathname.startsWith("/_next") || pathname.startsWith("/static") || pathname.match(/\.(svg|png|webp|jpg|ico|css|js|html)$/)) {
     return NextResponse.next();
   }
-  const token = req.cookies.get("lipro_token")?.value;
+
+  // The Flutter app authenticates via `Authorization: Bearer <token>` (it
+  // has no cookie jar shared with this server) — see lib/api-guard.ts,
+  // which already checks both. This middleware runs BEFORE guard() on
+  // every request, though, and only ever checked the cookie: every mobile
+  // API call to a non-public route was being redirected to /login before
+  // the route handler got a chance to see the Bearer token at all.
+  // Confirmed live — /api/courses and /api/notes both came back as HTML
+  // login-page redirects instead of JSON for a request carrying a valid
+  // token. Checking both here, matching guard()'s own precedence.
+  const authHeader = req.headers.get("authorization");
+  const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7).trim() : null;
+  const token = req.cookies.get("lipro_token")?.value || bearerToken;
+
+  const isApi = pathname.startsWith("/api/");
+  // A redirect to an HTML /login page is meaningless to an API client
+  // expecting JSON — worse, a client that follows redirects (Dio does by
+  // default) would receive that HTML and fail trying to parse it as JSON,
+  // surfacing as an opaque "something went wrong" rather than a clear 401.
+  const unauthorized = () =>
+    isApi
+      ? NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      : (() => {
+          const url = req.nextUrl.clone();
+          url.pathname = "/login";
+          url.searchParams.set("redirect", pathname);
+          return NextResponse.redirect(url);
+        })();
+
   if (!token) {
-    const url = req.nextUrl.clone();
-    url.pathname = "/login";
-    url.searchParams.set("redirect", pathname);
-    return NextResponse.redirect(url);
+    return unauthorized();
   }
   try {
     await jwtVerify(token, resolveJwtSecret());
     return NextResponse.next();
   } catch {
-    const url = req.nextUrl.clone();
-    url.pathname = "/login";
-    url.searchParams.set("redirect", pathname);
-    const res = NextResponse.redirect(url);
-    res.cookies.delete("lipro_token");
+    const res = unauthorized();
+    if (!isApi) res.cookies.delete("lipro_token");
     return res;
   }
 }
