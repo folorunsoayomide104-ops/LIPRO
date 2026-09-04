@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
 import { guard } from '@/lib/api-guard';
 import { canAccess } from '@/lib/auth';
 import { MAX_UPLOAD_BYTES } from '@/lib/pdf';
@@ -30,6 +31,30 @@ function courseIdError(role: string, courseId: unknown): NextResponse | null {
     return NextResponse.json({ error: 'Only an admin can attach a material to a course' }, { status: 403 });
   }
   return null;
+}
+
+// The web app's "Your documents" list (components/cbt/pdf-exam-creator.tsx)
+// gets this for free via a server component reading Prisma directly
+// (app/(dashboard)/cbt/page.tsx) — there was previously no REST endpoint at
+// all, since nothing needed one. The Flutter app has no server-render step,
+// so it needs an actual GET here to show previously-uploaded documents.
+export async function GET() {
+  const { ok, user, response } = await guard();
+  if (!ok || !user) return response!;
+  const materials = await prisma.material.findMany({
+    where: { userId: user.userId },
+    orderBy: { createdAt: 'desc' },
+    select: {
+      id: true,
+      originalName: true,
+      sizeBytes: true,
+      createdAt: true,
+      _count: { select: { questions: true, flashcards: true } },
+    },
+  });
+  return NextResponse.json({
+    materials: materials.map((m) => ({ ...m, createdAt: m.createdAt.toISOString() })),
+  });
 }
 
 export async function POST(req: Request) {
