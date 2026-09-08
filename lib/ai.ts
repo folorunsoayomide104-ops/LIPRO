@@ -75,6 +75,7 @@ export const NVIDIA_MODEL_CHAIN = (
   'nvidia/nemotron-3.5-lightning-30b-a3b',
   'mistralai/mistral-nemotron',
   'nvidia/llama-3.1-nemotron-51b-instruct',
+  'deepseek-ai/deepseek-v4-pro-0813',
   'deepseek-ai/deepseek-v4-flash-0731',
 ];
 
