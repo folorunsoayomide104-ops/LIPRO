@@ -5994,8 +5994,8 @@ three/build/three.module.js:
   // connect each point to its nearest neighbors. This gives the same
   // naturally irregular "tangled yarn" network an icosahedron's edges
   // would, without needing geodesic subdivision math.
-  var POINT_COUNT = 210;
-  var NEIGHBORS = 6;
+  var POINT_COUNT = 420;
+  var NEIGHBORS = 7;
   var points = [];
   (function buildSphere() {
     var golden = Math.PI * (3 - Math.sqrt(5));
@@ -6070,12 +6070,12 @@ three/build/three.module.js:
   }
 
   function colorFor(t) {
-    // Violet -> hot magenta by original Y. Pushed more saturated/pink than
-    // the first pass, which read as a pale, washed-out blue-grey sphere
-    // instead of the vivid two-tone glow of the reference mockup.
-    var r = Math.round(168 + (255 - 168) * t);
-    var g = Math.round(85 + (32 - 85) * t);
-    var b = Math.round(247 + (168 - 247) * t);
+    // Violet (#8b5cf6) -> magenta (#ec4899) by original Y — the exact two
+    // hex values used in the reference mockup's Three.js version, not an
+    // approximation.
+    var r = Math.round(139 + (236 - 139) * t);
+    var g = Math.round(92 + (72 - 92) * t);
+    var b = Math.round(246 + (153 - 246) * t);
     return r + ',' + g + ',' + b;
   }
 
@@ -6113,10 +6113,9 @@ three/build/three.module.js:
     c.width = c.height = 256;
     var g = c.getContext('2d');
     var grad = g.createRadialGradient(128, 128, 0, 128, 128, 128);
-    grad.addColorStop(0, 'rgba(255,255,255,0.98)');
-    grad.addColorStop(0.28, 'rgba(255,210,245,0.75)');
-    grad.addColorStop(0.6, 'rgba(220,120,255,0.35)');
-    grad.addColorStop(1, 'rgba(220,120,255,0)');
+    grad.addColorStop(0, 'rgba(255,255,255,0.95)');
+    grad.addColorStop(0.35, 'rgba(245,236,255,0.55)');
+    grad.addColorStop(1, 'rgba(245,236,255,0)');
     g.fillStyle = grad;
     g.fillRect(0, 0, 256, 256);
     return c;
@@ -6136,10 +6135,17 @@ three/build/three.module.js:
 
     var radius = Math.min(W, H) * 0.30;
     var pointerDist = pointer.active ? Math.min(1, Math.hypot(pointer.x, pointer.y)) : 1;
-    var intensity = (0.13 + (1 - pointerDist) * 0.11) * radius;
-    var rotY = t * 0.18 + (pointer.active ? pointer.x * 0.35 : 0);
+    // Displacement is applied to UNIT-sphere coordinates (see drawLayer),
+    // which project() then multiplies by radius once — this must stay a
+    // small unitless fraction (matching the reference's 0.11-0.21), not
+    // pre-multiplied by radius here, or project()'s own *radius turns it
+    // into a second, much larger multiplication and the sphere explodes
+    // into displacements thousands of pixels wide instead of a tangle
+    // that reads as a coherent rotating sphere.
+    var intensity = 0.11 + (1 - pointerDist) * 0.10;
+    var rotY = t * 0.15 + (pointer.active ? pointer.x * 0.35 : 0);
     var rotX = pointer.active ? pointer.y * 0.25 : Math.sin(t * 0.3) * 0.08;
-    var pulse = 1 + Math.sin(t * 1.4) * 0.025;
+    var pulse = 1 + Math.sin(t * 1.4) * 0.03;
 
     // Glow core
     var glowSize = radius * 2.3 * pulse;
