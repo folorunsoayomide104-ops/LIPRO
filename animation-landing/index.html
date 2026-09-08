@@ -389,10 +389,15 @@ nav.links a:hover{color:var(--txt)}
 .uni-item .dot{color:var(--purple);opacity:.6}
 
 /* ── FEATURES ────────────────────────────────────────── */
+/* Solid background (was transparent) so the hero's persistent fixed 3D
+   crystal canvas — visible everywhere via .hero-canvas-wrap's
+   position:fixed;z-index:0 — doesn't bleed through and distract behind
+   this section's cards/copy. Same opaque-cover pattern already used by
+   .pdf-spotlight and .hero-solid-bg. */
 .features{
   padding:clamp(80px,10vw,140px) 0;
-  background:transparent;
-  position:relative;
+  background:var(--bg2);
+  position:relative;z-index:2;
 }
 .section-head{max-width:620px;margin-bottom:64px}
 .section-head h2{font-size:clamp(34px,5vw,58px);margin-top:16px}
