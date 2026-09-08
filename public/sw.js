@@ -8,7 +8,7 @@
 // shared chunk's hash was ever reused a browser could keep serving whatever
 // it fetched the first time that URL existed — this is what makes that
 // self-heal instead of require a manual "clear site data".
-const CACHE = 'lipro-shell-v2';
+const CACHE = 'lipro-shell-v3';
 const SHELL = ['/', '/login', '/register', '/dashboard', '/icons/icon-192x192.png', '/icons/icon-512x512.png'];
 
 self.addEventListener('install', (event) => {
@@ -38,9 +38,18 @@ self.addEventListener('fetch', (event) => {
   // — the previous version hardcoded /dashboard here, so an offline visit
   // to any other page (e.g. /login) got silently served the dashboard shell
   // instead of a real "you're offline" outcome for that page.
+  // `cache:'reload'` on every SW-issued fetch below forces the browser to
+  // skip conditional revalidation and always get a full response body. Left
+  // as a plain forward, a URL the browser's own HTTP cache already had an
+  // ETag for comes back as a real, bodyless 304 — and unlike a page's own
+  // fetch(), a Response handed to respondWith() with that empty body is
+  // served to the page as-is instead of being transparently reconstituted
+  // from the HTTP cache. Confirmed live: hero-character.webp came back
+  // status 304, 0.1kB, via this handler, and rendered as nothing.
+
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request)
+      fetch(new Request(request, { cache: 'reload' }))
         .then((res) => {
           const copy = res.clone();
           caches.open(CACHE).then((cache) => cache.put(request, copy)).catch(() => {});
@@ -60,8 +69,11 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       caches.open(CACHE).then((cache) =>
         cache.match(request).then((cached) => {
-          const network = fetch(request)
+          const network = fetch(new Request(request, { cache: 'reload' }))
             .then((res) => {
+              // A 304 has no body — never let it overwrite a good cache
+              // entry or serve as the response on its own.
+              if (res.status === 304) return cached || res;
               cache.put(request, res.clone()).catch(() => {});
               return res;
             })
