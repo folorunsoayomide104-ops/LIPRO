@@ -6062,10 +6062,12 @@ three/build/three.module.js:
   }
 
   function colorFor(t) {
-    // Violet -> magenta by original Y, matching the reference's two-tone energy.
-    var r = Math.round(139 + (236 - 139) * t);
-    var g = Math.round(92 + (72 - 92) * t);
-    var b = Math.round(246 + (153 - 246) * t);
+    // Violet -> hot magenta by original Y. Pushed more saturated/pink than
+    // the first pass, which read as a pale, washed-out blue-grey sphere
+    // instead of the vivid two-tone glow of the reference mockup.
+    var r = Math.round(168 + (255 - 168) * t);
+    var g = Math.round(85 + (32 - 85) * t);
+    var b = Math.round(247 + (168 - 247) * t);
     return r + ',' + g + ',' + b;
   }
 
@@ -6088,7 +6090,7 @@ three/build/three.module.js:
       var sb = project(dpb, radius, rotY, rotX);
       var avgT = (pa.y + pb.y + 2) / 4;
       var avgDepth = (sa.depth + sb.depth) / 2;
-      var op = Math.max(0.08, Math.min(1, avgDepth - 0.55)) * opacityMul;
+      var op = Math.max(0.22, Math.min(1, avgDepth - 0.35)) * opacityMul;
       ctx.strokeStyle = 'rgba(' + colorFor(avgT) + ',' + op + ')';
       ctx.beginPath();
       ctx.moveTo(sa.x, sa.y);
@@ -6103,9 +6105,10 @@ three/build/three.module.js:
     c.width = c.height = 256;
     var g = c.getContext('2d');
     var grad = g.createRadialGradient(128, 128, 0, 128, 128, 128);
-    grad.addColorStop(0, 'rgba(255,255,255,0.95)');
-    grad.addColorStop(0.35, 'rgba(245,236,255,0.5)');
-    grad.addColorStop(1, 'rgba(245,236,255,0)');
+    grad.addColorStop(0, 'rgba(255,255,255,0.98)');
+    grad.addColorStop(0.28, 'rgba(255,210,245,0.75)');
+    grad.addColorStop(0.6, 'rgba(220,120,255,0.35)');
+    grad.addColorStop(1, 'rgba(220,120,255,0)');
     g.fillStyle = grad;
     g.fillRect(0, 0, 256, 256);
     return c;
@@ -6136,9 +6139,9 @@ three/build/three.module.js:
 
     // Three additive layers fake a bloom halo, cheapest-tool-that-works —
     // same trick as the earlier WebGL mockup, just in 2D now.
-    drawLayer(radius * 1.08 * pulse, 0.10, intensity * 1.15, rotY, rotX, t);
-    drawLayer(radius * 1.035 * pulse, 0.22, intensity * 1.05, rotY, rotX, t);
-    drawLayer(radius * pulse, 0.85, intensity, rotY, rotX, t);
+    drawLayer(radius * 1.08 * pulse, 0.16, intensity * 1.15, rotY, rotX, t);
+    drawLayer(radius * 1.035 * pulse, 0.32, intensity * 1.05, rotY, rotX, t);
+    drawLayer(radius * pulse, 1, intensity, rotY, rotX, t);
 
     ctx.globalCompositeOperation = 'source-over';
 
