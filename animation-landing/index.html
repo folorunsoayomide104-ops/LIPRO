@@ -184,7 +184,7 @@ nav.links a:hover{color:var(--txt)}
    stacked column (image pushed below the fold) on what's actually a wide
    desktop window. 640px keeps the two-column layout for any real desktop/
    laptop width and only stacks for genuinely narrow (phone-width) screens. */
-@media(max-width:640px){
+@media(max-width:760px){
   .hero-inner{grid-template-columns:1fr;gap:40px}
 }
 .hero-eyebrow{
@@ -199,7 +199,7 @@ nav.links a:hover{color:var(--txt)}
      wider than the text column and spilled into the character's side no
      matter how much gap/margin was added there. Sized down to actually
      fit the narrower column. */
-  font-size:clamp(32px,3.6vw,56px);
+  font-size:clamp(26px,2.8vw,40px);
   font-weight:800;
   line-height:.95;
   margin-top:18px;
