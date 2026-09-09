@@ -367,16 +367,35 @@ nav.links a:hover{color:var(--txt)}
 .hero-figure-wrap img{
   max-width:88%;height:auto;max-height:74vh;
   filter:drop-shadow(0 40px 60px rgba(0,0,0,.5));
-  animation:hero-figure-think 6s ease-in-out infinite;
+  animation:hero-figure-think 8s ease-in-out infinite;
   transform-origin:50% 100%;
 }
-/* Gentle weight-shift + bob, not just a straight up/down float — reads
-   as a person idly standing and thinking rather than a bouncing sprite. */
+/* Weight-shift + a subtle breathing scale layered into the same transform
+   (a flat render has no separate limbs/chest to animate independently, so
+   everything rides one transform), with more, unevenly-spaced keyframe
+   stops than a simple up/down float so one cycle doesn't read as a
+   mechanical loop. */
 @keyframes hero-figure-think{
-  0%,100%{transform:translateY(0) rotate(0deg)}
-  25%{transform:translateY(-6px) rotate(-1.1deg)}
-  50%{transform:translateY(-10px) rotate(0deg)}
-  75%{transform:translateY(-4px) rotate(1.1deg)}
+  0%,100%{transform:translateY(0) rotate(0deg) scaleY(1)}
+  15%{transform:translateY(-4px) rotate(-.6deg) scaleY(1.006)}
+  30%{transform:translateY(-9px) rotate(-1.3deg) scaleY(1.012)}
+  45%{transform:translateY(-6px) rotate(-.4deg) scaleY(1.008)}
+  60%{transform:translateY(-11px) rotate(.9deg) scaleY(1.013)}
+  75%{transform:translateY(-5px) rotate(1.3deg) scaleY(1.005)}
+  90%{transform:translateY(-2px) rotate(.4deg) scaleY(1.002)}
+}
+/* An occasional bigger "gesture" moment — triggered from JS at randomized
+   intervals (see the script near the closing body tag) rather than on a
+   fixed cycle, so the idle motion doesn't feel like it's repeating on a
+   timer. */
+@keyframes hero-figure-gesture{
+  0%{transform:translateY(-6px) rotate(0deg) scaleY(1.008)}
+  30%{transform:translateY(-15px) rotate(-2.6deg) scaleY(1.017)}
+  60%{transform:translateY(-17px) rotate(2.1deg) scaleY(1.021)}
+  100%{transform:translateY(-6px) rotate(0deg) scaleY(1.008)}
+}
+.hero-figure-wrap img.gesture-boost{
+  animation:hero-figure-gesture 2.4s ease-in-out 1;
 }
 /* A thought bubble that fades in/out on its own cycle (not a static
    badge) so it reads as an occasional "hmm" rather than a permanent UI
@@ -6001,6 +6020,31 @@ three/build/three.module.js:
     });
   }, { threshold: 0.05 });
   io.observe(stage);
+})();
+</script>
+
+<!-- Hero character: occasional bigger "gesture" at a randomized interval,
+     layered on top of the base hero-figure-think idle loop (see CSS),
+     so the motion doesn't settle into an obviously fixed repeating cycle. -->
+<script>
+(function () {
+  var img = document.querySelector('.hero-figure-wrap img');
+  if (!img || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  // A slightly different cycle length per page load, so two visitors (or
+  // two tabs) aren't ever perfectly in sync.
+  img.style.animationDuration = (7 + Math.random() * 2.4).toFixed(2) + 's';
+  function scheduleGesture() {
+    var delay = 12000 + Math.random() * 14000; // 12–26s
+    setTimeout(function () {
+      img.classList.add('gesture-boost');
+      img.addEventListener('animationend', function handler() {
+        img.classList.remove('gesture-boost');
+        img.removeEventListener('animationend', handler);
+      });
+      scheduleGesture();
+    }, delay);
+  }
+  scheduleGesture();
 })();
 </script>
 </body>
