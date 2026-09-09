@@ -176,8 +176,8 @@ nav.links a:hover{color:var(--txt)}
   padding:128px 0 88px;
 }
 .hero-inner{
-  display:grid;grid-template-columns:1.05fr .95fr;
-  gap:48px;align-items:center;
+  display:grid;grid-template-columns:1.1fr .9fr;
+  gap:64px;align-items:center;
 }
 /* Was 900px — on a scaled/zoomed display a normal-width laptop window can
    report an effective CSS viewport well under that, collapsing to a single
@@ -353,12 +353,12 @@ nav.links a:hover{color:var(--txt)}
 }
 .hero-figure-wrap{
   position:relative;
-  display:flex;justify-content:center;align-items:flex-end;
+  display:flex;justify-content:flex-end;align-items:flex-end;
   opacity:0;transform:translateX(32px);
   transition:opacity .9s ease .35s,transform .9s var(--ease-out) .35s;
 }
 .hero-figure-wrap img{
-  max-width:100%;height:auto;max-height:74vh;
+  max-width:88%;height:auto;max-height:74vh;
   filter:drop-shadow(0 40px 60px rgba(0,0,0,.5));
   animation:hero-figure-think 6s ease-in-out infinite;
   transform-origin:50% 100%;
