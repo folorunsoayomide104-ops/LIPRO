@@ -5996,7 +5996,25 @@ three/build/three.module.js:
   io.observe(stage);
 })();
 </script>
-<div id="debug-vw" style="position:fixed;top:8px;right:8px;z-index:99999;background:#f00;color:#fff;font:bold 16px monospace;padding:8px 12px;border-radius:6px;"></div>
-<script>document.getElementById('debug-vw').textContent = 'innerWidth=' + window.innerWidth + ' devicePixelRatio=' + window.devicePixelRatio;</script>
+<div id="debug-vw" style="position:fixed;top:8px;right:8px;z-index:99999;background:#f00;color:#fff;font:bold 13px monospace;padding:8px 12px;border-radius:6px;max-width:340px;line-height:1.5;"></div>
+<script>
+(function () {
+  var inner = document.querySelector('.hero-inner');
+  var text = inner ? inner.children[0] : null;
+  var fig = document.getElementById('hpanel');
+  var img = fig ? fig.querySelector('img') : null;
+  var cs = inner ? getComputedStyle(inner) : null;
+  var lines = [
+    'innerWidth=' + window.innerWidth + ' DPR=' + window.devicePixelRatio,
+    'hero-inner display=' + (cs ? cs.display : '?'),
+    'grid-template-columns=' + (cs ? cs.gridTemplateColumns : '?'),
+    'text offsetWidth=' + (text ? text.offsetWidth : '?'),
+    'hpanel offsetWidth=' + (fig ? fig.offsetWidth : '?'),
+    'img: complete=' + (img ? img.complete : '?') + ' naturalWidth=' + (img ? img.naturalWidth : '?') + ' offsetWidth=' + (img ? img.offsetWidth : '?') + ' offsetHeight=' + (img ? img.offsetHeight : '?'),
+    'hpanel opacity=' + (fig ? getComputedStyle(fig).opacity : '?'),
+  ];
+  document.getElementById('debug-vw').textContent = lines.join(' | ');
+})();
+</script>
 </body>
 </html>
