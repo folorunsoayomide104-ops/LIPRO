@@ -319,17 +319,29 @@ export async function runLiproAiPipeline(input: PipelineInput): Promise<Pipeline
   // REASONING ENGINE (final answer — streamed live when input.onDelta is set)
   const { content: raw, usedTools } = await reason(input, plan);
 
-  // SELF-EVALUATION
+  // SELF-EVALUATION — for a streaming reply, its correction is never applied
+  // retroactively (the text already reached the client), so awaiting it here
+  // only means the caller sits through an extra ~15s round-trip for a
+  // confidence number nobody's waiting on. Fire it in the background instead
+  // and let the pipeline return as soon as the reasoning stage is done; the
+  // non-streaming path still awaits it since that's the only case where the
+  // correction actually gets used.
   let reply = raw;
   let confidence = 1;
   if (plan.intent !== 'chitchat' && userMessage) {
-    const verdict = await selfEvaluate(input, userMessage, raw);
-    if (verdict) {
-      confidence = verdict.score / 100;
-      if (verdict.verdict === 'fix' && verdict.correction) {
-        if (isStreaming) {
-          console.warn('LIPRO AI self-eval flagged a streamed reply (not corrected retroactively):', verdict.issues);
-        } else {
+    if (isStreaming) {
+      selfEvaluate(input, userMessage, raw)
+        .then((verdict) => {
+          if (verdict?.verdict === 'fix') {
+            console.warn('LIPRO AI self-eval flagged a streamed reply (not corrected retroactively):', verdict.issues);
+          }
+        })
+        .catch(() => {});
+    } else {
+      const verdict = await selfEvaluate(input, userMessage, raw);
+      if (verdict) {
+        confidence = verdict.score / 100;
+        if (verdict.verdict === 'fix' && verdict.correction) {
           reply = verdict.correction;
         }
       }
