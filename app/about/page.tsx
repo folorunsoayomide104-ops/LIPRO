@@ -72,10 +72,17 @@ export default function AboutPage() {
             <Users className="mx-auto h-8 w-8 text-lipro-500" />
             <h2 className="mt-3 text-2xl font-bold tracking-tight">The team behind LIPRO ACADEMY</h2>
             <p className="mx-auto mt-3 max-w-xl text-[15px] leading-relaxed text-lipro-700/80 dark:text-lipro-200/75">
-              We are a small, independent team of former university students — educators, software
-              engineers and exam-writers — who know what it takes to pass in a Nigerian university.
-              Every feature ships through our own hands, and every revision note is reviewed against
-              the actual curriculum before it reaches students.
+              LIPRO Academy didn&apos;t start as a company — it started with one nursing student
+              turning dense course PDFs into revision guides for coursemates, because the material
+              we were handed wasn&apos;t built for how we actually study.
+              <br /><br />
+              That same process now powers LIPRO Academy: every revision guide and practice question
+              is built directly from your university&apos;s actual course material — not generic
+              content, not a template. If it&apos;s in your syllabus, it&apos;s in here.
+              <br /><br />
+              We&apos;re small, independent, and just getting started. What you&apos;re using today
+              is the same thing your coursemates have already been relying on — just organized into
+              one place.
             </p>
             <div className="mt-6 grid gap-4 sm:grid-cols-3">
               {[
