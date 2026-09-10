@@ -358,56 +358,65 @@ nav.links a:hover{color:var(--txt)}
     radial-gradient(ellipse 700px 600px at 8% 85%,rgba(74,46,204,.14),transparent 60%),
     var(--bg);
 }
-/* ── HERO AURORA ──────────────────────────────────────────
-   Slow-drifting, soft-blurred colour bands behind the hero content —
-   an ambient, "settling" atmosphere rather than an active effect.
+/* ── HERO AURORA (flowing strings) ────────────────────────
+   Three long glowing gradient threads drawn as SVG paths, each with a
+   soft blur glow. Two motions layered per string: (1) a slow vertical
+   sway of the whole path via CSS transform, like a string swinging at
+   very low tension, and (2) light travelling along the thread's own
+   length via an animated stroke-dasharray/dashoffset — the gradient
+   fades to transparent at both ends so the moving highlight reads as a
+   pulse of light rather than a hard-edged dash. Long 10-16s durations
+   and ease-in-out keep it a calm, "settling" motion, not an active one.
    Sits at the same tier as .hero-solid-bg (z-index 1) but later in the
-   DOM so it paints on top of it and under .hero-content (z-index 2).
-   mix-blend-mode:screen lets the bands glow into the dark background
-   instead of sitting as flat coloured shapes; long 22-30s durations and
-   gentle easing keep the motion calm, not attention-grabbing. */
+   DOM so it paints on top of it and under .hero-content (z-index 2). */
 .hero-aurora{
   position:absolute;inset:0;z-index:1;
   overflow:hidden;
   pointer-events:none;
 }
-.aurora-band{
-  position:absolute;
-  width:130%;height:70%;
-  border-radius:50%;
-  filter:blur(90px);
+.aurora-strings{
+  position:absolute;inset:0;
+  width:100%;height:100%;
+  opacity:.8;
   mix-blend-mode:screen;
-  will-change:transform;
 }
-.aurora-band.a1{
-  left:-15%;top:-18%;
-  background:radial-gradient(ellipse at center,rgba(108,71,255,.30),transparent 65%);
-  animation:aurora-drift-1 26s ease-in-out infinite;
+.aurora-string{
+  fill:none;
+  stroke-width:2.5;
+  filter:url(#aurora-glow);
+  stroke-linecap:round;
+  stroke-dasharray:420 900;
+  transform-box:fill-box;
+  transform-origin:center;
 }
-.aurora-band.a2{
-  right:-20%;top:0%;
-  background:radial-gradient(ellipse at center,rgba(80,200,255,.20),transparent 65%);
-  animation:aurora-drift-2 30s ease-in-out infinite;
+.aurora-string.s1{
+  animation:aurora-sway-1 13s ease-in-out infinite, aurora-flow 5.5s linear infinite;
 }
-.aurora-band.a3{
-  left:10%;bottom:-30%;
-  background:radial-gradient(ellipse at center,rgba(180,110,255,.18),transparent 65%);
-  animation:aurora-drift-3 34s ease-in-out infinite;
+.aurora-string.s2{
+  animation:aurora-sway-2 16s ease-in-out infinite, aurora-flow 7s linear infinite reverse;
 }
-@keyframes aurora-drift-1{
-  0%,100%{transform:translate(0,0) scale(1)}
-  50%{transform:translate(4%,3%) scale(1.08)}
+.aurora-string.s3{
+  animation:aurora-sway-3 14.5s ease-in-out infinite, aurora-flow 6.2s linear infinite;
 }
-@keyframes aurora-drift-2{
-  0%,100%{transform:translate(0,0) scale(1)}
-  50%{transform:translate(-5%,4%) scale(1.05)}
+@keyframes aurora-flow{
+  0%{stroke-dashoffset:0}
+  100%{stroke-dashoffset:-1320}
 }
-@keyframes aurora-drift-3{
-  0%,100%{transform:translate(0,0) scale(1)}
-  50%{transform:translate(3%,-4%) scale(1.1)}
+@keyframes aurora-sway-1{
+  0%,100%{transform:translateY(0) scaleY(1)}
+  50%{transform:translateY(-16px) scaleY(1.04)}
 }
+@keyframes aurora-sway-2{
+  0%,100%{transform:translateY(0) scaleY(1)}
+  50%{transform:translateY(14px) scaleY(.96)}
+}
+@keyframes aurora-sway-3{
+  0%,100%{transform:translateY(0) scaleY(1)}
+  50%{transform:translateY(-10px) scaleY(1.03)}
+}
+@media(max-width:640px){.hero-aurora{opacity:.6}}
 @media(prefers-reduced-motion:reduce){
-  .aurora-band{animation:none}
+  .aurora-string{animation:none}
 }
 /* ── HOLOGRAPHIC BOOK ─────────────────────────────────────
    Purely decorative sci-fi accent: a wireframe open book rendered in
@@ -1084,9 +1093,35 @@ body.no-webgl #hero-canvas{display:none}
   <div class="hero-vignette"></div>
   <div class="hero-solid-bg"></div>
   <div class="hero-aurora" aria-hidden="true">
-    <span class="aurora-band a1"></span>
-    <span class="aurora-band a2"></span>
-    <span class="aurora-band a3"></span>
+    <svg class="aurora-strings" viewBox="0 0 1200 800" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="aurora-grad-1" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#6c47ff" stop-opacity="0"/>
+          <stop offset="50%" stop-color="#a78bff" stop-opacity=".9"/>
+          <stop offset="100%" stop-color="#50c8ff" stop-opacity="0"/>
+        </linearGradient>
+        <linearGradient id="aurora-grad-2" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#50c8ff" stop-opacity="0"/>
+          <stop offset="50%" stop-color="#7fdfff" stop-opacity=".85"/>
+          <stop offset="100%" stop-color="#6c47ff" stop-opacity="0"/>
+        </linearGradient>
+        <linearGradient id="aurora-grad-3" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#b46eff" stop-opacity="0"/>
+          <stop offset="50%" stop-color="#c9a0ff" stop-opacity=".8"/>
+          <stop offset="100%" stop-color="#50c8ff" stop-opacity="0"/>
+        </linearGradient>
+        <filter id="aurora-glow" x="-50%" y="-200%" width="200%" height="500%">
+          <feGaussianBlur stdDeviation="9" result="blur"/>
+          <feMerge>
+            <feMergeNode in="blur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+      </defs>
+      <path class="aurora-string s1" d="M -100,220 C 200,140 450,320 700,220 S 1150,140 1300,220" stroke="url(#aurora-grad-1)"/>
+      <path class="aurora-string s2" d="M -100,420 C 180,500 480,300 720,420 S 1140,520 1300,420" stroke="url(#aurora-grad-2)"/>
+      <path class="aurora-string s3" d="M -100,620 C 220,560 460,700 700,610 S 1120,540 1300,620" stroke="url(#aurora-grad-3)"/>
+    </svg>
   </div>
 
   <!-- Decorative only, positioned absolute within .hero (outside the
