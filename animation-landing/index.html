@@ -358,66 +358,38 @@ nav.links a:hover{color:var(--txt)}
     radial-gradient(ellipse 700px 600px at 8% 85%,rgba(74,46,204,.14),transparent 60%),
     var(--bg);
 }
-/* ── HERO AURORA (flowing strings) ────────────────────────
-   Three long glowing gradient threads drawn as SVG paths, each with a
-   soft blur glow. Two motions layered per string: (1) a slow vertical
-   sway of the whole path via CSS transform, like a string swinging at
-   very low tension, and (2) light travelling along the thread's own
-   length via an animated stroke-dasharray/dashoffset — the gradient
-   fades to transparent at both ends so the moving highlight reads as a
-   pulse of light rather than a hard-edged dash. Long 10-16s durations
-   and ease-in-out keep it a calm, "settling" motion, not an active one.
-   Sits at the same tier as .hero-solid-bg (z-index 1) but later in the
-   DOM so it paints on top of it and under .hero-content (z-index 2). */
-.hero-aurora{
+/* ── HERO AURORA PHOTO ─────────────────────────────────────
+   The actual reference photo (teal/purple aurora over a starfield),
+   not a recreated approximation. background-size is deliberately
+   ~130% so the slow Ken Burns pan/zoom never reveals an edge. Sits at
+   the same tier as .hero-solid-bg (z-index 1) but later in the DOM so
+   it paints on top of it and under .hero-content (z-index 2). */
+.hero-aurora-photo{
   position:absolute;inset:0;z-index:1;
-  overflow:hidden;
   pointer-events:none;
+  background-image:url('/hero-aurora-bg.webp');
+  background-size:130% auto;
+  background-position:50% 40%;
+  background-repeat:no-repeat;
+  opacity:.55;
+  animation:aurora-photo-pan 48s ease-in-out infinite;
 }
-.aurora-strings{
-  position:absolute;inset:0;
-  width:100%;height:100%;
-  opacity:.8;
-  mix-blend-mode:screen;
+@keyframes aurora-photo-pan{
+  0%,100%{background-position:46% 35%;background-size:132% auto}
+  50%{background-position:54% 45%;background-size:140% auto}
 }
-.aurora-string{
-  fill:none;
-  stroke-width:2.5;
-  filter:url(#aurora-glow);
-  stroke-linecap:round;
-  stroke-dasharray:420 900;
-  transform-box:fill-box;
-  transform-origin:center;
+/* Radial dark vignette + a stronger fade toward the bottom, where the
+   hero-figure and CTAs sit, so the photo reads as atmosphere behind the
+   content rather than competing with it for attention. */
+.hero-aurora-overlay{
+  position:absolute;inset:0;z-index:1;
+  pointer-events:none;
+  background:
+    radial-gradient(ellipse 70% 60% at 50% 38%,transparent 0%,rgba(8,6,15,.55) 75%,var(--bg) 100%),
+    linear-gradient(to bottom,rgba(8,6,15,.15) 0%,transparent 25%,rgba(8,6,15,.55) 78%,var(--bg) 100%);
 }
-.aurora-string.s1{
-  animation:aurora-sway-1 13s ease-in-out infinite, aurora-flow 5.5s linear infinite;
-}
-.aurora-string.s2{
-  animation:aurora-sway-2 16s ease-in-out infinite, aurora-flow 7s linear infinite reverse;
-}
-.aurora-string.s3{
-  animation:aurora-sway-3 14.5s ease-in-out infinite, aurora-flow 6.2s linear infinite;
-}
-@keyframes aurora-flow{
-  0%{stroke-dashoffset:0}
-  100%{stroke-dashoffset:-1320}
-}
-@keyframes aurora-sway-1{
-  0%,100%{transform:translateY(0) scaleY(1)}
-  50%{transform:translateY(-16px) scaleY(1.04)}
-}
-@keyframes aurora-sway-2{
-  0%,100%{transform:translateY(0) scaleY(1)}
-  50%{transform:translateY(14px) scaleY(.96)}
-}
-@keyframes aurora-sway-3{
-  0%,100%{transform:translateY(0) scaleY(1)}
-  50%{transform:translateY(-10px) scaleY(1.03)}
-}
-@media(max-width:640px){.hero-aurora{opacity:.6}}
-@media(prefers-reduced-motion:reduce){
-  .aurora-string{animation:none}
-}
+@media(max-width:640px){.hero-aurora-photo{opacity:.4}}
+@media(prefers-reduced-motion:reduce){.hero-aurora-photo{animation:none}}
 /* ── HOLOGRAPHIC BOOK ─────────────────────────────────────
    Purely decorative sci-fi accent: a wireframe open book rendered in
    CSS 3D (two pages tilted around a lit spine), cyan/purple holo glow,
@@ -1092,37 +1064,13 @@ body.no-webgl #hero-canvas{display:none}
   </div>
   <div class="hero-vignette"></div>
   <div class="hero-solid-bg"></div>
-  <div class="hero-aurora" aria-hidden="true">
-    <svg class="aurora-strings" viewBox="0 0 1200 800" preserveAspectRatio="none">
-      <defs>
-        <linearGradient id="aurora-grad-1" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stop-color="#6c47ff" stop-opacity="0"/>
-          <stop offset="50%" stop-color="#a78bff" stop-opacity=".9"/>
-          <stop offset="100%" stop-color="#50c8ff" stop-opacity="0"/>
-        </linearGradient>
-        <linearGradient id="aurora-grad-2" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stop-color="#50c8ff" stop-opacity="0"/>
-          <stop offset="50%" stop-color="#7fdfff" stop-opacity=".85"/>
-          <stop offset="100%" stop-color="#6c47ff" stop-opacity="0"/>
-        </linearGradient>
-        <linearGradient id="aurora-grad-3" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stop-color="#b46eff" stop-opacity="0"/>
-          <stop offset="50%" stop-color="#c9a0ff" stop-opacity=".8"/>
-          <stop offset="100%" stop-color="#50c8ff" stop-opacity="0"/>
-        </linearGradient>
-        <filter id="aurora-glow" x="-50%" y="-200%" width="200%" height="500%">
-          <feGaussianBlur stdDeviation="9" result="blur"/>
-          <feMerge>
-            <feMergeNode in="blur"/>
-            <feMergeNode in="SourceGraphic"/>
-          </feMerge>
-        </filter>
-      </defs>
-      <path class="aurora-string s1" d="M -100,220 C 200,140 450,320 700,220 S 1150,140 1300,220" stroke="url(#aurora-grad-1)"/>
-      <path class="aurora-string s2" d="M -100,420 C 180,500 480,300 720,420 S 1140,520 1300,420" stroke="url(#aurora-grad-2)"/>
-      <path class="aurora-string s3" d="M -100,620 C 220,560 460,700 700,610 S 1120,540 1300,620" stroke="url(#aurora-grad-3)"/>
-    </svg>
-  </div>
+  <!-- The real reference photo, not a re-created approximation — a slow
+       continuous pan+zoom (Ken Burns, ~48s cycle) for the "moving" motion
+       asked for, plus a dark radial/edge overlay so hero text and the
+       character stay legible over a genuinely busy photo. Same z-index
+       tier (1) as .hero-solid-bg, later in the DOM so it paints on top. -->
+  <div class="hero-aurora-photo" aria-hidden="true"></div>
+  <div class="hero-aurora-overlay" aria-hidden="true"></div>
 
   <!-- Decorative only, positioned absolute within .hero (outside the
        .hero-inner grid entirely) and pinned to the left gutter — after
