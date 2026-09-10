@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'LIPRO Academy',
     short_name: 'LIPRO',
-    description: 'Revision materials, past questions, notes and CBT practice for university students — written and reviewed by lecturers.',
+    description: 'Revision materials, past questions, notes and CBT practice for university students.',
     start_url: '/dashboard',
     scope: '/',
     display: 'standalone',

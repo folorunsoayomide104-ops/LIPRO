@@ -10,7 +10,7 @@ export const metadata: Metadata = {
     default: 'LIPRO ACADEMY | Your Life In Progress',
     template: '%s | LIPRO ACADEMY',
   },
-  description: 'Revision materials, past questions, notes and CBT practice for Nigerian university students — written and reviewed by lecturers.',
+  description: 'Revision materials, past questions, notes and CBT practice for Nigerian university students.',
   manifest: '/manifest.webmanifest',
   icons: {
     icon: [
