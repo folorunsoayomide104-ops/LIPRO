@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { prisma } from '@/lib/prisma';
 import { signToken, setAuthCookie, signResetToken, signGooglePendingSignup, GOOGLE_SIGNUP_COOKIE, GOOGLE_SIGNUP_TTL_SECONDS } from '@/lib/auth';
 import { exchangeGoogleCode } from '@/lib/google-oauth';
+import { mobileHandoff } from '@/lib/mobile-handoff';
 
 const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || 'https://liproacademyapp.vercel.app').replace(/\/$/, '');
 
@@ -31,23 +32,6 @@ export async function GET(req: Request) {
   // setting a cookie, since a WebView/Custom-Tab session's cookies aren't
   // visible to the app's own HTTP client the way a browser's are.
   const MOBILE_SCHEME = 'liproacademy://auth';
-
-  // A raw HTTP redirect (Location header) from this HTTPS page straight to
-  // a custom scheme is NOT reliably honored — confirmed live: a real device
-  // ended up stuck on this page's plain web content instead of returning to
-  // the app. Some Android browsers/Custom Tabs implementations only hand a
-  // non-http(s) scheme off to the OS on a user-gesture or client-side
-  // navigation, not an automatic server redirect (an anti-hijack measure).
-  // Returning a tiny HTML page that navigates via JS instead — with a
-  // visible fallback link in case even that's blocked — is the standard
-  // fix for this exact class of problem.
-  const mobileHandoff = (target: string) => {
-    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Returning to LIPRO Academy…</title></head><body style="font-family:system-ui,sans-serif;background:#0f0a1a;color:#fff;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;text-align:center;padding:24px">
-<div><p>Returning you to the app…</p><p style="opacity:.6;font-size:14px">If nothing happens, <a href="${target}" style="color:#c084fc">tap here to continue</a>.</p></div>
-<script>location.replace(${JSON.stringify(target)});</script>
-</body></html>`;
-    return new NextResponse(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
-  };
 
   const errorRedirect = (error: string) =>
     isMobile

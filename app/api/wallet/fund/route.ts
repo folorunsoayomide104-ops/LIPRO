@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { guard } from '@/lib/api-guard';
 
+const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000').replace(/\/$/, '');
+
 export async function POST(req: Request) {
   const { ok, user, response } = await guard();
   if (!ok || !user) return response!;
@@ -9,6 +11,13 @@ export async function POST(req: Request) {
   if (!body) return NextResponse.json({ error: 'Invalid body' }, { status: 400 });
   const amount = Number(body.amount);
   if (!amount || amount < 100) return NextResponse.json({ error: 'Minimum ₦100' }, { status: 422 });
+  // Paystack's callback_url must be a plain http(s) page (it redirects the
+  // user's own browser there) — the app itself never sees this page, since
+  // it opens Paystack in a system browser/Custom Tab, not an in-app
+  // webview. /api/wallet/mobile-callback verifies the transaction and hands
+  // off to the app's liproacademy:// scheme from there — same two-hop
+  // pattern as Google Sign-In (see app/api/auth/google/callback).
+  const isMobile = body.platform === 'mobile';
 
   const secret = process.env.PAYSTACK_SECRET_KEY;
   const u = await prisma.user.findUnique({ where: { id: user.userId } });
@@ -30,7 +39,7 @@ export async function POST(req: Request) {
       email: u.email,
       amount: amount * 100,
       currency: 'NGN',
-      callback_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/wallet?status=funded`,
+      callback_url: isMobile ? `${APP_URL}/api/wallet/mobile-callback` : `${APP_URL}/wallet?status=funded`,
       metadata: { userId: user.userId, type: 'WALLET_FUND', amount },
     }),
   });

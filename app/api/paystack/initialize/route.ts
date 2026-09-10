@@ -7,6 +7,8 @@ const PLANS = {
   ultimate: { amount: 3000, tier: 'ULTIMATE', label: 'Ultimate ₦3,000/mo' },
 } as const;
 
+const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000').replace(/\/$/, '');
+
 export async function POST(req: Request) {
   const { ok, user, response } = await guard();
   if (!ok || !user) return response!;
@@ -14,6 +16,8 @@ export async function POST(req: Request) {
   if (!body) return NextResponse.json({ error: 'Invalid body' }, { status: 400 });
   const { plan } = body as { plan: keyof typeof PLANS };
   if (!PLANS[plan]) return NextResponse.json({ error: 'Unknown plan' }, { status: 422 });
+  // See app/api/wallet/fund for why mobile gets its own callback route.
+  const isMobile = body.platform === 'mobile';
 
   const planDef = PLANS[plan];
   const secret = process.env.PAYSTACK_SECRET_KEY;
@@ -41,7 +45,7 @@ export async function POST(req: Request) {
       email: u.email,
       amount: planDef.amount * 100,
       currency: 'NGN',
-      callback_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/subscription?status=success`,
+      callback_url: isMobile ? `${APP_URL}/api/paystack/mobile-callback` : `${APP_URL}/subscription?status=success`,
       metadata: { userId: user.userId, plan, tier: planDef.tier },
     }),
   });

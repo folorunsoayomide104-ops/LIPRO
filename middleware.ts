@@ -16,7 +16,7 @@ const PUBLIC_PATHS = [
   "/manifest.webmanifest", // PWA manifest — browsers fetch this unauthenticated
   "/robots.txt", "/sitemap.xml", // crawlers fetch these unauthenticated
 ];
-const PUBLIC_API = ["/api/auth/register", "/api/auth/login", "/api/auth/google", "/api/auth/reset-password", "/api/paystack/webhook"];
+const PUBLIC_API = ["/api/auth/register", "/api/auth/login", "/api/auth/google", "/api/auth/reset-password", "/api/paystack/webhook", "/api/wallet/mobile-callback", "/api/paystack/mobile-callback"];
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
