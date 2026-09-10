@@ -393,6 +393,13 @@ nav.links a:hover{color:var(--txt)}
 /* Radial dark vignette + a stronger fade toward the bottom, where the
    hero-figure and CTAs sit, so the photo reads as atmosphere behind the
    content rather than competing with it for attention. */
+.aurora-snakes{
+  position:absolute;inset:0;z-index:1;
+  width:100%;height:100%;
+  pointer-events:none;
+  opacity:.7;
+  mix-blend-mode:screen;
+}
 .hero-aurora-overlay{
   position:absolute;inset:0;z-index:1;
   pointer-events:none;
@@ -400,8 +407,11 @@ nav.links a:hover{color:var(--txt)}
     radial-gradient(ellipse 70% 60% at 50% 38%,transparent 0%,rgba(8,6,15,.55) 75%,var(--bg) 100%),
     linear-gradient(to bottom,rgba(8,6,15,.15) 0%,transparent 25%,rgba(8,6,15,.55) 78%,var(--bg) 100%);
 }
-@media(max-width:640px){.hero-aurora-photo::before{opacity:.4}}
-@media(prefers-reduced-motion:reduce){.hero-aurora-photo::before{animation:none;transform:scale(1.12)}}
+@media(max-width:640px){.hero-aurora-photo::before{opacity:.4}.aurora-snakes{opacity:.5}}
+@media(prefers-reduced-motion:reduce){
+  .hero-aurora-photo::before{animation:none;transform:scale(1.12)}
+  .aurora-snakes{display:none}
+}
 /* ── HOLOGRAPHIC BOOK ─────────────────────────────────────
    Purely decorative sci-fi accent: a wireframe open book rendered in
    CSS 3D (two pages tilted around a lit spine), cyan/purple holo glow,
@@ -1082,6 +1092,45 @@ body.no-webgl #hero-canvas{display:none}
        character stay legible over a genuinely busy photo. Same z-index
        tier (1) as .hero-solid-bg, later in the DOM so it paints on top. -->
   <div class="hero-aurora-photo" aria-hidden="true"></div>
+  <!-- The zoom/pan above moves the camera, not the aurora itself — this
+       layer is the actual snake-like motion: glowing paths whose SHAPE
+       undulates over time (SMIL animating `d` between wave phases, not
+       just a whole-path translate), colour-matched to the photo and
+       screen-blended so they read as the photo's own light flowing,
+       not a separate overlay. -->
+  <svg class="aurora-snakes" aria-hidden="true" viewBox="0 0 1200 800" preserveAspectRatio="none">
+    <defs>
+      <linearGradient id="snake-grad-1" x1="0" y1="1" x2="1" y2="0">
+        <stop offset="0%" stop-color="#2dd4bf" stop-opacity="0"/>
+        <stop offset="25%" stop-color="#2dd4bf" stop-opacity=".6"/>
+        <stop offset="55%" stop-color="#60d6ff" stop-opacity=".55"/>
+        <stop offset="80%" stop-color="#b083ff" stop-opacity=".5"/>
+        <stop offset="100%" stop-color="#e879f9" stop-opacity="0"/>
+      </linearGradient>
+      <linearGradient id="snake-grad-2" x1="0" y1="1" x2="1" y2="0">
+        <stop offset="0%" stop-color="#34d399" stop-opacity="0"/>
+        <stop offset="25%" stop-color="#5eead4" stop-opacity=".5"/>
+        <stop offset="60%" stop-color="#818cf8" stop-opacity=".5"/>
+        <stop offset="100%" stop-color="#d946ef" stop-opacity="0"/>
+      </linearGradient>
+      <filter id="snake-glow" x="-60%" y="-60%" width="220%" height="220%">
+        <feGaussianBlur stdDeviation="14" result="blur"/>
+        <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+    </defs>
+    <path class="aurora-snake" fill="none" stroke="url(#snake-grad-1)" stroke-width="55" stroke-linecap="round" filter="url(#snake-glow)">
+      <animate attributeName="d" dur="11s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.45 0 0.55 1;0.45 0 0.55 1"
+        values="M -100,640 C 120,560 280,700 460,600 C 640,500 780,660 960,540 C 1080,460 1200,500 1320,420;
+                 M -100,640 C 120,700 280,560 460,660 C 640,760 780,540 960,660 C 1080,740 1200,560 1320,420;
+                 M -100,640 C 120,560 280,700 460,600 C 640,500 780,660 960,540 C 1080,460 1200,500 1320,420"/>
+    </path>
+    <path class="aurora-snake" fill="none" stroke="url(#snake-grad-2)" stroke-width="42" stroke-linecap="round" filter="url(#snake-glow)">
+      <animate attributeName="d" dur="14s" begin="-3s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.45 0 0.55 1;0.45 0 0.55 1"
+        values="M -100,500 C 100,440 260,560 440,480 C 620,400 760,540 940,440 C 1080,370 1200,410 1320,320;
+                 M -100,500 C 100,560 260,420 440,540 C 620,660 760,420 940,540 C 1080,610 1200,440 1320,320;
+                 M -100,500 C 100,440 260,560 440,480 C 620,400 760,540 940,440 C 1080,370 1200,410 1320,320"/>
+    </path>
+  </svg>
   <div class="hero-aurora-overlay" aria-hidden="true"></div>
 
   <!-- Decorative only, positioned absolute within .hero (outside the
