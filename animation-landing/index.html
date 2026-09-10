@@ -358,6 +358,93 @@ nav.links a:hover{color:var(--txt)}
     radial-gradient(ellipse 700px 600px at 8% 85%,rgba(74,46,204,.14),transparent 60%),
     var(--bg);
 }
+/* ── HOLOGRAPHIC BOOK ─────────────────────────────────────
+   Purely decorative sci-fi accent: a wireframe open book rendered in
+   CSS 3D (two pages tilted around a lit spine), cyan/purple holo glow,
+   faint page-line texture, and a few motes drifting up off it like data
+   evaporating into the air. Absolutely positioned in .hero's left
+   gutter — outside .hero-inner's grid — so it can never affect or be
+   affected by the text/character column layout. */
+.hero-holo-book{
+  position:absolute;top:14%;left:3%;z-index:2;
+  width:130px;height:160px;
+  pointer-events:none;
+  perspective:900px;
+  animation:holo-book-float 7s ease-in-out infinite;
+}
+@media(max-width:900px){.hero-holo-book{display:none}}
+.holo-book-glow{
+  position:absolute;left:50%;top:55%;
+  width:220px;height:220px;
+  transform:translate(-50%,-50%);
+  background:radial-gradient(circle,rgba(80,220,255,.20) 0%,rgba(108,71,255,.10) 45%,transparent 72%);
+  filter:blur(2px);
+  animation:holo-glow-pulse 3.4s ease-in-out infinite;
+}
+.holo-book-inner{
+  position:relative;width:100%;height:100%;
+  transform-style:preserve-3d;
+  transform:rotateX(18deg) rotateY(-8deg);
+  animation:holo-book-spin 9s ease-in-out infinite;
+}
+.holo-page{
+  position:absolute;top:50%;width:62px;height:86px;
+  background:
+    repeating-linear-gradient(to bottom,rgba(210,240,255,.55) 0px,rgba(210,240,255,.55) 1.5px,transparent 1.5px,transparent 9px),
+    linear-gradient(135deg,rgba(80,220,255,.16),rgba(108,71,255,.10));
+  border:1px solid rgba(160,230,255,.55);
+  border-radius:2px 8px 8px 2px;
+  box-shadow:0 0 18px rgba(80,200,255,.35),inset 0 0 12px rgba(80,200,255,.12);
+}
+.holo-page-left{
+  left:50%;transform-origin:left center;
+  transform:translateY(-50%) rotateY(38deg);
+  border-radius:8px 2px 2px 8px;
+}
+.holo-page-right{
+  left:50%;transform-origin:left center;
+  transform:translateY(-50%) rotateY(-38deg) translateX(0);
+}
+.holo-spine{
+  position:absolute;left:50%;top:50%;
+  width:2px;height:90px;
+  transform:translate(-50%,-50%) translateZ(1px);
+  background:linear-gradient(to bottom,transparent,rgba(190,240,255,.95),transparent);
+  box-shadow:0 0 10px rgba(150,230,255,.9);
+}
+.holo-mote{
+  position:absolute;left:50%;top:38%;
+  width:3px;height:3px;border-radius:50%;
+  background:var(--purple-lt);
+  box-shadow:0 0 6px 1px rgba(150,220,255,.8);
+  opacity:0;
+  animation:holo-mote-rise 4.5s ease-in infinite;
+}
+.holo-mote.m1{margin-left:-18px;animation-delay:0s}
+.holo-mote.m2{margin-left:6px;animation-delay:1.1s}
+.holo-mote.m3{margin-left:-6px;animation-delay:2.3s}
+.holo-mote.m4{margin-left:18px;animation-delay:3.2s}
+@keyframes holo-book-float{
+  0%,100%{transform:translateY(0)}
+  50%{transform:translateY(-10px)}
+}
+@keyframes holo-book-spin{
+  0%,100%{transform:rotateX(18deg) rotateY(-8deg)}
+  50%{transform:rotateX(15deg) rotateY(8deg)}
+}
+@keyframes holo-glow-pulse{
+  0%,100%{opacity:.7;transform:translate(-50%,-50%) scale(1)}
+  50%{opacity:1;transform:translate(-50%,-50%) scale(1.08)}
+}
+@keyframes holo-mote-rise{
+  0%{opacity:0;transform:translateY(0) scale(.6)}
+  15%{opacity:1}
+  80%{opacity:.5}
+  100%{opacity:0;transform:translateY(-70px) scale(1)}
+}
+@media(prefers-reduced-motion:reduce){
+  .hero-holo-book,.holo-book-inner,.holo-book-glow,.holo-mote{animation:none}
+}
 .hero-figure-wrap{
   position:relative;
   display:flex;justify-content:flex-end;align-items:flex-end;
@@ -945,6 +1032,24 @@ body.no-webgl #hero-canvas{display:none}
   </div>
   <div class="hero-vignette"></div>
   <div class="hero-solid-bg"></div>
+
+  <!-- Decorative only, positioned absolute within .hero (outside the
+       .hero-inner grid entirely) and pinned to the left gutter — after
+       the text/character overlap saga above, nothing new goes anywhere
+       near the grid's column math again. Hidden below 900px where there
+       is no side gutter to sit in. -->
+  <div class="hero-holo-book" aria-hidden="true">
+    <div class="holo-book-glow"></div>
+    <div class="holo-book-inner">
+      <div class="holo-page holo-page-left"></div>
+      <div class="holo-page holo-page-right"></div>
+      <div class="holo-spine"></div>
+    </div>
+    <span class="holo-mote m1"></span>
+    <span class="holo-mote m2"></span>
+    <span class="holo-mote m3"></span>
+    <span class="holo-mote m4"></span>
+  </div>
 
   <div class="hero-content wrap">
     <div class="hero-inner">
