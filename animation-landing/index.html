@@ -358,6 +358,57 @@ nav.links a:hover{color:var(--txt)}
     radial-gradient(ellipse 700px 600px at 8% 85%,rgba(74,46,204,.14),transparent 60%),
     var(--bg);
 }
+/* ── HERO AURORA ──────────────────────────────────────────
+   Slow-drifting, soft-blurred colour bands behind the hero content —
+   an ambient, "settling" atmosphere rather than an active effect.
+   Sits at the same tier as .hero-solid-bg (z-index 1) but later in the
+   DOM so it paints on top of it and under .hero-content (z-index 2).
+   mix-blend-mode:screen lets the bands glow into the dark background
+   instead of sitting as flat coloured shapes; long 22-30s durations and
+   gentle easing keep the motion calm, not attention-grabbing. */
+.hero-aurora{
+  position:absolute;inset:0;z-index:1;
+  overflow:hidden;
+  pointer-events:none;
+}
+.aurora-band{
+  position:absolute;
+  width:130%;height:70%;
+  border-radius:50%;
+  filter:blur(90px);
+  mix-blend-mode:screen;
+  will-change:transform;
+}
+.aurora-band.a1{
+  left:-15%;top:-18%;
+  background:radial-gradient(ellipse at center,rgba(108,71,255,.30),transparent 65%);
+  animation:aurora-drift-1 26s ease-in-out infinite;
+}
+.aurora-band.a2{
+  right:-20%;top:0%;
+  background:radial-gradient(ellipse at center,rgba(80,200,255,.20),transparent 65%);
+  animation:aurora-drift-2 30s ease-in-out infinite;
+}
+.aurora-band.a3{
+  left:10%;bottom:-30%;
+  background:radial-gradient(ellipse at center,rgba(180,110,255,.18),transparent 65%);
+  animation:aurora-drift-3 34s ease-in-out infinite;
+}
+@keyframes aurora-drift-1{
+  0%,100%{transform:translate(0,0) scale(1)}
+  50%{transform:translate(4%,3%) scale(1.08)}
+}
+@keyframes aurora-drift-2{
+  0%,100%{transform:translate(0,0) scale(1)}
+  50%{transform:translate(-5%,4%) scale(1.05)}
+}
+@keyframes aurora-drift-3{
+  0%,100%{transform:translate(0,0) scale(1)}
+  50%{transform:translate(3%,-4%) scale(1.1)}
+}
+@media(prefers-reduced-motion:reduce){
+  .aurora-band{animation:none}
+}
 /* ── HOLOGRAPHIC BOOK ─────────────────────────────────────
    Purely decorative sci-fi accent: a wireframe open book rendered in
    CSS 3D (two pages tilted around a lit spine), cyan/purple holo glow,
@@ -1032,6 +1083,11 @@ body.no-webgl #hero-canvas{display:none}
   </div>
   <div class="hero-vignette"></div>
   <div class="hero-solid-bg"></div>
+  <div class="hero-aurora" aria-hidden="true">
+    <span class="aurora-band a1"></span>
+    <span class="aurora-band a2"></span>
+    <span class="aurora-band a3"></span>
+  </div>
 
   <!-- Decorative only, positioned absolute within .hero (outside the
        .hero-inner grid entirely) and pinned to the left gutter — after
