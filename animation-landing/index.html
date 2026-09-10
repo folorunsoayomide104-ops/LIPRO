@@ -371,24 +371,14 @@ nav.links a:hover{color:var(--txt)}
 }
 .hero-aurora-photo::before{
   content:'';
-  position:absolute;inset:-10%;
+  position:absolute;inset:0;
   background-image:url('/hero-aurora-bg.webp');
   background-size:cover;
   background-position:50% 40%;
   background-repeat:no-repeat;
   opacity:.55;
-  /* Motion lives on transform (GPU-accelerated), not background-position/
-     background-size — animating those directly is a common cause of
-     motion reading as barely-there or janky, since they force layout/paint
-     on every frame instead of compositing. The ::before is oversized by
-     10% on each side (inset:-10%) so the scale+translate sweep never
-     reveals an edge. */
-  animation:aurora-photo-pan 24s ease-in-out infinite;
-  will-change:transform;
-}
-@keyframes aurora-photo-pan{
-  0%,100%{transform:scale(1.12) translate(-1.5%,-1%)}
-  50%{transform:scale(1.24) translate(1.5%,2%)}
+  /* Static now — the .aurora-snakes overlay above is the only motion
+     (the aurora's own shape undulating), not the camera. */
 }
 /* Radial dark vignette + a stronger fade toward the bottom, where the
    hero-figure and CTAs sit, so the photo reads as atmosphere behind the
@@ -409,7 +399,6 @@ nav.links a:hover{color:var(--txt)}
 }
 @media(max-width:640px){.hero-aurora-photo::before{opacity:.4}.aurora-snakes{opacity:.5}}
 @media(prefers-reduced-motion:reduce){
-  .hero-aurora-photo::before{animation:none;transform:scale(1.12)}
   .aurora-snakes{display:none}
 }
 /* ── HOLOGRAPHIC BOOK ─────────────────────────────────────
