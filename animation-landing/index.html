@@ -364,12 +364,8 @@ nav.links a:hover{color:var(--txt)}
   opacity:0;transform:translateX(32px);
   transition:opacity .9s ease .35s,transform .9s var(--ease-out) .35s;
 }
-/* Everything that should move together — the image and the eye-blink
-   overlay — lives inside this inline-block, which sizes itself exactly
-   to the rendered image (so the blink overlay's percentage-based
-   position tracks it regardless of viewport/zoom). All idle motion is
-   applied here, not on the <img>, so the blink stays aligned to the
-   face through every lean/shift. */
+/* Inline-block wrapper around the image so all idle motion applies to
+   one element sized exactly to the rendered figure. */
 .hero-figure-inner{
   position:relative;display:inline-block;
   transform-origin:50% 100%;
@@ -418,22 +414,6 @@ nav.links a:hover{color:var(--txt)}
   80%{transform:translateY(-4px) rotate(-.4deg) scaleY(1.006)}
 }
 .hero-figure-inner.idle-gesture{animation:hero-idle-gesture 3.1s ease-in-out 1}
-/* Eye-blink overlay — position/size sampled directly from the source
-   image (1048×1400): eyeball band only, eyebrows excluded, so it
-   doesn't need to know the character's final rendered size, only its
-   own percentage within .hero-figure-inner's box. Closed most of the
-   time (scaleY 0 = invisible sliver); JS briefly plays the blink. */
-.hero-eye-blink{
-  position:absolute;left:44.85%;top:16.2%;width:17.2%;height:3.1%;
-  background:#e8a884;border-radius:50%;
-  transform:scaleY(0);transform-origin:50% 50%;
-  pointer-events:none;
-}
-.hero-eye-blink.blinking{animation:hero-eye-blink-cycle .22s ease-in-out 1}
-@keyframes hero-eye-blink-cycle{
-  0%,100%{transform:scaleY(0)}
-  40%,60%{transform:scaleY(1)}
-}
 /* A thought bubble that fades in/out on its own cycle (not a static
    badge) so it reads as an occasional "hmm" rather than a permanent UI
    element glued to the character. */
@@ -467,7 +447,6 @@ nav.links a:hover{color:var(--txt)}
 @media(prefers-reduced-motion: reduce){
   .hero-figure-inner{animation:none}
   .hero-think-bubble{animation:none;opacity:0}
-  .hero-eye-blink{display:none}
 }
 .hero-circled{position:relative;display:inline-block;white-space:nowrap;color:var(--purple-lt)}
 .hero-circled svg{position:absolute;left:-8%;top:-14%;width:116%;height:135%;pointer-events:none;z-index:-1}
@@ -1001,7 +980,6 @@ body.no-webgl #hero-canvas{display:none}
             <source srcset="/hero-character.webp" type="image/webp">
             <img src="/hero-character.png" alt="An animated 3D character standing beside the LIPRO Academy hero content" width="1048" height="1400" fetchpriority="high">
           </picture>
-          <div class="hero-eye-blink" id="heyeblink" aria-hidden="true"></div>
         </div>
         <div class="hero-think-bubble" aria-hidden="true"><span></span><span></span><span></span></div>
       </div>
@@ -6053,14 +6031,13 @@ three/build/three.module.js:
 <!-- Hero character idle system. Base state is the calm CSS breathing loop
      (hero-idle-breathe) — this script only layers occasional, randomized
      movement on top of it: small weight-shift variants every several
-     seconds, a rarer bigger gesture with longer pauses in between, and an
-     independent natural-rate blink. Nothing here runs on a fixed timer —
-     every interval and, for idle movement, every choice of which variant
-     plays is randomized, so no two stretches of time look identical. -->
+     seconds and a rarer bigger gesture with longer pauses in between.
+     Nothing here runs on a fixed timer — every interval, and which
+     variant plays, is randomized, so no two stretches of time look
+     identical. -->
 <script>
 (function () {
   var figure = document.getElementById('hfigure');
-  var eye = document.getElementById('heyeblink');
   if (!figure || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
   function playOnce(el, className) {
@@ -6096,23 +6073,8 @@ three/build/three.module.js:
     }, delay);
   }
 
-  // Blinking, at roughly a natural rate with irregular spacing (real
-  // blinks aren't metronomic either) — occasionally two in quick
-  // succession, mostly single.
-  function scheduleBlink() {
-    var delay = 3500 + Math.random() * 4000; // 3.5–7.5s
-    setTimeout(function () {
-      playOnce(eye, 'blinking');
-      if (Math.random() < 0.12) {
-        setTimeout(function () { playOnce(eye, 'blinking'); }, 260);
-      }
-      scheduleBlink();
-    }, delay);
-  }
-
   scheduleIdle();
   scheduleGesture();
-  if (eye) scheduleBlink();
 })();
 </script>
 </body>
