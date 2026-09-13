@@ -16,18 +16,18 @@ function CodeBlock({ language, code }: { language: string; code: string }) {
     }
   };
   return (
-    <div className="my-2 overflow-hidden rounded-xl border border-lipro-200/60 bg-[#0d1117] dark:border-lipro-700/40">
-      <div className="flex items-center justify-between border-b border-white/10 px-3 py-1.5">
-        <span className="text-[11px] font-medium uppercase tracking-wider text-white/50">{language || 'text'}</span>
+    <div className="my-2 overflow-hidden rounded-lg bg-studio-bg shadow-studio-border">
+      <div className="flex items-center justify-between border-b border-studio-border px-3 py-1.5">
+        <span className="text-[11px] font-medium uppercase tracking-wider text-studio-subtle">{language || 'text'}</span>
         <button
           type="button"
           onClick={copy}
-          className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium text-white/60 transition-colors hover:bg-white/10 hover:text-white"
+          className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium text-studio-subtle transition-colors hover:bg-studio-elevated hover:text-studio-fg"
         >
           {copied ? <><Check className="h-3 w-3" /> Copied</> : <><Copy className="h-3 w-3" /> Copy</>}
         </button>
       </div>
-      <pre className="overflow-x-auto p-3 text-[13px] leading-6 text-white/90"><code>{code}</code></pre>
+      <pre className="overflow-x-auto p-3 font-studio-mono text-[13px] leading-6 text-studio-fg"><code>{code}</code></pre>
     </div>
   );
 }
@@ -43,7 +43,7 @@ export function MarkdownMessage({ content }: { content: string }) {
             const isInline = !className;
             const text = String(children ?? '').replace(/\n$/, '');
             if (isInline) {
-              return <code className="rounded bg-lipro-500/10 px-1.5 py-0.5 font-mono text-[0.85em] text-lipro-700 dark:text-lipro-300">{text}</code>;
+              return <code className="rounded bg-studio-elevated px-1.5 py-0.5 font-studio-mono text-[0.85em] text-studio-fg">{text}</code>;
             }
             const language = /language-(\w+)/.exec(className || '')?.[1] || '';
             return <CodeBlock language={language} code={text} />;
@@ -53,7 +53,7 @@ export function MarkdownMessage({ content }: { content: string }) {
             return <>{children}</>;
           },
           a({ href, children }) {
-            return <a href={href} target="_blank" rel="noopener noreferrer" className="text-lipro-600 underline decoration-lipro-300 underline-offset-2 dark:text-lipro-400">{children}</a>;
+            return <a href={href} target="_blank" rel="noopener noreferrer" className="text-studio-primary underline underline-offset-2">{children}</a>;
           },
           ul({ children }) { return <ul className="my-1.5 list-disc space-y-1 pl-5">{children}</ul>; },
           ol({ children }) { return <ol className="my-1.5 list-decimal space-y-1 pl-5">{children}</ol>; },

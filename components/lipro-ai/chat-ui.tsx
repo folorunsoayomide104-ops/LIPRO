@@ -2,11 +2,8 @@
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { upload as blobUpload } from '@vercel/blob/client';
-import { Button } from '@/components/ui/button';
 import { Send, Bot, User, Loader2, Plus, Maximize2, Minimize2, X, FileText, CheckCircle2, Edit2, Check, RotateCcw, List, ChevronLeft, Square, AlertTriangle, ArrowLeft } from 'lucide-react';
 import { LiproLogo } from '@/components/LiproLogo';
-import AmbientBackground from '@/components/dashboard/ambient-bg';
-import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { ConversationList, type ConversationListEntry } from './conversation-list-item';
 import { MarkdownMessage } from './markdown-message';
@@ -116,12 +113,6 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
   };
 
   const onPickFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    // FileList is a live view of the input's current selection — resetting
-    // e.target.value below (done so the same file can be re-picked later)
-    // empties this array retroactively even though we already have a
-    // reference to it. Snapshot into a plain array first, confirmed via a
-    // minimal repro (before=1 after=0 on the exact same pattern), so the
-    // reset can't wipe out the files before they're processed.
     const files = e.target.files ? Array.from(e.target.files) : [];
     e.target.value = '';
     setAttachError('');
@@ -150,11 +141,6 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
     if (errors.length > 0) setAttachError(errors.join(' · '));
   };
 
-  // On mobile there's no separate "fullscreen" concept — the chat should
-  // just natively fill the screen edge-to-edge like a real messaging app,
-  // with no toggle to find or tap. Fullscreen mode already implements
-  // exactly that (fixed inset-0 overlay), so default to it on small
-  // viewports instead of building a second layout.
   useEffect(() => {
     if (typeof window !== 'undefined' && window.innerWidth < 768) setFullscreen(true);
   }, []);
@@ -252,19 +238,12 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
     }
   };
 
-  // Shared by a fresh send, an edit-and-resubmit, and a regenerate — all three
-  // just need to run the request against whatever's already in `messages`
-  // (an empty assistant placeholder at the end) and fill it in.
   const runRequest = async (text: string) => {
     const hasFiles = attached.length > 0;
     setLoading(true);
     setFallback(false);
     const fileNames = attached.map((a) => a.name);
 
-    // Docs are only marked "attached" once the server confirms it actually
-    // extracted text and saved a Material — never optimistically, so this
-    // stays a trustworthy signal instead of a fake checkmark that shows
-    // even when the upload or extraction silently failed.
     const confirmAttached = (materialIds: string[], failedFiles?: Array<{ name: string; reason: string }>) => {
       if (materialIds.length > 0) {
         setDocs((d) => [
@@ -397,7 +376,6 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
       refreshList();
     } catch (err: any) {
       if (err?.name === 'AbortError') {
-        // Stopped by the user — leave whatever partial text already streamed in place.
         return;
       }
       setUploading(false);
@@ -436,60 +414,92 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
   };
 
   return (
-    <div className={cn('relative flex gap-4 overflow-hidden', fullscreen ? 'fixed inset-0 z-[100] h-screen bg-[rgb(var(--bg))] max-md:p-0 sm:p-4 md:p-6' : 'h-[calc(100dvh-13.5rem)] md:h-[calc(100vh-9rem)]')}>
-      <AmbientBackground variant="aurora" />
+    <div className={cn('relative flex bg-studio-bg text-studio-fg', fullscreen ? 'fixed inset-0 z-[100] h-dvh' : '-mx-4 -mt-2 h-[calc(100dvh-4rem)] md:h-[calc(100dvh-4rem)]')}>
       {!fullscreen && (
-        <aside className="glass relative hidden w-64 shrink-0 flex-col rounded-2xl p-3 md:flex">
-          <Button onClick={newChat} className="mb-4 w-full rounded-full" size="sm"><Plus className="h-4 w-4" /> New chat</Button>
-          {conversations.length > 0 && (
-            <p className="mb-1.5 px-2 text-[11px] font-semibold uppercase tracking-wider text-lipro-500/70">Recents</p>
-          )}
-          <div className="flex-1 space-y-1 overflow-y-auto">
-            <ConversationList conversations={conversations} activeId={activeId} onOpen={openConversation} onDelete={deleteConversation} />
+        <aside className="hidden w-72 shrink-0 flex-col border-r border-studio-border bg-studio-surface md:flex">
+          <div className="p-3">
+            <button
+              onClick={newChat}
+              className="flex h-10 w-full items-center justify-center gap-2 rounded-full bg-studio-elevated text-sm font-medium text-studio-muted shadow-studio-border hover:text-studio-fg"
+            >
+              <Plus className="h-4 w-4" /> New thread
+            </button>
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <p className="px-4 pb-1 pt-1 text-xs font-medium uppercase tracking-[0.16em] text-studio-subtle">Threads</p>
+            <div className="flex flex-col gap-1 p-2">
+              <ConversationList conversations={conversations} activeId={activeId} onOpen={openConversation} onDelete={deleteConversation} />
+            </div>
           </div>
         </aside>
       )}
 
       <div className="relative flex min-w-0 flex-1 flex-col">
-        <div className="mb-3 flex items-center justify-between gap-2 max-md:mb-1.5 max-md:border-b max-md:border-lipro-200/60 max-md:px-3 max-md:py-2.5 max-md:dark:border-lipro-700/40">
-          <div className="flex min-w-0 items-center gap-2 md:gap-3">
-            <Link
-              href="/dashboard"
-              onClick={() => { if (fullscreen) setFullscreen(false); }}
-              className="tap flex shrink-0 items-center gap-1.5 rounded-xl border border-lipro-200/60 px-2.5 py-2 text-sm font-medium text-lipro-700 transition-colors hover:bg-lipro-50 dark:border-lipro-500/20 dark:text-lipro-200 dark:hover:bg-lipro-950/40"
-              aria-label="Back to dashboard"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              <span className="max-md:hidden">Back</span>
-            </Link>
+        <header className="flex h-14 shrink-0 items-center gap-2 border-b border-studio-border px-3 md:h-16 md:px-6">
+          <Link
+            href="/dashboard"
+            onClick={() => { if (fullscreen) setFullscreen(false); }}
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-studio-elevated px-2.5 py-2 text-sm font-medium text-studio-muted shadow-studio-border hover:text-studio-fg"
+            aria-label="Back to dashboard"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            <span className="max-md:hidden">Back</span>
+          </Link>
+          <div className="ml-2 flex min-w-0 items-center gap-2">
+            <LiproLogo className="h-5 w-5 shrink-0 text-studio-primary" />
             <div className="min-w-0">
-              <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight max-md:text-base"><LiproLogo className="h-6 w-6 max-md:h-5 max-md:w-5" /> LIPRO AI</h1>
-              <p className="text-sm text-lipro-600/70 max-md:hidden dark:text-lipro-200/70">Your AI tutor with conversation memory</p>
+              <p className="truncate text-sm font-medium text-studio-fg">LIPRO AI</p>
+              <p className="text-xs text-studio-subtle max-md:hidden">Your AI tutor with conversation memory</p>
             </div>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
-            {fallback && <Badge tone="amber" className="max-md:hidden">Demo mode — add API key in Settings</Badge>}
-            <Button variant="outline" size="sm" className="md:hidden" onClick={() => setShowConvoDrawer(true)}><List className="h-4 w-4" /></Button>
-            <Button variant="outline" size="sm" className="md:hidden" onClick={newChat}><Plus className="h-4 w-4" /></Button>
-            <Button variant="outline" size="sm" className="max-md:hidden" onClick={() => setFullscreen((f) => !f)} title={fullscreen ? 'Exit fullscreen (Esc)' : 'Fullscreen'} aria-label={fullscreen ? 'Exit fullscreen' : 'Fullscreen'}>
+          <div className="ml-auto flex shrink-0 items-center gap-2">
+            {fallback && (
+              <span className="hidden rounded-full bg-amber-500/15 px-3 py-1 text-xs font-medium text-amber-400 md:inline-flex">
+                Demo mode — add API key in Settings
+              </span>
+            )}
+            <button
+              type="button"
+              className="grid h-9 w-9 place-items-center rounded-full text-studio-muted shadow-studio-border hover:text-studio-fg md:hidden"
+              onClick={() => setShowConvoDrawer(true)}
+              aria-label="Open threads"
+            >
+              <List className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              className="grid h-9 w-9 place-items-center rounded-full text-studio-muted shadow-studio-border hover:text-studio-fg md:hidden"
+              onClick={newChat}
+              aria-label="New thread"
+            >
+              <Plus className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              className="hidden h-9 items-center gap-1.5 rounded-full px-3 text-xs font-medium text-studio-muted shadow-studio-border hover:text-studio-fg md:inline-flex"
+              onClick={() => setFullscreen((f) => !f)}
+              title={fullscreen ? 'Exit fullscreen (Esc)' : 'Fullscreen'}
+              aria-label={fullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+            >
               {fullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-            </Button>
+            </button>
           </div>
-        </div>
+        </header>
 
-        {/* Mobile conversation drawer */}
         {showConvoDrawer && (
           <div className="fixed inset-0 z-50 md:hidden">
-            <div className="absolute inset-0 bg-black/40" onClick={() => setShowConvoDrawer(false)} />
-            <div className="absolute left-0 top-0 bottom-0 w-full max-w-sm bg-white dark:bg-gray-900 shadow-xl flex flex-col">
-              <div className="flex items-center justify-between gap-2 border-b border-lipro-200/60 p-3">
-                <button onClick={() => setShowConvoDrawer(false)} className="tap grid h-10 w-10 place-items-center rounded-xl text-lipro-600 hover:bg-lipro-100 dark:hover:bg-lipro-900/50">
+            <div className="absolute inset-0 bg-studio-bg/70" onClick={() => setShowConvoDrawer(false)} />
+            <div className="absolute inset-y-0 left-0 flex w-full max-w-sm flex-col bg-studio-surface shadow-studio-float">
+              <div className="flex items-center justify-between gap-2 border-b border-studio-border p-3">
+                <button onClick={() => setShowConvoDrawer(false)} className="grid h-10 w-10 place-items-center rounded-full text-studio-muted hover:text-studio-fg">
                   <ChevronLeft className="h-5 w-5" />
                 </button>
-                <h2 className="text-lg font-semibold flex-1 text-center">Conversations</h2>
-                <Button onClick={newChat} size="sm" className="shrink-0"><Plus className="h-4 w-4" /> New</Button>
+                <h2 className="flex-1 text-center text-sm font-medium text-studio-fg">Threads</h2>
+                <button onClick={newChat} className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-studio-primary px-3 text-xs font-medium text-studio-primary-fg">
+                  <Plus className="h-4 w-4" /> New
+                </button>
               </div>
-              <div className="flex-1 overflow-y-auto p-3 space-y-1">
+              <div className="flex-1 space-y-1 overflow-y-auto p-2">
                 <ConversationList
                   conversations={conversations}
                   activeId={activeId}
@@ -501,208 +511,222 @@ export function ChatUI({ initialConversations, initialMessages }: { initialConve
           </div>
         )}
 
-        <div className="glass flex-1 overflow-y-auto rounded-2xl p-4 space-y-4 max-md:space-y-3 max-md:rounded-none max-md:border-0 max-md:bg-transparent max-md:p-3 max-md:shadow-none max-md:backdrop-blur-none">
-          {loadingConversation && (
-            <div className="flex gap-3"><div className="grid h-8 w-8 place-items-center rounded-xl bg-gradient-to-br from-lipro-500 to-lipro-700 text-white"><Bot className="h-4 w-4" /></div><div className="glass rounded-2xl p-3"><Loader2 className="h-4 w-4 animate-spin" /></div></div>
-          )}
-          {messages.map((m, i) => (
-            <div key={i} className={cn('flex gap-3 animate-message-in', m.role === 'user' ? 'justify-end' : '')}>
-              {m.role === 'assistant' && <div className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-lipro-500 to-lipro-700 text-white"><Bot className="h-4 w-4" /></div>}
-              {editingIndex === i && m.role === 'user' ? (
-                <div className="max-w-[80%] w-full flex gap-2">
-                  <textarea
-                    ref={textareaRef}
-                    value={editInput}
-                    onChange={(e) => { setEditInput(e.target.value); autoResize(); }}
-                    onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); saveEdit(); } }}
-                    rows={1}
-                    className="max-h-[200px] min-h-11 flex-1 resize-none rounded-xl border border-lipro-300/50 bg-white/70 px-4 py-2.5 text-base outline-none placeholder:text-lipro-300/70 focus:border-lipro-400 focus:ring-4 focus:ring-lipro-400/15 dark:border-lipro-700/40 dark:bg-surface-dark/60"
-                    placeholder="Edit your message…"
-                    autoFocus
-                  />
-                  <div className="flex items-center gap-1">
-                    <Button size="sm" variant="primary" onClick={saveEdit} disabled={!editInput.trim()}><Check className="h-4 w-4" /></Button>
-                    <Button size="sm" variant="ghost" onClick={cancelEdit}><X className="h-4 w-4" /></Button>
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-6 md:px-8">
+            {loadingConversation && (
+              <div className="flex items-center gap-2 text-sm text-studio-subtle">
+                <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+              </div>
+            )}
+            {messages.map((m, i) => (
+              <article key={i} className={cn('group flex w-full gap-3', m.role === 'user' ? 'justify-end' : 'justify-start')}>
+                {m.role === 'assistant' && (
+                  <div className="relative grid h-8 w-8 shrink-0 place-items-center rounded-full bg-studio-elevated text-studio-primary">
+                    <Bot className="h-4 w-4" />
+                    {editingIndex !== i && (
+                      <button
+                        onClick={regenerate}
+                        disabled={loading || loadingConversation}
+                        className="absolute -right-1 -top-1 rounded-full bg-studio-surface p-0.5 text-studio-subtle opacity-0 shadow-studio-border transition-opacity hover:text-studio-fg group-hover:opacity-100 disabled:pointer-events-none"
+                        title="Regenerate response"
+                        aria-label="Regenerate response"
+                      >
+                        <RotateCcw className="h-3 w-3" />
+                      </button>
+                    )}
                   </div>
-                </div>
-              ) : (
-                <div
-                  className={cn(
-                    'min-w-0 flex-1 text-sm',
-                    m.role === 'user'
-                      ? 'max-w-[80%] flex-none whitespace-pre-wrap rounded-2xl bg-gradient-to-r from-lipro-600 to-lipro-500 p-3 text-white'
-                      : m.isError
-                        ? 'glass whitespace-pre-wrap rounded-2xl border border-rose-300/50 bg-rose-50/40 p-3 text-rose-700 dark:border-rose-800/40 dark:bg-rose-950/20 dark:text-rose-200'
-                        : 'py-1'
-                  )}
-                >
-                  {m.role === 'assistant' && m.isError && (
-                    <span className="mb-1 flex items-center gap-1 text-xs font-medium opacity-80"><AlertTriangle className="h-3.5 w-3.5" /> Something went wrong</span>
-                  )}
-                  {m.content ? (
-                    m.role === 'assistant' && !m.isError ? <MarkdownMessage content={m.content} /> : m.content
+                )}
+                <div className={cn('max-w-[min(40rem,100%)]', m.role === 'user' ? '' : 'w-full min-w-0')}>
+                  {editingIndex === i && m.role === 'user' ? (
+                    <div className="flex w-full gap-2">
+                      <textarea
+                        ref={textareaRef}
+                        value={editInput}
+                        onChange={(e) => { setEditInput(e.target.value); autoResize(); }}
+                        onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); saveEdit(); } }}
+                        rows={1}
+                        className="max-h-[200px] min-h-11 flex-1 resize-none rounded-lg bg-studio-elevated px-4 py-2.5 text-sm text-studio-fg shadow-studio-border outline-none placeholder:text-studio-subtle"
+                        placeholder="Edit your message…"
+                        autoFocus
+                      />
+                      <div className="flex items-center gap-1">
+                        <button onClick={saveEdit} disabled={!editInput.trim()} className="grid h-9 w-9 place-items-center rounded-full bg-studio-primary text-studio-primary-fg disabled:opacity-50">
+                          <Check className="h-4 w-4" />
+                        </button>
+                        <button onClick={cancelEdit} className="grid h-9 w-9 place-items-center rounded-full text-studio-subtle hover:text-studio-fg">
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ) : m.role === 'user' ? (
+                    <div className="relative rounded-xl rounded-br-sm bg-studio-elevated px-4 py-3 text-sm leading-normal text-studio-fg shadow-studio-border">
+                      {m.content}
+                      <button
+                        onClick={() => startEdit(i)}
+                        className="absolute -top-2 -right-2 rounded-full bg-studio-surface p-1 text-studio-subtle opacity-0 shadow-studio-border transition-opacity hover:text-studio-fg group-hover:opacity-100"
+                        title="Edit message"
+                        aria-label="Edit message"
+                      >
+                        <Edit2 className="h-3 w-3" />
+                      </button>
+                    </div>
                   ) : (
-                    <span className="inline-flex items-center gap-1">
-                      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-lipro-500" />
-                      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-lipro-500" style={{ animationDelay: '0.15s' }} />
-                      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-lipro-500" style={{ animationDelay: '0.3s' }} />
-                    </span>
+                    <div>
+                      <p className="mb-2 text-xs font-medium uppercase tracking-[0.16em] text-studio-subtle">LIPRO</p>
+                      {m.isError ? (
+                        <div className="flex items-center gap-1.5 rounded-lg bg-studio-danger/10 px-4 py-3 text-sm text-studio-danger">
+                          <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> {m.content || 'Something went wrong'}
+                        </div>
+                      ) : m.content ? (
+                        <div className="text-sm leading-normal text-studio-fg">
+                          <MarkdownMessage content={m.content} />
+                        </div>
+                      ) : (
+                        <span className="inline-flex items-center gap-1">
+                          <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-studio-primary" />
+                          <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-studio-primary" style={{ animationDelay: '0.15s' }} />
+                          <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-studio-primary" style={{ animationDelay: '0.3s' }} />
+                        </span>
+                      )}
+                    </div>
                   )}
                 </div>
-              )}
-              {m.role === 'user' && editingIndex !== i && (
-                <div className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-lipro-200 text-lipro-700 relative">
-                  <User className="h-4 w-4" />
-                  <button
-                    onClick={() => startEdit(i)}
-                    className="absolute -top-1 -right-1 rounded-full p-0.5 text-lipro-400 opacity-0 transition-opacity hover:text-lipro-600 group-hover:opacity-100"
-                    title="Edit message"
-                    aria-label="Edit message"
-                  >
-                    <Edit2 className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              )}
-              {m.role === 'assistant' && editingIndex !== i && (
-                <div className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-lipro-200 text-lipro-700 relative">
-                  <Bot className="h-4 w-4" />
-                  <button
-                    onClick={regenerate}
-                    disabled={loading || loadingConversation}
-                    className="absolute -top-1 -right-1 rounded-full p-0.5 text-lipro-400 opacity-0 transition-opacity hover:text-lipro-600 group-hover:opacity-100 disabled:pointer-events-none"
-                    title="Regenerate response"
-                    aria-label="Regenerate response"
-                  >
-                    <RotateCcw className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              )}
-            </div>
-          ))}
-          <div ref={endRef} />
+                {m.role === 'user' && editingIndex !== i && (
+                  <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-studio-elevated text-studio-muted">
+                    <User className="h-4 w-4" />
+                  </div>
+                )}
+              </article>
+            ))}
+            <div ref={endRef} />
+          </div>
         </div>
 
-        {messages.length === 1 && !activeId && (
-          <div className="my-3 flex flex-wrap gap-2">
-            {SUGGESTIONS.map((s) => <Button key={s} variant="outline" size="sm" onClick={() => send(s)}>{s}</Button>)}
-          </div>
-        )}
-        {docs.length > 0 && (
-          <div className="mt-3 flex flex-wrap items-center gap-1.5">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-lipro-500">Attached documents</span>
-            {docs.map((d) => (
-              <span key={d.id || d.name} className="group inline-flex max-w-[220px] items-center gap-1.5 rounded-full border border-lipro-300/50 bg-white/60 py-1 pl-2.5 pr-1 text-xs font-medium text-lipro-700 dark:border-lipro-700/40 dark:bg-surface-dark/60 dark:text-lipro-200">
-                <FileText className="h-3 w-3 shrink-0 text-lipro-500" />
-                <span className="truncate">{d.name}</span>
-                <button
-                  type="button"
-                  onClick={() => removeDoc(d.id)}
-                  className="shrink-0 rounded-full p-1 text-lipro-500 transition-colors hover:bg-rose-100 hover:text-rose-600 dark:hover:bg-rose-950/40"
-                  title="Delete attached file"
-                  aria-label={`Delete attached file ${d.name}`}
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </span>
-            ))}
-          </div>
-        )}
-        {savedNote && (
-          <p className="mt-3 flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
-            <CheckCircle2 className="h-3.5 w-3.5" /> Document saved — ask LIPRO AI about it and it will teach from it.
-          </p>
-        )}
-        {attached.length > 0 && (
-          <div className="mt-3 flex flex-wrap gap-2">
-            {attached.map((a, i) => (
-              <div key={i} className="relative flex items-center gap-2 rounded-xl border border-lipro-300/50 bg-white/60 px-2.5 py-2 text-sm dark:border-lipro-700/40 dark:bg-surface-dark/60">
-                {a.preview ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={a.preview} alt={a.name} className="h-10 w-10 shrink-0 rounded-md object-cover" />
-                ) : (
-                  <FileText className="h-4 w-4 shrink-0 text-lipro-500" />
-                )}
-                <span className="max-w-[160px] min-w-0 flex-1 truncate font-medium">{a.name}</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAttached((prev) => prev.filter((_, idx) => idx !== i));
-                  }}
-                  className="shrink-0 rounded-full p-1 text-lipro-500 transition-colors hover:bg-lipro-100 hover:text-lipro-700 dark:hover:bg-lipro-950/40"
-                  title="Remove file"
-                  aria-label={`Remove attached file ${a.name}`}
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
+        <div className="shrink-0 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 md:px-6">
+          <div className="mx-auto w-full max-w-3xl">
+            {messages.length === 1 && !activeId && (
+              <div className="mb-3 flex flex-wrap gap-2">
+                {SUGGESTIONS.map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => send(s)}
+                    className="rounded-lg bg-studio-surface px-4 py-2.5 text-left text-xs leading-normal text-studio-muted shadow-studio-border transition-colors hover:text-studio-fg hover:shadow-studio-border-hover"
+                  >
+                    {s}
+                  </button>
+                ))}
               </div>
-            ))}
-          </div>
-        )}
-        {uploading && (
-          <p className="mt-3 flex items-center gap-1.5 text-xs font-medium text-lipro-600 dark:text-lipro-300">
-            <Loader2 className="h-3.5 w-3.5 animate-spin" /> {uploadProgress || 'Uploading…'}
-          </p>
-        )}
-        {attachError && <p className="mt-2 text-xs font-medium text-rose-500">{attachError}</p>}
-        <form
-          className="mt-3 flex items-end gap-1.5 rounded-3xl border border-lipro-200/60 bg-white/70 p-1.5 pl-2 shadow-sm transition-all focus-within:border-lipro-400 focus-within:ring-4 focus-within:ring-lipro-400/15 dark:border-lipro-700/40 dark:bg-surface-dark/60"
-          onSubmit={(e) => { e.preventDefault(); send(input); }}
-        >
-          <input
-            ref={fileInputRef}
-            type="file"
-            className="hidden"
-            onChange={onPickFile}
-          />
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="grid h-9 w-9 shrink-0 place-items-center self-end rounded-full text-lipro-500 transition-colors hover:bg-lipro-100 hover:text-lipro-600 dark:text-lipro-300 dark:hover:bg-lipro-950/60"
-            title="Attach a PDF, Word, image, or text file"
-            aria-label="Attach a file"
-          >
-            <Plus className="h-5 w-5" />
-          </button>
-          <textarea
-            ref={textareaRef}
-            value={input}
-            onChange={(e) => { setInput(e.target.value); autoResize(); }}
-            onKeyDown={handleComposerKeyDown}
-            placeholder="Ask LIPRO AI anything…"
-            rows={1}
-            autoCapitalize="sentences"
-            autoCorrect="on"
-            spellCheck={true}
-            enterKeyHint="send"
-            className="max-h-[200px] min-h-9 flex-1 resize-none self-center bg-transparent px-1.5 py-1.5 text-base leading-6 outline-none placeholder:text-lipro-300/70 dark:placeholder:text-lipro-300/40"
-          />
-          {loading ? (
-            <button
-              type="button"
-              onClick={() => abortRef.current?.abort()}
-              className="grid h-9 w-9 shrink-0 place-items-center self-end rounded-full border border-lipro-300/50 text-lipro-600 transition-colors hover:bg-lipro-100 dark:border-lipro-700/40 dark:text-lipro-200 dark:hover:bg-lipro-950/60"
-              title="Stop generating"
-              aria-label="Stop generating"
+            )}
+            {docs.length > 0 && (
+              <div className="mb-3 flex flex-wrap items-center gap-1.5">
+                <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-studio-subtle">Attached documents</span>
+                {docs.map((d) => (
+                  <span key={d.id || d.name} className="group inline-flex max-w-[220px] items-center gap-1.5 rounded-full bg-studio-elevated py-1 pl-2.5 pr-1 text-xs font-medium text-studio-fg shadow-studio-border">
+                    <FileText className="h-3 w-3 shrink-0 text-studio-primary" />
+                    <span className="truncate">{d.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => removeDoc(d.id)}
+                      className="shrink-0 rounded-full p-1 text-studio-subtle transition-colors hover:text-studio-danger"
+                      title="Delete attached file"
+                      aria-label={`Delete attached file ${d.name}`}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            {savedNote && (
+              <p className="mb-3 flex items-center gap-1.5 text-xs font-medium text-studio-primary">
+                <CheckCircle2 className="h-3.5 w-3.5" /> Document saved — ask LIPRO AI about it and it will teach from it.
+              </p>
+            )}
+            {attached.length > 0 && (
+              <div className="mb-3 flex flex-wrap gap-2">
+                {attached.map((a, i) => (
+                  <div key={i} className="flex items-center gap-2 rounded-lg bg-studio-elevated px-2.5 py-2 text-sm shadow-studio-border">
+                    {a.preview ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={a.preview} alt={a.name} className="h-10 w-10 shrink-0 rounded-md object-cover" />
+                    ) : (
+                      <FileText className="h-4 w-4 shrink-0 text-studio-primary" />
+                    )}
+                    <span className="max-w-[160px] min-w-0 flex-1 truncate font-medium text-studio-fg">{a.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => setAttached((prev) => prev.filter((_, idx) => idx !== i))}
+                      className="shrink-0 rounded-full p-1 text-studio-subtle transition-colors hover:text-studio-fg"
+                      title="Remove file"
+                      aria-label={`Remove attached file ${a.name}`}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {uploading && (
+              <p className="mb-3 flex items-center gap-1.5 text-xs font-medium text-studio-muted">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" /> {uploadProgress || 'Uploading…'}
+              </p>
+            )}
+            {attachError && <p className="mb-2 text-xs font-medium text-studio-danger">{attachError}</p>}
+
+            <form
+              className="flex items-end gap-2 rounded-xl bg-studio-surface p-2 shadow-studio-border"
+              onSubmit={(e) => { e.preventDefault(); send(input); }}
             >
-              <Square className="h-4 w-4" />
-            </button>
-          ) : (
-            <button
-              type="submit"
-              disabled={loadingConversation || (!input.trim() && attached.length === 0)}
-              className={cn(
-                'grid h-9 w-9 shrink-0 place-items-center self-end rounded-full transition-all active:scale-95',
-                input.trim() || attached.length > 0
-                  ? 'bg-gradient-to-br from-lipro-600 to-lipro-500 text-white'
-                  : 'bg-lipro-100 text-lipro-300 dark:bg-lipro-950/60 dark:text-lipro-700'
+              <input ref={fileInputRef} type="file" className="hidden" onChange={onPickFile} />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="grid h-9 w-9 shrink-0 place-items-center self-end rounded-full text-studio-subtle transition-colors hover:bg-studio-elevated hover:text-studio-fg"
+                title="Attach a PDF, Word, image, or text file"
+                aria-label="Attach a file"
+              >
+                <Plus className="h-5 w-5" />
+              </button>
+              <textarea
+                ref={textareaRef}
+                value={input}
+                onChange={(e) => { setInput(e.target.value); autoResize(); }}
+                onKeyDown={handleComposerKeyDown}
+                placeholder="Ask LIPRO AI anything…"
+                rows={1}
+                autoCapitalize="sentences"
+                autoCorrect="on"
+                spellCheck={true}
+                enterKeyHint="send"
+                className="max-h-[200px] min-h-9 flex-1 resize-none self-center bg-transparent px-1.5 py-1.5 text-base leading-6 text-studio-fg outline-none placeholder:text-studio-subtle"
+              />
+              {loading ? (
+                <button
+                  type="button"
+                  onClick={() => abortRef.current?.abort()}
+                  className="grid h-9 w-9 shrink-0 place-items-center self-end rounded-full bg-studio-elevated text-studio-muted shadow-studio-border hover:text-studio-fg"
+                  title="Stop generating"
+                  aria-label="Stop generating"
+                >
+                  <Square className="h-4 w-4 fill-current" />
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  disabled={loadingConversation || (!input.trim() && attached.length === 0)}
+                  className={cn(
+                    'grid h-9 w-9 shrink-0 place-items-center self-end rounded-full transition-transform active:scale-95',
+                    input.trim() || attached.length > 0 ? 'bg-studio-primary text-studio-primary-fg' : 'bg-studio-elevated text-studio-subtle',
+                  )}
+                  aria-label="Send message"
+                >
+                  <Send className="h-4 w-4" />
+                </button>
               )}
-              aria-label="Send message"
-            >
-              <Send className="h-4 w-4" />
-            </button>
-          )}
-        </form>
-        <div className="h-2" style={{ height: 'max(env(safe-area-inset-bottom), 0.5rem)' }} />
+            </form>
+            <p className="mt-2 text-center text-xs text-studio-subtle">Enter to send · Shift+Enter for a new line</p>
+          </div>
+        </div>
       </div>
     </div>
   );
