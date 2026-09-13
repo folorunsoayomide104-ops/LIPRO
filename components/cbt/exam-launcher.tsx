@@ -1,8 +1,8 @@
 'use client';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
 import { Brain, Loader2, Timer, ListChecks } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { createAttempt, type AttemptSource } from '@/lib/cbt/client';
 import { QUESTION_COUNTS, DURATION_MINUTES } from '@/lib/cbt/constants';
 import { FORMAT_LABELS, type QuestionFormat } from '@/lib/question-gen';
@@ -65,27 +65,32 @@ export function ExamLauncher({
 
   return (
     <div className="flex flex-col items-end gap-2">
-      <div className="flex gap-1 rounded-xl border border-lipro-200/60 bg-lipro-50/50 p-1 dark:border-lipro-500/20 dark:bg-lipro-950/30">
+      <div className="flex gap-1 rounded-full bg-studio-elevated p-1 shadow-studio-border">
         <button
           type="button"
           onClick={() => setMode('practice')}
-          className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${mode === 'practice' ? 'bg-lipro-600 text-white shadow-sm' : 'text-lipro-600/80 hover:bg-lipro-100/60 dark:text-lipro-200/70'}`}
+          className={cn('rounded-full px-3 py-1.5 text-xs font-medium transition-colors', mode === 'practice' ? 'bg-studio-primary text-studio-primary-fg' : 'text-studio-muted hover:text-studio-fg')}
         >
           Practice
         </button>
         <button
           type="button"
           onClick={() => setMode('exam')}
-          className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${mode === 'exam' ? 'bg-lipro-600 text-white shadow-sm' : 'text-lipro-600/80 hover:bg-lipro-100/60 dark:text-lipro-200/70'}`}
+          className={cn('rounded-full px-3 py-1.5 text-xs font-medium transition-colors', mode === 'exam' ? 'bg-studio-primary text-studio-primary-fg' : 'text-studio-muted hover:text-studio-fg')}
         >
           Exam mode
         </button>
       </div>
 
       {typeCounts && (
-        <label className="flex items-center gap-1.5 text-xs text-lipro-600/80 dark:text-lipro-200/70">
+        <label className="flex items-center gap-1.5 text-xs text-studio-muted">
           Format
-          <select className="input !py-1 text-xs" value={format} onChange={(e) => setFormat(e.target.value as QuestionFormat)} aria-label="Question format">
+          <select
+            className="h-8 rounded-md bg-studio-elevated px-2 text-xs text-studio-fg shadow-studio-border outline-none"
+            value={format}
+            onChange={(e) => setFormat(e.target.value as QuestionFormat)}
+            aria-label="Question format"
+          >
             {ALL_FORMATS.map((f) => {
               const n = typeCounts[f] || 0;
               return <option key={f} value={f} disabled={n === 0}>{FORMAT_LABELS[f]} ({n})</option>;
@@ -95,27 +100,42 @@ export function ExamLauncher({
       )}
 
       <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-1.5">
-        <label className="flex items-center gap-1.5 text-xs text-lipro-600/80 dark:text-lipro-200/70">
+        <label className="flex items-center gap-1.5 text-xs text-studio-muted">
           <ListChecks className="h-3.5 w-3.5" />
-          <select className="input !py-1 text-xs" value={count} onChange={(e) => setCount(Number(e.target.value))} aria-label="Number of questions">
+          <select
+            className="h-8 rounded-md bg-studio-elevated px-2 text-xs text-studio-fg shadow-studio-border outline-none"
+            value={count}
+            onChange={(e) => setCount(Number(e.target.value))}
+            aria-label="Number of questions"
+          >
             {QUESTION_COUNTS.map((c) => <option key={c} value={c}>{c} questions</option>)}
           </select>
         </label>
         {mode === 'exam' && (
-          <label className="flex items-center gap-1.5 text-xs text-lipro-600/80 dark:text-lipro-200/70">
+          <label className="flex items-center gap-1.5 text-xs text-studio-muted">
             <Timer className="h-3.5 w-3.5" />
-            <select className="input !py-1 text-xs" value={durationMin} onChange={(e) => setDurationMin(Number(e.target.value))} aria-label="Exam duration">
+            <select
+              className="h-8 rounded-md bg-studio-elevated px-2 text-xs text-studio-fg shadow-studio-border outline-none"
+              value={durationMin}
+              onChange={(e) => setDurationMin(Number(e.target.value))}
+              aria-label="Exam duration"
+            >
               {DURATION_MINUTES.map((d) => <option key={d} value={d}>{d} min</option>)}
             </select>
           </label>
         )}
       </div>
 
-      <Button size="sm" onClick={start} disabled={loading || (typeCounts ? (typeCounts[format] || 0) === 0 : false)}>
+      <button
+        type="button"
+        onClick={start}
+        disabled={loading || (typeCounts ? (typeCounts[format] || 0) === 0 : false)}
+        className="inline-flex h-9 items-center gap-1.5 rounded-full bg-studio-primary px-4 text-xs font-medium text-studio-primary-fg disabled:opacity-50"
+      >
         {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Brain className="h-4 w-4" />}
         {loading ? 'Starting…' : startLabel || (mode === 'practice' ? 'Start practice' : 'Start exam')}
-      </Button>
-      {error && <p className="text-xs text-rose-500">{error}</p>}
+      </button>
+      {error && <p className="text-xs text-studio-danger">{error}</p>}
     </div>
   );
 }

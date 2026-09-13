@@ -2,9 +2,8 @@
 import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { upload as blobUpload } from '@vercel/blob/client';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { FileUp, FileText, Loader2, Play, Zap, ListChecks, ToggleLeft, PenLine, NotebookPen, Sparkles } from 'lucide-react';
+import { FileUp, FileText, Loader2, Play, Zap, ListChecks, ToggleLeft, PenLine, NotebookPen } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { createAttempt } from '@/lib/cbt/client';
 import { QUESTION_COUNTS, DURATION_MINUTES } from '@/lib/cbt/constants';
 import type { QuestionFormat } from '@/lib/question-gen';
@@ -32,17 +31,6 @@ export function PdfExamCreator({ materials }: { materials: Doc[] }) {
   const [managingId, setManagingId] = useState<string | null>(null);
   const [error, setError] = useState('');
 
-  // Starting from an already-uploaded document reuses whatever question(s)
-  // were generated for it, regardless of the format picker above — that
-  // picker controls what gets GENERATED for a fresh upload, and the
-  // existing-documents list doesn't expose a per-format breakdown of what's
-  // already saved, so filtering here could silently produce "no questions
-  // available" for a document that has plenty, just not in this format.
-  // THEORY is the one exception: documents can now have manually-authored
-  // THEORY questions (QuestionManager's sourceId path) even while AI is
-  // disabled, and those grade as "pending manual review" forever — no admin
-  // screen exists yet to actually clear that queue. Excluded here so a
-  // student can't land on one until that screen exists.
   const startExam = async (materialId: string, durationSec: number) => {
     const result = await createAttempt({
       source: { kind: 'material', id: materialId },
@@ -82,10 +70,6 @@ export function PdfExamCreator({ materials }: { materials: Doc[] }) {
       if (!up.ok) throw new Error(upData?.error || 'Upload failed');
       materialId = upData.material.id;
 
-      // "analyzing" reflects what actually happens server-side now: the
-      // document is scanned for exam-likely concepts before any question in
-      // the chosen format is written, rather than pulling straight from
-      // whatever text happens to fall in a chunk.
       setPhase('analyzing');
       setTimeout(() => setPhase((p) => (p === 'analyzing' ? 'generating' : p)), 1400);
       const gen = await fetch(`/api/materials/${materialId}/questions`, {
@@ -115,9 +99,9 @@ export function PdfExamCreator({ materials }: { materials: Doc[] }) {
   const fmtBytes = (b: number) => (b > 1024 * 1024 ? `${(b / (1024 * 1024)).toFixed(1)} MB` : `${(b / 1024).toFixed(0)} KB`);
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col gap-6">
       <div
-        className="cursor-pointer rounded-xl border border-dashed border-lipro-300/50 p-4 text-center transition-colors hover:border-lipro-400 hover:bg-lipro-50/40 dark:hover:bg-lipro-950/30"
+        className="flex cursor-pointer flex-col items-center rounded-lg border border-dashed border-studio-border-strong px-4 py-8 text-center transition-colors hover:border-studio-primary/50 hover:bg-studio-bg/40"
         onClick={() => inputRef.current?.click()}
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => {
@@ -134,22 +118,23 @@ export function PdfExamCreator({ materials }: { materials: Doc[] }) {
           onChange={(e) => setFile(e.target.files?.[0] || null)}
         />
         {file ? (
-          <div className="flex flex-wrap items-center justify-center gap-2 text-sm font-medium">
-            <FileText className="h-4 w-4 shrink-0 text-lipro-500" />
-            <span className="max-w-full truncate">{file.name}</span>
-            <span className="shrink-0 text-xs text-lipro-600/60">({fmtBytes(file.size)})</span>
-            <Badge tone="green" className="shrink-0">Selected</Badge>
-          </div>
+          <>
+            <FileText className="h-6 w-6 text-studio-primary" />
+            <span className="mt-3 max-w-full truncate text-sm font-medium text-studio-fg">{file.name}</span>
+            <span className="mt-1 text-xs text-studio-subtle">{fmtBytes(file.size)} · Selected</span>
+          </>
         ) : (
-          <div className="flex items-center justify-center gap-2 text-sm text-lipro-600/70">
-            <FileUp className="h-4 w-4" /> Drop a PDF, Word, TXT or MD file here, or click to choose
-          </div>
+          <>
+            <FileUp className="h-6 w-6 text-studio-primary" />
+            <span className="mt-3 text-sm font-medium text-studio-fg">Drop a PDF, Word, TXT or MD file here</span>
+            <span className="mt-1 text-xs text-studio-subtle">Or click to choose</span>
+          </>
         )}
       </div>
 
       <div>
-        <label className="label flex items-center gap-1.5"><Sparkles className="h-3.5 w-3.5 text-lipro-500" /> Question format</label>
-        <div className="grid grid-cols-2 gap-2">
+        <p className="text-xs font-medium uppercase tracking-[0.16em] text-studio-subtle">Question format</p>
+        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
           {FORMAT_OPTIONS.map((opt) => {
             const Icon = opt.icon;
             const active = format === opt.value;
@@ -159,94 +144,108 @@ export function PdfExamCreator({ materials }: { materials: Doc[] }) {
                 type="button"
                 onClick={() => setFormat(opt.value)}
                 disabled={phase !== 'idle'}
-                className={`flex flex-col items-start gap-1 rounded-xl border p-2.5 text-left transition-all disabled:opacity-60 ${
-                  active
-                    ? 'border-lipro-500 bg-lipro-50 dark:border-lipro-400 dark:bg-lipro-950/50'
-                    : 'border-lipro-200/60 hover:border-lipro-300 hover:bg-lipro-50/40 dark:border-lipro-500/20 dark:hover:bg-lipro-950/30'
-                }`}
+                className={cn(
+                  'rounded-lg px-4 py-3 text-left shadow-studio-border transition-colors disabled:opacity-60',
+                  active ? 'bg-studio-primary text-studio-primary-fg' : 'bg-studio-elevated text-studio-muted hover:text-studio-fg',
+                )}
               >
-                <span className={`flex items-center gap-1.5 text-sm font-medium ${active ? 'text-lipro-700 dark:text-lipro-200' : ''}`}>
-                  <Icon className="h-4 w-4" /> {opt.label}
-                </span>
-                <span className="text-xs text-lipro-600/60 dark:text-lipro-300/60">{opt.hint}</span>
+                <span className="flex items-center gap-1.5 text-sm font-medium"><Icon className="h-4 w-4" /> {opt.label}</span>
+                <span className={cn('mt-1 block text-xs', active ? 'text-studio-primary-fg/70' : 'text-studio-subtle')}>{opt.hint}</span>
               </button>
             );
           })}
         </div>
       </div>
 
-      <div className="flex gap-1 rounded-xl border border-lipro-200/60 bg-lipro-50/50 p-1 dark:border-lipro-500/20 dark:bg-lipro-950/30">
-        <button
-          type="button"
-          onClick={() => setMode('practice')}
-          className={`flex-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${mode === 'practice' ? 'bg-lipro-600 text-white shadow-sm' : 'text-lipro-600/80 hover:bg-lipro-100/60 dark:text-lipro-200/70'}`}
-        >
-          Practice
-        </button>
-        <button
-          type="button"
-          onClick={() => setMode('exam')}
-          className={`flex-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${mode === 'exam' ? 'bg-lipro-600 text-white shadow-sm' : 'text-lipro-600/80 hover:bg-lipro-100/60 dark:text-lipro-200/70'}`}
-        >
-          Exam mode
-        </button>
+      <div>
+        <p className="text-xs font-medium uppercase tracking-[0.16em] text-studio-subtle">Sit as</p>
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => setMode('practice')}
+            className={cn('h-10 rounded-full text-sm font-medium transition-colors', mode === 'practice' ? 'bg-studio-primary text-studio-primary-fg' : 'bg-studio-elevated text-studio-muted shadow-studio-border hover:text-studio-fg')}
+          >
+            Practice
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode('exam')}
+            className={cn('h-10 rounded-full text-sm font-medium transition-colors', mode === 'exam' ? 'bg-studio-primary text-studio-primary-fg' : 'bg-studio-elevated text-studio-muted shadow-studio-border hover:text-studio-fg')}
+          >
+            Exam mode
+          </button>
+        </div>
       </div>
 
-      <div className={`grid grid-cols-1 gap-3 ${mode === 'exam' ? 'sm:grid-cols-2' : ''}`}>
+      <div className={cn('grid grid-cols-1 gap-3', mode === 'exam' && 'sm:grid-cols-2')}>
         <div>
-          <label className="label">Questions</label>
-          <select className="input" value={count} onChange={(e) => setCount(Number(e.target.value))}>
+          <label className="text-xs font-medium uppercase tracking-[0.16em] text-studio-subtle">Questions</label>
+          <select
+            className="mt-2 h-11 w-full rounded-lg bg-studio-elevated px-3 text-sm text-studio-fg shadow-studio-border outline-none"
+            value={count}
+            onChange={(e) => setCount(Number(e.target.value))}
+          >
             {QUESTION_COUNTS.map((c) => <option key={c} value={c}>{c} questions</option>)}
           </select>
         </div>
         {mode === 'exam' && (
           <div>
-            <label className="label">Exam duration</label>
-            <select className="input" value={durationMin} onChange={(e) => setDurationMin(Number(e.target.value))}>
+            <label className="text-xs font-medium uppercase tracking-[0.16em] text-studio-subtle">Exam duration</label>
+            <select
+              className="mt-2 h-11 w-full rounded-lg bg-studio-elevated px-3 text-sm text-studio-fg shadow-studio-border outline-none"
+              value={durationMin}
+              onChange={(e) => setDurationMin(Number(e.target.value))}
+            >
               {DURATION_MINUTES.map((d) => <option key={d} value={d}>{d} minutes</option>)}
             </select>
           </div>
         )}
       </div>
 
-      <Button onClick={generateAndStart} disabled={phase !== 'idle'} className="w-full" size="lg">
-        {phase === 'idle' ? <Zap className="h-4 w-4" /> : <Loader2 className="h-4 w-4 animate-spin" />}
-        {phaseText}
-        {phase === 'uploading' && uploadProgress > 0 ? ` ${uploadProgress}%` : ''}
-      </Button>
-      {phase === 'uploading' && (
-        <div className="h-1.5 w-full overflow-hidden rounded-full bg-lipro-100 dark:bg-white/10">
-          <div className="h-full rounded-full bg-lipro-500 transition-all" style={{ width: `${uploadProgress}%` }} />
-        </div>
-      )}
-      {error && <p className="text-xs text-rose-500">{error}</p>}
-      <p className="text-xs text-lipro-600/60">
-        {mode === 'practice'
-          ? `We'll analyze your document for the concepts most likely to be tested, then write up to ${count} ${FORMAT_OPTIONS.find((f) => f.value === format)!.label.toLowerCase()} question(s) from them. Check each answer as you go — no timer, instant feedback, and a running score.`
-          : `We'll analyze your document for the concepts most likely to be tested, then write up to ${count} ${FORMAT_OPTIONS.find((f) => f.value === format)!.label.toLowerCase()} question(s) and start a countdown timed exam. Auto-submits when time runs out.`}
-      </p>
+      <div>
+        <button
+          type="button"
+          onClick={generateAndStart}
+          disabled={phase !== 'idle'}
+          className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-studio-primary text-sm font-medium text-studio-primary-fg disabled:opacity-60"
+        >
+          {phase === 'idle' ? <Zap className="h-4 w-4" /> : <Loader2 className="h-4 w-4 animate-spin" />}
+          {phaseText}
+          {phase === 'uploading' && uploadProgress > 0 ? ` ${uploadProgress}%` : ''}
+        </button>
+        {phase === 'uploading' && (
+          <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-studio-elevated">
+            <div className="h-full rounded-full bg-studio-primary transition-all" style={{ width: `${uploadProgress}%` }} />
+          </div>
+        )}
+        {error && <p className="mt-2 text-xs text-studio-danger">{error}</p>}
+        <p className="mt-3 text-xs leading-normal text-studio-subtle">
+          {mode === 'practice'
+            ? `We'll analyze your document for the concepts most likely to be tested, then write up to ${count} ${FORMAT_OPTIONS.find((f) => f.value === format)!.label.toLowerCase()} question(s) from them. Check each answer as you go — no timer, instant feedback, and a running score.`
+            : `We'll analyze your document for the concepts most likely to be tested, then write up to ${count} ${FORMAT_OPTIONS.find((f) => f.value === format)!.label.toLowerCase()} question(s) and start a countdown timed exam. Auto-submits when time runs out.`}
+        </p>
+      </div>
 
       {materials.length > 0 && (
-        <div className="space-y-2 border-t border-lipro-200/40 pt-3">
-          <div className="label">Your documents</div>
+        <div className="flex flex-col gap-2 border-t border-studio-border pt-4">
+          <p className="text-xs font-medium uppercase tracking-[0.16em] text-studio-subtle">Your documents</p>
           {materials.map((m) => (
-            <div key={m.id} className="rounded-xl p-2.5 glass-hover">
+            <div key={m.id} className="rounded-lg bg-studio-elevated p-3">
               <div className="flex items-center justify-between gap-2">
                 <div className="min-w-0">
-                  <div className="truncate text-sm font-medium">{m.originalName}</div>
-                  <div className="text-xs text-lipro-600/60">{m.questionCount} questions</div>
+                  <div className="truncate text-sm font-medium text-studio-fg">{m.originalName}</div>
+                  <div className="text-xs text-studio-subtle">{m.questionCount} questions</div>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
-                  <Button
-                    size="sm"
-                    variant="ghost"
+                  <button
+                    type="button"
                     onClick={() => setManagingId((id) => (id === m.id ? null : m.id))}
+                    className="h-8 rounded-full px-3 text-xs font-medium text-studio-subtle hover:text-studio-fg"
                   >
                     {managingId === m.id ? 'Close' : 'Manage questions'}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
+                  </button>
+                  <button
+                    type="button"
                     disabled={m.questionCount === 0 || phase !== 'idle'}
                     onClick={async () => {
                       setError('');
@@ -254,13 +253,14 @@ export function PdfExamCreator({ materials }: { materials: Doc[] }) {
                       try { await startExam(m.id, durationMin * 60); }
                       catch (err: any) { setError(err?.message || 'Could not start attempt'); setPhase('idle'); }
                     }}
+                    className="inline-flex h-8 items-center gap-1.5 rounded-full bg-studio-surface px-3 text-xs font-medium text-studio-muted shadow-studio-border hover:text-studio-fg disabled:opacity-40"
                   >
                     <Play className="h-3.5 w-3.5" /> {mode === 'practice' ? 'Practice' : 'Exam'}
-                  </Button>
+                  </button>
                 </div>
               </div>
               {managingId === m.id && (
-                <div className="mt-3 border-t border-lipro-200/40 pt-3">
+                <div className="mt-3 border-t border-studio-border pt-3">
                   <QuestionManager sourceId={m.id} />
                 </div>
               )}
