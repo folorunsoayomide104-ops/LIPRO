@@ -11,7 +11,7 @@ import { NextResponse } from 'next/server';
 // every mobile handoff (Google OAuth, wallet funding, subscription
 // checkout) uses the same proven approach instead of re-deriving it.
 export function mobileHandoff(target: string): NextResponse {
-  const html = `<!doctype html><html><head><meta charset="utf-8"><title>Returning to LIPRO Academy…</title></head><body style="font-family:system-ui,sans-serif;background:#0f0a1a;color:#fff;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;text-align:center;padding:24px">
+  const html = `<!doctype html><html><head><meta charset="utf-8"><title>Returning to LIPRO…</title></head><body style="font-family:system-ui,sans-serif;background:#0f0a1a;color:#fff;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;text-align:center;padding:24px">
 <div><p>Returning you to the app…</p><p style="opacity:.6;font-size:14px">If nothing happens, <a href="${target}" style="color:#c084fc">tap here to continue</a>.</p></div>
 <script>location.replace(${JSON.stringify(target)});</script>
 </body></html>`;
