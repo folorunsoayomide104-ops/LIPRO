@@ -1,9 +1,6 @@
 'use client';
 import { useState } from 'react';
 import { Sparkles, X, Trash2, BookOpen, FileText } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 
 type NoteRow = {
   id: string;
@@ -19,6 +16,8 @@ type MaterialOption = { id: string; name: string; courseId: string | null };
 type CourseOption = { id: string; code: string; title: string };
 
 const isRevisionGuide = (n: NoteRow) => (n.tags ?? '').split(',').map((t) => t.trim()).includes('revision-guide');
+const selectCls = 'w-full rounded-lg bg-studio-elevated px-3 py-2.5 text-sm text-studio-fg shadow-studio-border outline-none';
+const labelCls = 'mb-1 block text-xs font-medium uppercase tracking-[0.14em] text-studio-subtle';
 
 export function NotesClient({
   initialNotes,
@@ -44,67 +43,68 @@ export function NotesClient({
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">My Notes</h1>
-          <p className="text-sm text-lipro-600/70 dark:text-lipro-200/70">Your personal study notes and AI-generated revision guides</p>
+    <div className="-mx-4 -mt-2 min-h-[calc(100dvh-4rem)] bg-studio-bg p-4 text-studio-fg md:p-6">
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
+        <div className="flex flex-wrap items-center justify-between gap-3 studio-rise">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-[0.18em] text-studio-subtle">Notes</p>
+            <h1 className="mt-2 font-studio-display text-3xl tracking-tight md:text-4xl">My notes.</h1>
+            <p className="mt-2 max-w-lg text-sm leading-normal text-studio-muted">Your personal study notes and AI-generated revision guides.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowGenerate((v) => !v)}
+            className="inline-flex h-9 items-center gap-1.5 rounded-full bg-studio-primary px-3 text-xs font-medium text-studio-primary-fg"
+          >
+            <Sparkles className="h-4 w-4" /> Generate revision guide
+          </button>
         </div>
-        <Button size="sm" onClick={() => setShowGenerate((v) => !v)}>
-          <Sparkles className="h-4 w-4" /> Generate revision guide
-        </Button>
-      </div>
 
-      {showGenerate && (
-        <GenerateRevisionGuide
-          materials={materials}
-          courses={courses}
-          onGenerated={(note) => {
-            setNotes((prev) => [note, ...prev]);
-            setShowGenerate(false);
-            setViewing(note);
-          }}
-          onCancel={() => setShowGenerate(false)}
-        />
-      )}
-
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {notes.length === 0 && (
-          <p className="text-sm text-lipro-600/60">No notes yet. Create one from a course page, or generate a revision guide from a document above.</p>
+        {showGenerate && (
+          <GenerateRevisionGuide
+            materials={materials}
+            courses={courses}
+            onGenerated={(note) => {
+              setNotes((prev) => [note, ...prev]);
+              setShowGenerate(false);
+              setViewing(note);
+            }}
+            onCancel={() => setShowGenerate(false)}
+          />
         )}
-        {notes.map((n) => (
-          <Card key={n.id} className="group flex h-full flex-col">
-            <button className="flex-1 text-left" onClick={() => setViewing(n)}>
-              <CardHeader>
-                <div>
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <Badge tone="purple">{n.courseCode || 'General'}</Badge>
-                    {isRevisionGuide(n) && (
-                      <Badge tone="indigo" className="gap-1"><BookOpen className="h-3 w-3" /> Revision guide</Badge>
-                    )}
-                  </div>
-                  <CardTitle className="mt-2 text-base">{n.title}</CardTitle>
-                  <CardDescription>Last updated {new Date(n.updatedAt).toLocaleDateString()}</CardDescription>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-xs text-lipro-700/70 dark:text-lipro-200/70 line-clamp-3">{n.content.replace(/^\[demo\]\s*/, '').replace(/[#\-*]/g, '')}</p>
-              </CardContent>
-            </button>
-            <div className="flex justify-end px-6 pb-4">
-              <button
-                aria-label={`Delete "${n.title}"`}
-                onClick={() => removeNote(n.id)}
-                className="grid h-7 w-7 place-items-center rounded-full border border-lipro-200/60 bg-white text-lipro-400 opacity-0 transition-opacity hover:text-rose-500 group-hover:opacity-100 dark:border-lipro-700/40 dark:bg-surface-dark"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          </Card>
-        ))}
-      </div>
 
-      {viewing && <NoteViewer note={viewing} onClose={() => setViewing(null)} />}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {notes.length === 0 && (
+            <p className="text-sm text-studio-subtle">No notes yet. Create one from a course page, or generate a revision guide from a document above.</p>
+          )}
+          {notes.map((n) => (
+            <div key={n.id} className="group flex h-full flex-col rounded-xl bg-studio-surface p-5 shadow-studio-border studio-rise studio-rise-delay-1">
+              <button className="flex-1 text-left" onClick={() => setViewing(n)}>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="rounded-full bg-studio-elevated px-2.5 py-1 text-xs font-medium text-studio-primary">{n.courseCode || 'General'}</span>
+                  {isRevisionGuide(n) && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-studio-elevated px-2.5 py-1 text-xs font-medium text-studio-muted"><BookOpen className="h-3 w-3" /> Revision guide</span>
+                  )}
+                </div>
+                <h3 className="mt-3 font-studio-display text-lg tracking-tight text-studio-fg">{n.title}</h3>
+                <p className="text-xs text-studio-subtle">Last updated {new Date(n.updatedAt).toLocaleDateString()}</p>
+                <p className="mt-2 line-clamp-3 text-xs text-studio-muted">{n.content.replace(/^\[demo\]\s*/, '').replace(/[#\-*]/g, '')}</p>
+              </button>
+              <div className="mt-3 flex justify-end">
+                <button
+                  aria-label={`Delete "${n.title}"`}
+                  onClick={() => removeNote(n.id)}
+                  className="grid h-7 w-7 place-items-center rounded-full bg-studio-elevated text-studio-subtle opacity-0 shadow-studio-border transition-opacity hover:text-studio-danger group-hover:opacity-100"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {viewing && <NoteViewer note={viewing} onClose={() => setViewing(null)} />}
+      </div>
     </div>
   );
 }
@@ -122,9 +122,6 @@ function GenerateRevisionGuide({
 }) {
   const [materialId, setMaterialId] = useState(materials[0]?.id ?? '');
   const material = materials.find((m) => m.id === materialId);
-  // Empty string means "no course" — a study document isn't always tied to
-  // a formal course, so this is a real, selectable option, not just a
-  // fallback for when the course list happens to be empty.
   const [courseId, setCourseId] = useState(material?.courseId ?? '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -170,48 +167,40 @@ function GenerateRevisionGuide({
 
   if (materials.length === 0) {
     return (
-      <Card>
-        <CardContent>
-          <p className="text-sm text-lipro-600/70 dark:text-lipro-200/60">Upload a document in LIPRO AI or the CBT PDF tool first — revision guides generate from a document&apos;s text, page by page.</p>
-          <Button size="sm" variant="ghost" onClick={onCancel}>Close</Button>
-        </CardContent>
-      </Card>
+      <div className="rounded-xl bg-studio-surface p-5 shadow-studio-border">
+        <p className="text-sm text-studio-muted">Upload a document in LIPRO AI or the CBT PDF tool first — revision guides generate from a document&apos;s text, page by page.</p>
+        <button type="button" onClick={onCancel} className="mt-3 inline-flex h-9 items-center rounded-full px-4 text-xs font-medium text-studio-subtle hover:text-studio-fg">Close</button>
+      </div>
     );
   }
 
   return (
-    <Card>
-      <CardHeader><CardTitle className="text-base">Generate a revision guide from a document</CardTitle></CardHeader>
-      <CardContent>
+    <div className="rounded-xl bg-studio-surface p-5 shadow-studio-border">
+      <h3 className="font-studio-display text-lg tracking-tight text-studio-fg">Generate a revision guide from a document</h3>
+      <div className="mt-4 flex flex-col gap-3">
         <div>
-          <label className="mb-1 block text-xs font-medium text-lipro-600/70 dark:text-lipro-200/60">Document</label>
-          <select
-            value={materialId}
-            onChange={(e) => pickMaterial(e.target.value)}
-            className="w-full rounded-xl border border-lipro-300/50 bg-white/70 px-4 py-2.5 text-sm outline-none focus:border-lipro-400 dark:border-lipro-700/40 dark:bg-surface-dark/60"
-          >
+          <label className={labelCls}>Document</label>
+          <select value={materialId} onChange={(e) => pickMaterial(e.target.value)} className={selectCls}>
             {materials.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
           </select>
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-lipro-600/70 dark:text-lipro-200/60">Save under course (optional)</label>
-          <select
-            value={courseId}
-            onChange={(e) => setCourseId(e.target.value)}
-            className="w-full rounded-xl border border-lipro-300/50 bg-white/70 px-4 py-2.5 text-sm outline-none focus:border-lipro-400 dark:border-lipro-700/40 dark:bg-surface-dark/60"
-          >
+          <label className={labelCls}>Save under course (optional)</label>
+          <select value={courseId} onChange={(e) => setCourseId(e.target.value)} className={selectCls}>
             <option value="">General (no course)</option>
             {courses.map((c) => <option key={c.id} value={c.id}>{c.code} — {c.title}</option>)}
           </select>
         </div>
-        {error && <p className="text-xs text-rose-500">{error}</p>}
-        {loading && progressNote && <p className="text-xs text-lipro-600/60 dark:text-lipro-200/50">{progressNote}</p>}
+        {error && <p className="text-xs text-studio-danger">{error}</p>}
+        {loading && progressNote && <p className="text-xs text-studio-subtle">{progressNote}</p>}
         <div className="flex gap-2">
-          <Button size="sm" onClick={submit} disabled={loading || !materialId}>{loading ? 'Generating…' : 'Generate'}</Button>
-          <Button size="sm" variant="ghost" onClick={onCancel}>Cancel</Button>
+          <button type="button" onClick={submit} disabled={loading || !materialId} className="inline-flex h-9 items-center rounded-full bg-studio-primary px-4 text-xs font-medium text-studio-primary-fg disabled:opacity-60">
+            {loading ? 'Generating…' : 'Generate'}
+          </button>
+          <button type="button" onClick={onCancel} className="inline-flex h-9 items-center rounded-full px-4 text-xs font-medium text-studio-subtle hover:text-studio-fg">Cancel</button>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 
@@ -225,7 +214,7 @@ function renderGuideBody(content: string) {
   const flushList = () => {
     if (listBuffer.length === 0) return;
     blocks.push(
-      <ul key={`ul-${key++}`} className="ml-4 list-disc space-y-1 text-sm text-lipro-700/80 dark:text-lipro-200/70">
+      <ul key={`ul-${key++}`} className="ml-4 list-disc space-y-1 text-sm text-studio-muted">
         {listBuffer.map((item, i) => <li key={i}>{item}</li>)}
       </ul>
     );
@@ -236,15 +225,15 @@ function renderGuideBody(content: string) {
     const line = raw.trim();
     if (line === '---') {
       flushList();
-      blocks.push(<hr key={`hr-${key++}`} className="my-3 border-lipro-200/50 dark:border-lipro-700/30" />);
+      blocks.push(<hr key={`hr-${key++}`} className="my-3 border-studio-border" />);
     } else if (line.startsWith('## ')) {
       flushList();
-      blocks.push(<h3 key={`h-${key++}`} className="mt-4 text-sm font-bold text-lipro-700 dark:text-lipro-200">{line.slice(3)}</h3>);
+      blocks.push(<h3 key={`h-${key++}`} className="mt-4 font-studio-display text-base tracking-tight text-studio-fg">{line.slice(3)}</h3>);
     } else if (line.startsWith('- ')) {
       listBuffer.push(line.slice(2));
     } else if (line.length > 0) {
       flushList();
-      blocks.push(<p key={`p-${key++}`} className="text-sm text-lipro-700/80 dark:text-lipro-200/70">{line}</p>);
+      blocks.push(<p key={`p-${key++}`} className="text-sm text-studio-muted">{line}</p>);
     }
   }
   flushList();
@@ -253,30 +242,30 @@ function renderGuideBody(content: string) {
 
 function NoteViewer({ note, onClose }: { note: NoteRow; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-studio-bg/70 p-4" onClick={onClose}>
       <div
-        className="glass max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-2xl p-6"
+        className="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-xl bg-studio-surface p-6 shadow-studio-float"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
             <div className="flex flex-wrap items-center gap-1.5">
-              <Badge tone="purple">{note.courseCode || 'General'}</Badge>
-              {isRevisionGuide(note) && <Badge tone="indigo" className="gap-1"><BookOpen className="h-3 w-3" /> Revision guide</Badge>}
+              <span className="rounded-full bg-studio-elevated px-2.5 py-1 text-xs font-medium text-studio-primary">{note.courseCode || 'General'}</span>
+              {isRevisionGuide(note) && <span className="inline-flex items-center gap-1 rounded-full bg-studio-elevated px-2.5 py-1 text-xs font-medium text-studio-muted"><BookOpen className="h-3 w-3" /> Revision guide</span>}
             </div>
-            <h2 className="mt-2 text-lg font-bold">{note.title}</h2>
+            <h2 className="mt-2 font-studio-display text-xl tracking-tight text-studio-fg">{note.title}</h2>
           </div>
-          <button aria-label="Close" onClick={onClose} className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-lipro-500 hover:bg-lipro-100 dark:hover:bg-lipro-950/60">
+          <button aria-label="Close" onClick={onClose} className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-studio-subtle hover:bg-studio-elevated hover:text-studio-fg">
             <X className="h-4 w-4" />
           </button>
         </div>
         <div className="space-y-1">
           {isRevisionGuide(note) ? renderGuideBody(note.content) : (
-            <p className="whitespace-pre-wrap text-sm text-lipro-700/80 dark:text-lipro-200/70">{note.content}</p>
+            <p className="whitespace-pre-wrap text-sm text-studio-muted">{note.content}</p>
           )}
         </div>
         {note.content.startsWith('[demo]') && (
-          <p className="mt-4 flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-300">
+          <p className="mt-4 flex items-center gap-1.5 text-xs text-amber-400">
             <FileText className="h-3.5 w-3.5" /> Generated in demo mode — add an NVIDIA API key in Settings for a fully AI-written guide.
           </p>
         )}

@@ -1,7 +1,5 @@
 'use client';
 import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Plus } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -19,12 +17,24 @@ export function WalletFundButton() {
       else location.reload();
     } else toast.error(data?.error || 'Could not fund your wallet. Please try again.');
   };
-  if (!open) return <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4" /> Fund wallet</Button>;
+  if (!open) return (
+    <button type="button" onClick={() => setOpen(true)} className="inline-flex h-10 items-center gap-1.5 rounded-full bg-studio-primary px-4 text-sm font-medium text-studio-primary-fg">
+      <Plus className="h-4 w-4" /> Fund wallet
+    </button>
+  );
   return (
     <div className="flex gap-2">
-      <Input type="number" min={100} value={amount} onChange={(e) => setAmount(Number(e.target.value))} />
-      <Button onClick={fund} disabled={loading}>{loading ? 'Processing…' : 'Fund'}</Button>
-      <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+      <input
+        type="number"
+        min={100}
+        value={amount}
+        onChange={(e) => setAmount(Number(e.target.value))}
+        className="h-10 w-28 rounded-lg bg-studio-elevated px-3 text-sm text-studio-fg shadow-studio-border outline-none"
+      />
+      <button type="button" onClick={fund} disabled={loading} className="inline-flex h-10 items-center rounded-full bg-studio-primary px-4 text-sm font-medium text-studio-primary-fg disabled:opacity-60">
+        {loading ? 'Processing…' : 'Fund'}
+      </button>
+      <button type="button" onClick={() => setOpen(false)} className="inline-flex h-10 items-center rounded-full px-4 text-sm font-medium text-studio-subtle hover:text-studio-fg">Cancel</button>
     </div>
   );
 }
