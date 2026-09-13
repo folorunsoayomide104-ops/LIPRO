@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { guard } from '@/lib/api-guard';
 import { chatSchema } from '@/lib/validators';
-import { resolveAiProviders, type AiProviderConfig, AI_FEATURES_ENABLED } from '@/lib/ai';
+import { resolveAiProviders, markNvidiaModelBroken, type AiProviderConfig, AI_FEATURES_ENABLED } from '@/lib/ai';
 import { MAX_UPLOAD_BYTES } from '@/lib/pdf';
 import { ingestMaterial } from '@/lib/materials/ingest';
 import { isTrustedBlobUrl } from '@/lib/blob-url';
@@ -227,6 +227,7 @@ export async function POST(req: Request) {
         break;
       } catch (err: any) {
         console.error(`LIPRO AI error on ${cfg.provider}:`, err?.message || err);
+        if (cfg.provider === 'nvidia') markNvidiaModelBroken(cfg.apiKey, cfg.model);
       }
     }
   } else {
@@ -327,6 +328,11 @@ async function handleStream(
         } catch (err: any) {
           console.error(`LIPRO AI stream error on ${cfg.provider}:`, err?.message || err);
           console.log(`[LIPRO_AI_TIMING] provider ${cfg.model} FAILED after ${Date.now() - tAttemptStart}ms, total elapsed +${Date.now() - tRequestStart}ms`);
+          // Only a complete failure (never streamed anything) proves this
+          // candidate is currently broken — a model that streamed real
+          // content and then errored mid-way is a working, provisioned
+          // model having a transient hiccup, not one worth cooling down.
+          if (!streamedAny && cfg.provider === 'nvidia') markNvidiaModelBroken(cfg.apiKey, cfg.model);
           if (streamedAny) {
             finalText = attemptText;
             outcome = 'partial';

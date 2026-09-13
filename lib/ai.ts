@@ -107,13 +107,197 @@ export async function resolveAiProvider(userId: string): Promise<AiProviderConfi
   return list[0] ?? { provider: 'none', apiKey: '', baseURL: NVIDIA_BASE_URL, model: NVIDIA_MODEL };
 }
 
+/* ------------------------------------------------------------------ *
+ * LIVE MODEL DISCOVERY — every hand-maintained NVIDIA_MODEL_CHAIN entry
+ * in this file's history has eventually gone stale: NVIDIA retires NIM
+ * models with as little as ~2 weeks' notice, and a model can be *listed*
+ * in GET /v1/models while still 404ing on every real completion call
+ * ("Function '<id>' not found for account") — being listed doesn't mean
+ * this key can actually invoke it. The static chain above was rebuilt by
+ * hand from production log evidence at least three separate times this
+ * session alone. This replaces that with the same approach a reference
+ * NVIDIA-backed chat app (liproaiappn.vercel.app) actually uses: probe a
+ * ranked pool of candidates with a real trivial completion call, keep
+ * only the ones that don't come back 404, and cache the result briefly
+ * per key so most requests skip the extra round trip. NVIDIA_MODEL_CHAIN
+ * is kept as the last-resort fallback if discovery itself fails (e.g.
+ * NVIDIA's /v1/models endpoint is unreachable).
+ * ------------------------------------------------------------------ */
+
+// Ranked ahead of a generic size sweep when present in the live catalog —
+// not a requirement, just a tie-break. Nemotron (NVIDIA's own family) is
+// checked separately, first, regardless of this list.
+const PREFERRED_NVIDIA_MODELS = [
+  'mistralai/mistral-nemotron',
+  'meta/llama-3.1-8b-instruct',
+  'nvidia/llama-3.1-nemotron-nano-8b-v1',
+  'meta/llama-3.1-70b-instruct',
+  'nvidia/llama-3.3-nemotron-super-49b-v1',
+];
+
+// Denylist rather than allowlist — NVIDIA's naming conventions vary too
+// much for an allowlist regex to be safe (a real chat model can fail to
+// match "instruct|chat|nemotron" and get silently excluded). Only rule
+// out the kinds that are unambiguously not text-chat.
+const NON_CHAT_HINTS =
+  /embed|rerank|guard|vision|tts|asr|whisper|clip|ocr|moderat|safety|reward|classif|-parse\b|parse-|retriev|codec|detector|video/;
+
+function looksLikeChatModel(id: string): boolean {
+  return !NON_CHAT_HINTS.test(id.toLowerCase());
+}
+
+function sizeRank(id: string): number {
+  const lower = id.toLowerCase();
+  if (/nano|mini|\b1b\b|\b2b\b|\b3b\b/.test(lower)) return 0;
+  if (/\b7b\b|\b8b\b|\b9b\b/.test(lower)) return 1;
+  if (/\b13b\b|\b14b\b|\b22b\b/.test(lower)) return 2;
+  if (/super|ultra|\b49b\b|\b70b\b|\b72b\b|\b405b\b/.test(lower)) return 4;
+  return 3;
+}
+
+const MAX_LIVE_CANDIDATES = 6;
+const PROBE_POOL_SIZE = 60;
+const PROBE_TIMEOUT_MS = 6_000;
+const PROBE_CONCURRENCY = 8;
+const PROBE_PHASE_BUDGET_MS = 12_000;
+const MODEL_LIST_CACHE_TTL_MS = 10 * 60 * 1000;
+const MODEL_COOLDOWN_MS = 5 * 60 * 1000;
+
+type ModelListCacheEntry = { models: string[]; expiresAt: number };
+const nvidiaModelListCache = new Map<string, ModelListCacheEntry>();
+type ModelHealth = { brokenUntil: number };
+const nvidiaModelHealth = new Map<string, ModelHealth>();
+
+function healthKey(apiKey: string, model: string) {
+  return `${apiKey}::${model}`;
+}
+
+/** A model that just failed a real generation call is skipped for a short
+ *  cooldown so the *next* request doesn't re-pay the latency of a model
+ *  already known to be currently broken. Call this from the pipeline/
+ *  question-gen callers on a genuine failure. In-memory only (best-effort
+ *  across warm serverless instances) — correctness never depends on it. */
+export function markNvidiaModelBroken(apiKey: string, model: string) {
+  nvidiaModelHealth.set(healthKey(apiKey, model), { brokenUntil: Date.now() + MODEL_COOLDOWN_MS });
+}
+
+function isInCooldown(apiKey: string, model: string): boolean {
+  const entry = nvidiaModelHealth.get(healthKey(apiKey, model));
+  return Boolean(entry && entry.brokenUntil > Date.now());
+}
+
+type ProbeResult = 'ok' | 'not_found' | 'maybe';
+
+async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs: number): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function probeModel(apiKey: string, model: string): Promise<ProbeResult> {
+  try {
+    const res = await fetchWithTimeout(
+      `${NVIDIA_BASE_URL}/chat/completions`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({ model, stream: false, max_tokens: 1, messages: [{ role: 'user', content: 'hi' }] }),
+      },
+      PROBE_TIMEOUT_MS
+    );
+    if (res.ok) return 'ok';
+    // 404 ("Function '<id>' not found for account") is the only response
+    // that proves a model is permanently unusable for this key — routing
+    // never located a provisioned worker pool at all. Everything else
+    // (429/500/503, "Service temporarily overloaded") means routing DID
+    // find a real pool and it's just busy — that's a working model
+    // observed under load, not a dead one.
+    return res.status === 404 ? 'not_found' : 'maybe';
+  } catch {
+    return 'maybe';
+  }
+}
+
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  deadlineAt: number,
+  fn: (item: T) => Promise<R>
+): Promise<{ item: T; result: R }[]> {
+  const results: { item: T; result: R }[] = [];
+  let next = 0;
+  async function worker() {
+    while (Date.now() < deadlineAt) {
+      const i = next++;
+      if (i >= items.length) return;
+      results.push({ item: items[i], result: await fn(items[i]) });
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return results;
+}
+
+/**
+ * Live-probed, cached, ranked list of NVIDIA models this key can actually
+ * call right now. Falls back to the static NVIDIA_MODEL_CHAIN if discovery
+ * itself errors (network issue reaching NVIDIA) so a transient problem here
+ * never blocks generation entirely.
+ */
+async function resolveNvidiaModelsLive(apiKey: string): Promise<string[]> {
+  const cached = nvidiaModelListCache.get(apiKey);
+  if (cached && cached.expiresAt > Date.now()) return cached.models;
+
+  try {
+    const res = await fetchWithTimeout(
+      `${NVIDIA_BASE_URL}/models`,
+      { headers: { Authorization: `Bearer ${apiKey}` } },
+      8_000
+    );
+    if (!res.ok) return NVIDIA_MODEL_CHAIN;
+
+    const body = (await res.json()) as { data?: { id?: string }[] };
+    const ids = (body.data ?? [])
+      .map((m) => m.id)
+      .filter((id): id is string => typeof id === 'string' && id.length > 0);
+    if (ids.length === 0) return NVIDIA_MODEL_CHAIN;
+
+    const nemotron = ids.filter((id) => /nemotron/i.test(id) && looksLikeChatModel(id));
+    const preferred = PREFERRED_NVIDIA_MODELS.filter((id) => ids.includes(id) && !nemotron.includes(id));
+    const rest = ids
+      .filter((id) => !nemotron.includes(id) && !preferred.includes(id) && looksLikeChatModel(id))
+      .sort((a, b) => sizeRank(a) - sizeRank(b));
+    const rankedPool = [...nemotron, ...preferred, ...rest].slice(0, PROBE_POOL_SIZE);
+
+    const probeDeadline = Date.now() + PROBE_PHASE_BUDGET_MS;
+    const probeResults = await mapWithConcurrency(rankedPool, PROBE_CONCURRENCY, probeDeadline, (model) =>
+      probeModel(apiKey, model)
+    );
+    const ranked = probeResults
+      .filter((r) => r.result !== 'not_found')
+      .map((r, i) => ({ ...r, i }))
+      .sort((a, b) => (a.result === b.result ? a.i - b.i : a.result === 'ok' ? -1 : 1))
+      .map((r) => r.item)
+      .slice(0, MAX_LIVE_CANDIDATES);
+
+    const models = ranked.length ? ranked : NVIDIA_MODEL_CHAIN;
+    nvidiaModelListCache.set(apiKey, { models, expiresAt: Date.now() + MODEL_LIST_CACHE_TTL_MS });
+    return models;
+  } catch {
+    return NVIDIA_MODEL_CHAIN;
+  }
+}
+
 /**
  * Every usable provider+model combination for this user, in priority order:
- * each model in NVIDIA_MODEL_CHAIN (using the user's own key if they've
- * added one in Settings, else the shared app-wide key as a last resort),
- * then Gemini. Lets generation callers fail over to another real option
- * instead of dropping straight to demo content when the preferred one is
- * down, unentitled on this account, rate-limited, or simply unavailable —
+ * live-probed NVIDIA candidates (using the user's own key if they've added
+ * one in Settings, else the shared app-wide key as a last resort), then
+ * Gemini. Lets generation callers fail over to another real option instead
+ * of dropping straight to demo content when the preferred one is down,
+ * unentitled on this account, rate-limited, or simply unavailable —
  * retrying the *same* provider/model rarely recovers from any of those
  * within a single request. Gemini is last because it's the newest, least
  * battle-tested-for-this-workload addition, and per-user keys aren't
@@ -129,7 +313,9 @@ export async function resolveAiProviders(userId: string): Promise<AiProviderConf
   ]);
   const list: AiProviderConfig[] = [];
   if (nvidiaKey) {
-    for (const model of NVIDIA_MODEL_CHAIN) {
+    const candidates = await resolveNvidiaModelsLive(nvidiaKey);
+    const live = candidates.filter((m) => !isInCooldown(nvidiaKey, m));
+    for (const model of live.length ? live : candidates) {
       list.push({ provider: 'nvidia', apiKey: nvidiaKey, baseURL: NVIDIA_BASE_URL, model });
     }
   }
