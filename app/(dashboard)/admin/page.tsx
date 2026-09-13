@@ -27,25 +27,25 @@ export default async function AdminDashboard() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-lipro-500" /> Admin Control Center</CardTitle>
+          <CardTitle className="flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-studio-primary" /> Admin Control Center</CardTitle>
           <CardDescription>Full platform oversight. Currently signed in as {session.email}.</CardDescription>
         </CardHeader>
       </Card>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6">
-        <Card><CardHeader><CardDescription>Students</CardDescription><CardTitle className="text-2xl flex items-center gap-2"><Users className="h-5 w-5 text-lipro-500" /> {students}</CardTitle></CardHeader></Card>
+        <Card><CardHeader><CardDescription>Students</CardDescription><CardTitle className="text-2xl flex items-center gap-2"><Users className="h-5 w-5 text-studio-primary" /> {students}</CardTitle></CardHeader></Card>
         <Card><CardHeader><CardDescription>Active (7d)</CardDescription><CardTitle className="text-2xl">{activeThisWeek}</CardTitle></CardHeader></Card>
         <Card><CardHeader><CardDescription>Admins</CardDescription><CardTitle className="text-2xl">{admins}</CardTitle></CardHeader></Card>
-        <Card><CardHeader><CardDescription>Courses</CardDescription><CardTitle className="text-2xl flex items-center gap-2"><BookOpen className="h-5 w-5 text-lipro-500" /> {courses}</CardTitle></CardHeader></Card>
-        <Card><CardHeader><CardDescription>Questions</CardDescription><CardTitle className="text-2xl flex items-center gap-2"><Brain className="h-5 w-5 text-lipro-500" /> {questions}</CardTitle></CardHeader></Card>
-        <Card><CardHeader><CardDescription>Wallet volume</CardDescription><CardTitle className="text-2xl flex items-center gap-2"><Wallet className="h-5 w-5 text-lipro-500" /> {formatCurrency(totalWallet._sum.walletBalance || 0)}</CardTitle></CardHeader></Card>
+        <Card><CardHeader><CardDescription>Courses</CardDescription><CardTitle className="text-2xl flex items-center gap-2"><BookOpen className="h-5 w-5 text-studio-primary" /> {courses}</CardTitle></CardHeader></Card>
+        <Card><CardHeader><CardDescription>Questions</CardDescription><CardTitle className="text-2xl flex items-center gap-2"><Brain className="h-5 w-5 text-studio-primary" /> {questions}</CardTitle></CardHeader></Card>
+        <Card><CardHeader><CardDescription>Wallet volume</CardDescription><CardTitle className="text-2xl flex items-center gap-2"><Wallet className="h-5 w-5 text-studio-primary" /> {formatCurrency(totalWallet._sum.walletBalance || 0)}</CardTitle></CardHeader></Card>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader><CardTitle>Students</CardTitle><CardDescription>Filter by faculty, department, level, semester, and login activity</CardDescription></CardHeader>
           <CardContent>
-            <Link href="/admin/students" className="inline-flex items-center gap-1 text-sm font-semibold text-lipro-600 hover:underline dark:text-lipro-300">
+            <Link href="/admin/students" className="inline-flex items-center gap-1 text-sm font-semibold text-studio-primary hover:underline dark:text-studio-primary">
               Manage students <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </CardContent>
@@ -53,7 +53,7 @@ export default async function AdminDashboard() {
         <Card>
           <CardHeader><CardTitle>Courses</CardTitle><CardDescription>Create courses, author questions, and manage materials</CardDescription></CardHeader>
           <CardContent>
-            <Link href="/courses" className="inline-flex items-center gap-1 text-sm font-semibold text-lipro-600 hover:underline dark:text-lipro-300">
+            <Link href="/courses" className="inline-flex items-center gap-1 text-sm font-semibold text-studio-primary hover:underline dark:text-studio-primary">
               Manage courses <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </CardContent>
@@ -61,7 +61,7 @@ export default async function AdminDashboard() {
         <Card>
           <CardHeader><CardTitle>Announcements</CardTitle><CardDescription>Send a message to student dashboards</CardDescription></CardHeader>
           <CardContent>
-            <Link href="/admin/announcements" className="inline-flex items-center gap-1 text-sm font-semibold text-lipro-600 hover:underline dark:text-lipro-300">
+            <Link href="/admin/announcements" className="inline-flex items-center gap-1 text-sm font-semibold text-studio-primary hover:underline dark:text-studio-primary">
               Send announcement <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </CardContent>
@@ -73,15 +73,15 @@ export default async function AdminDashboard() {
         <CardContent>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead><tr className="border-b border-lipro-200/30 text-left text-xs uppercase tracking-wide text-lipro-700/70 dark:text-lipro-200/70"><th className="py-2">Name</th><th>Email</th><th>Role</th><th>University</th><th>Joined</th></tr></thead>
+              <thead><tr className="border-b border-studio-border text-left text-xs uppercase tracking-wide text-studio-subtle"><th className="py-2">Name</th><th>Email</th><th>Role</th><th>University</th><th>Joined</th></tr></thead>
               <tbody>
                 {recentUsers.map((u) => (
-                  <tr key={u.id} className="border-b border-lipro-200/10 last:border-0">
+                  <tr key={u.id} className="border-b border-studio-border last:border-0">
                     <td className="py-2 font-medium">{u.fullName}</td>
                     <td>{u.email}</td>
                     <td><Badge tone={u.role === 'STUDENT' ? 'purple' : 'amber'}>{u.role}</Badge></td>
-                    <td className="text-lipro-600/60 dark:text-lipro-200/60">{u.university}</td>
-                    <td className="text-lipro-600/60 dark:text-lipro-200/60">{new Date(u.createdAt).toLocaleDateString()}</td>
+                    <td className="text-studio-subtle">{u.university}</td>
+                    <td className="text-studio-subtle">{new Date(u.createdAt).toLocaleDateString()}</td>
                   </tr>
                 ))}
               </tbody>

@@ -25,7 +25,7 @@ export default function WeakTopics({ topics }: { topics: WeakTopicItem[] }) {
 
   if (topics.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-lipro-200/60 p-5 text-center text-sm text-lipro-600/60 dark:border-lipro-700/40">
+      <div className="rounded-xl border border-dashed border-studio-border-strong p-5 text-center text-sm text-studio-subtle">
         Take a few more CBT attempts and we&apos;ll surface which courses need the most revision.
       </div>
     )
@@ -60,7 +60,7 @@ export default function WeakTopics({ topics }: { topics: WeakTopicItem[] }) {
                 transition={{ delay: 0.15 + 0.06 * i, duration: reduced ? 0 : 0.6, ease: EASE }}
               />
             </div>
-            <p className="mt-1.5 text-[11px] text-lipro-600/50 dark:text-lipro-200/40">
+            <p className="mt-1.5 text-[11px] text-studio-subtle">
               From {t.answered} graded {t.answered === 1 ? 'answer' : 'answers'}
               {t.accuracyPct < 50 && (
                 <span className="ml-1.5 inline-flex items-center gap-1 text-rose-500 dark:text-rose-300">
@@ -71,7 +71,7 @@ export default function WeakTopics({ topics }: { topics: WeakTopicItem[] }) {
           </motion.li>
         )
       })}
-      <Link href="/cbt" className="inline-flex items-center gap-1 text-xs font-semibold text-lipro-600 hover:underline dark:text-lipro-300">
+      <Link href="/cbt" className="inline-flex items-center gap-1 text-xs font-semibold text-studio-primary hover:underline">
         Practice a weak course &rarr;
       </Link>
     </ul>

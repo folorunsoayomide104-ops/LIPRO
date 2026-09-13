@@ -5,7 +5,7 @@ import { Input, Label, Textarea } from '@/components/ui/input';
 import { Megaphone } from 'lucide-react';
 
 const selectClass =
-  'rounded-xl border border-lipro-200/60 bg-white px-3 py-2 text-sm dark:border-lipro-500/20 dark:bg-surface-dark dark:text-lipro-50';
+  'rounded-xl border border-studio-border bg-white px-3 py-2 text-sm dark:border-studio-border dark:bg-surface-dark dark:text-studio-primary';
 
 export function AnnouncementForm({
   faculties,
@@ -79,7 +79,7 @@ export function AnnouncementForm({
             {semesters.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
         </div>
-        <p className="mt-1.5 text-xs text-lipro-600/60 dark:text-lipro-200/60">Sending to: <span className="font-medium">{audienceLabel}</span></p>
+        <p className="mt-1.5 text-xs text-studio-subtle">Sending to: <span className="font-medium">{audienceLabel}</span></p>
       </div>
 
       {error && <p className="text-sm text-rose-500">{error}</p>}

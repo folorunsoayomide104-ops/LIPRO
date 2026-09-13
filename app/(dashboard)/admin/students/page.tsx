@@ -141,11 +141,11 @@ export default async function AdminStudentsPage({
   return (
     <div className="space-y-6">
       <div>
-        <Link href="/admin" className="inline-flex items-center gap-1 text-sm font-medium text-lipro-600/70 hover:underline dark:text-lipro-300/70">
+        <Link href="/admin" className="inline-flex items-center gap-1 text-sm font-medium text-studio-subtle hover:underline dark:text-studio-subtle">
           <ArrowLeft className="h-3.5 w-3.5" /> Back to Admin
         </Link>
         <h1 className="mt-2 text-2xl font-bold tracking-tight">Students</h1>
-        <p className="text-sm text-lipro-600/70 dark:text-lipro-200/70">
+        <p className="text-sm text-studio-subtle">
           {total} student{total === 1 ? '' : 's'} match the current filters
         </p>
       </div>
@@ -167,7 +167,7 @@ export default async function AdminStudentsPage({
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-lipro-200/30 text-left text-xs uppercase tracking-wide text-lipro-700/70 dark:text-lipro-200/70">
+                <tr className="border-b border-studio-border text-left text-xs uppercase tracking-wide text-studio-subtle">
                   <th className="px-4 py-3">Name</th>
                   <th className="px-2 py-3">Matric</th>
                   <th className="px-2 py-3">Faculty / Dept</th>
@@ -185,15 +185,15 @@ export default async function AdminStudentsPage({
                 {students.map((s) => {
                   const matches = courseCounts.get(courseKey(s.faculty, s.department, s.level, s.semester)) || 0;
                   return (
-                    <tr key={s.id} className="border-b border-lipro-200/10 last:border-0">
+                    <tr key={s.id} className="border-b border-studio-border last:border-0">
                       <td className="px-4 py-3">
                         <div className="font-medium">{s.fullName}</div>
-                        <div className="text-xs text-lipro-600/60 dark:text-lipro-200/60">{s.email}</div>
+                        <div className="text-xs text-studio-subtle">{s.email}</div>
                       </td>
-                      <td className="px-2 py-3 text-lipro-600/70 dark:text-lipro-200/70">{s.matricNumber}</td>
+                      <td className="px-2 py-3 text-studio-subtle">{s.matricNumber}</td>
                       <td className="px-2 py-3">
                         <div>{s.faculty}</div>
-                        <div className="text-xs text-lipro-600/60 dark:text-lipro-200/60">{s.department}</div>
+                        <div className="text-xs text-studio-subtle">{s.department}</div>
                       </td>
                       <td className="px-2 py-3">L{s.level}</td>
                       <td className="px-2 py-3">{s.semester}</td>
@@ -205,7 +205,7 @@ export default async function AdminStudentsPage({
                           {s.subscriptionTier}
                         </Badge>
                         {s.subscriptionTier !== 'FREE' && s.subscriptionExpiry && (
-                          <div className="mt-1 text-xs text-lipro-600/60 dark:text-lipro-200/60">
+                          <div className="mt-1 text-xs text-studio-subtle">
                             {new Date(s.subscriptionExpiry) > new Date() ? 'renews' : 'expired'} {new Date(s.subscriptionExpiry).toLocaleDateString()}
                           </div>
                         )}
@@ -214,28 +214,28 @@ export default async function AdminStudentsPage({
                         {totalPaid.has(s.id) ? (
                           <>
                             <div className="font-medium tabular-nums">₦{totalPaid.get(s.id)!.toLocaleString()}</div>
-                            <div className="text-xs text-lipro-600/60 dark:text-lipro-200/60">
+                            <div className="text-xs text-studio-subtle">
                               last ₦{lastPayment.get(s.id)!.amount.toLocaleString()} on {new Date(lastPayment.get(s.id)!.createdAt).toLocaleDateString()}
                             </div>
                           </>
                         ) : (
-                          <span className="text-lipro-600/50 dark:text-lipro-300/50">—</span>
+                          <span className="text-studio-subtle">—</span>
                         )}
                       </td>
                       <td className="px-2 py-3">
-                        <span className={lastActivity.get(s.id) ? 'text-lipro-700 dark:text-lipro-100' : 'text-lipro-600/50 dark:text-lipro-300/50'}>
+                        <span className={lastActivity.get(s.id) ? 'text-studio-primary' : 'text-studio-subtle'}>
                           {formatRelative(lastActivity.get(s.id))}
                         </span>
                       </td>
-                      <td className="px-2 py-3 text-lipro-600/60 dark:text-lipro-200/60">
+                      <td className="px-2 py-3 text-studio-subtle">
                         {s.lastLoginAt ? new Date(s.lastLoginAt).toLocaleDateString() : 'Never'}
                       </td>
-                      <td className="px-4 py-3 text-lipro-600/60 dark:text-lipro-200/60">{new Date(s.createdAt).toLocaleDateString()}</td>
+                      <td className="px-4 py-3 text-studio-subtle">{new Date(s.createdAt).toLocaleDateString()}</td>
                     </tr>
                   );
                 })}
                 {students.length === 0 && (
-                  <tr><td colSpan={11} className="px-4 py-10 text-center text-lipro-600/60 dark:text-lipro-200/60">No students match these filters.</td></tr>
+                  <tr><td colSpan={11} className="px-4 py-10 text-center text-studio-subtle">No students match these filters.</td></tr>
                 )}
               </tbody>
             </table>
@@ -245,19 +245,19 @@ export default async function AdminStudentsPage({
 
       {totalPages > 1 && (
         <div className="flex items-center justify-between text-sm">
-          <span className="text-lipro-600/60 dark:text-lipro-200/60">Page {page} of {totalPages}</span>
+          <span className="text-studio-subtle">Page {page} of {totalPages}</span>
           <div className="flex gap-2">
             <Link
               href={buildPageHref(Math.max(1, page - 1))}
               aria-disabled={page <= 1}
-              className={`inline-flex items-center gap-1 rounded-xl border border-lipro-200/60 px-3 py-1.5 dark:border-lipro-500/20 ${page <= 1 ? 'pointer-events-none opacity-40' : 'hover:bg-lipro-50 dark:hover:bg-lipro-950/40'}`}
+              className={`inline-flex items-center gap-1 rounded-xl border border-studio-border px-3 py-1.5 dark:border-studio-border ${page <= 1 ? 'pointer-events-none opacity-40' : 'hover:bg-studio-primary dark:hover:bg-studio-elevated'}`}
             >
               <ChevronLeft className="h-3.5 w-3.5" /> Previous
             </Link>
             <Link
               href={buildPageHref(Math.min(totalPages, page + 1))}
               aria-disabled={page >= totalPages}
-              className={`inline-flex items-center gap-1 rounded-xl border border-lipro-200/60 px-3 py-1.5 dark:border-lipro-500/20 ${page >= totalPages ? 'pointer-events-none opacity-40' : 'hover:bg-lipro-50 dark:hover:bg-lipro-950/40'}`}
+              className={`inline-flex items-center gap-1 rounded-xl border border-studio-border px-3 py-1.5 dark:border-studio-border ${page >= totalPages ? 'pointer-events-none opacity-40' : 'hover:bg-studio-primary dark:hover:bg-studio-elevated'}`}
             >
               Next <ChevronRight className="h-3.5 w-3.5" />
             </Link>

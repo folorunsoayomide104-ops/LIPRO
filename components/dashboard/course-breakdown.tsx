@@ -5,7 +5,7 @@ import { GraduationCap, ArrowUpRight } from 'lucide-react';
 export type CourseActivity = { code: string; count: number };
 
 const EASE = [0.22, 1, 0.36, 1] as const;
-const TONES = ['bg-[#3559F7]', 'bg-[#545AC5]', 'bg-emerald-500', 'bg-amber-500'];
+const TONES = ['bg-[#4d766c]', 'bg-[#3f6459]', 'bg-emerald-500', 'bg-amber-500'];
 
 export default function CourseBreakdown({
   totalActivity,
@@ -20,17 +20,17 @@ export default function CourseBreakdown({
     <div className="flex h-full flex-col">
       <div className="mb-3 flex items-start justify-between gap-2">
         <div>
-          <h3 className="text-sm font-semibold text-lipro-600/70 dark:text-lipro-200/60">Study by Course</h3>
+          <h3 className="text-sm font-semibold text-studio-subtle">Study by Course</h3>
           <div className="mt-1 flex items-baseline gap-2">
             <span className="tnum heading text-2xl font-bold">{totalActivity}</span>
-            <span className="text-xs font-medium text-lipro-600/60 dark:text-lipro-200/50">notes &amp; attempts</span>
+            <span className="text-xs font-medium text-studio-subtle">notes &amp; attempts</span>
           </div>
         </div>
-        <ArrowUpRight className="h-4 w-4 shrink-0 text-lipro-400" />
+        <ArrowUpRight className="h-4 w-4 shrink-0 text-studio-subtle" />
       </div>
 
       {courses.length === 0 ? (
-        <p className="mt-4 text-sm text-lipro-600/60 dark:text-lipro-200/50">
+        <p className="mt-4 text-sm text-studio-subtle">
           Save a note or run a CBT to see your activity by course.
         </p>
       ) : (
@@ -47,15 +47,15 @@ export default function CourseBreakdown({
               <span className={`grid h-10 w-10 place-items-center rounded-xl text-white ${TONES[i % TONES.length]}`}>
                 <GraduationCap className="h-4 w-4" />
               </span>
-              <span className="text-[10px] font-medium text-lipro-600/70 dark:text-lipro-200/50">{c.code}</span>
+              <span className="text-[10px] font-medium text-studio-subtle">{c.code}</span>
             </motion.div>
           ))}
           {overflow > 0 && (
             <div className="flex flex-col items-center gap-1.5">
-              <span className="grid h-10 w-10 place-items-center rounded-xl bg-lipro-100 text-xs font-bold text-lipro-600 dark:bg-white/5 dark:text-lipro-200">
+              <span className="grid h-10 w-10 place-items-center rounded-xl bg-studio-elevated text-xs font-bold text-studio-muted">
                 +{overflow}
               </span>
-              <span className="text-[10px] font-medium text-lipro-600/50 dark:text-lipro-200/40">more</span>
+              <span className="text-[10px] font-medium text-studio-subtle">more</span>
             </div>
           )}
         </div>

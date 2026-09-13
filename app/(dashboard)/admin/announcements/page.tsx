@@ -15,11 +15,11 @@ export default async function AdminAnnouncementsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <Link href="/admin" className="inline-flex items-center gap-1 text-sm font-medium text-lipro-600/70 hover:underline dark:text-lipro-300/70">
+        <Link href="/admin" className="inline-flex items-center gap-1 text-sm font-medium text-studio-subtle hover:underline dark:text-studio-subtle">
           <ArrowLeft className="h-3.5 w-3.5" /> Back to Admin
         </Link>
         <h1 className="mt-2 text-2xl font-bold tracking-tight">Announcements</h1>
-        <p className="text-sm text-lipro-600/70 dark:text-lipro-200/70">
+        <p className="text-sm text-studio-subtle">
           Send a message straight to student dashboards — everyone, or filtered by faculty, department, level, and semester.
         </p>
       </div>

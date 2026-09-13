@@ -44,7 +44,7 @@ export default function OverviewChart({
     <div className="flex h-full flex-col">
       <div className="mb-3 flex items-start justify-between gap-2">
         <div>
-          <h3 className="text-sm font-semibold text-lipro-600/70 dark:text-lipro-200/60">Score Overview</h3>
+          <h3 className="text-sm font-semibold text-studio-subtle">Score Overview</h3>
           <div className="mt-1 flex items-baseline gap-2">
             <span className="tnum heading text-2xl font-bold">{latestPct !== null ? `${latestPct}%` : '—'}</span>
             {deltaLatest !== null && (
@@ -54,33 +54,33 @@ export default function OverviewChart({
             )}
           </div>
         </div>
-        <ExpandIcon className="h-4 w-4 shrink-0 text-lipro-400" />
+        <ExpandIcon className="h-4 w-4 shrink-0 text-studio-subtle" />
       </div>
 
       <div className="mb-4 flex flex-wrap gap-2">
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-lipro-200/60 px-2.5 py-1 text-[11px] font-medium text-lipro-600 dark:border-lipro-500/20 dark:text-lipro-200/70">
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-studio-border bg-studio-elevated px-2.5 py-1 text-[11px] font-medium text-studio-muted">
           <ListChecks className="h-3 w-3" /> {attemptCount} attempts
         </span>
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-lipro-200/60 px-2.5 py-1 text-[11px] font-medium text-lipro-600 dark:border-lipro-500/20 dark:text-lipro-200/70">
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-studio-border bg-studio-elevated px-2.5 py-1 text-[11px] font-medium text-studio-muted">
           <GraduationCap className="h-3 w-3" /> {courseCount} courses
         </span>
       </div>
 
       <div className="relative mt-auto">
         {!hasLine ? (
-          <div className="flex h-24 items-center justify-center rounded-xl border border-dashed border-lipro-200/60 text-center text-xs text-lipro-600/60 dark:border-lipro-500/20 dark:text-lipro-200/50">
+          <div className="flex h-24 items-center justify-center rounded-xl border border-dashed border-studio-border-strong text-center text-xs text-studio-subtle">
             Complete a couple of CBTs to see your score trend
           </div>
         ) : (
           <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full" role="img" aria-label="Score trend">
             <defs>
               <linearGradient id="ov-fill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#3559F7" stopOpacity="0.28" />
-                <stop offset="100%" stopColor="#3559F7" stopOpacity="0.02" />
+                <stop offset="0%" stopColor="#b7d4ce" stopOpacity="0.28" />
+                <stop offset="100%" stopColor="#b7d4ce" stopOpacity="0.02" />
               </linearGradient>
               <linearGradient id="ov-stroke" x1="0" y1="0" x2="1" y2="0">
-                <stop offset="0%" stopColor="#3559F7" />
-                <stop offset="100%" stopColor="#545AC5" />
+                <stop offset="0%" stopColor="#b7d4ce" />
+                <stop offset="100%" stopColor="#9ac2b8" />
               </linearGradient>
             </defs>
             <motion.path
@@ -102,18 +102,18 @@ export default function OverviewChart({
               transition={{ duration: 1, ease: EASE }}
             />
             {pts.map((p, i) => (
-              <circle key={i} cx={p.x} cy={p.y} r={p === peak ? 4 : 2.5} fill="#3559F7" opacity={p === peak ? 1 : 0.7} />
+              <circle key={i} cx={p.x} cy={p.y} r={p === peak ? 4 : 2.5} fill="#b7d4ce" opacity={p === peak ? 1 : 0.7} />
             ))}
             {peak && (
               <g transform={`translate(${Math.min(peak.x + 8, W - 60)}, ${Math.max(peak.y - 26, 6)})`}>
-                <rect width="52" height="20" rx="10" fill="#3559F7" />
-                <text x="26" y="14" textAnchor="middle" fontSize="10" fontWeight="700" fill="white">
+                <rect width="52" height="20" rx="10" fill="#b7d4ce" />
+                <text x="26" y="14" textAnchor="middle" fontSize="10" fontWeight="700" fill="#0b0b0c">
                   {peak.pct}%
                 </text>
               </g>
             )}
             {pts.map((p, i) => (
-              <text key={`l-${i}`} x={p.x} y={H - 4} textAnchor="middle" fontSize="9" className="fill-lipro-500/50">
+              <text key={`l-${i}`} x={p.x} y={H - 4} textAnchor="middle" fontSize="9" className="fill-studio-subtle">
                 {p.label.split(' ')[1] ?? p.label}
               </text>
             ))}

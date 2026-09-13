@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Search } from 'lucide-react';
 
 const selectClass =
-  'rounded-xl border border-lipro-200/60 bg-white px-3 py-2 text-sm dark:border-lipro-500/20 dark:bg-surface-dark dark:text-lipro-50';
+  'rounded-xl border border-studio-border bg-white px-3 py-2 text-sm dark:border-studio-border dark:bg-surface-dark dark:text-studio-primary';
 
 export function StudentFilters({
   faculties,
@@ -37,7 +37,7 @@ export function StudentFilters({
   return (
     <div className="flex flex-wrap items-center gap-2">
       <form onSubmit={submitSearch} className="relative">
-        <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-lipro-500/60" />
+        <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-studio-subtle" />
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
@@ -75,7 +75,7 @@ export function StudentFilters({
       {(params.get('faculty') || params.get('department') || params.get('level') || params.get('semester') || params.get('activity') || params.get('q')) && (
         <button
           onClick={() => router.push('/admin/students')}
-          className="text-xs font-medium text-lipro-600/70 hover:underline dark:text-lipro-300/70"
+          className="text-xs font-medium text-studio-subtle hover:underline dark:text-studio-subtle"
         >
           Clear filters
         </button>

@@ -18,15 +18,15 @@ export default async function SubscriptionPage() {
   const me = await prisma.user.findUnique({ where: { id: session.userId }, select: { subscriptionTier: true } });
   return (
     <div className="space-y-6">
-      <div><h1 className="text-2xl font-bold tracking-tight">Subscriptions</h1><p className="text-sm text-lipro-600/70 dark:text-lipro-200/70">Current plan: <Badge tone="purple">{me?.subscriptionTier}</Badge></p></div>
+      <div><h1 className="text-2xl font-bold tracking-tight">Subscriptions</h1><p className="text-sm text-studio-subtle">Current plan: <Badge tone="purple">{me?.subscriptionTier}</Badge></p></div>
       <div className="grid gap-6 md:grid-cols-3">
         {PLANS.map((plan) => (
-          <Card key={plan.tier} className={plan.highlight ? 'ring-2 ring-lipro-400/40' : ''}>
+          <Card key={plan.tier} className={plan.highlight ? 'ring-2 ring-studio-border' : ''}>
             <CardHeader><CardTitle>{plan.name}</CardTitle><CardDescription>{plan.desc}</CardDescription></CardHeader>
             <CardContent>
               <div className="text-3xl font-bold">{plan.price}</div>
               <ul className="mt-4 space-y-2">
-                {plan.features.map((f) => <li key={f} className="flex items-start gap-2 text-sm"><Check className="mt-0.5 h-4 w-4 text-lipro-600" />{f}</li>)}
+                {plan.features.map((f) => <li key={f} className="flex items-start gap-2 text-sm"><Check className="mt-0.5 h-4 w-4 text-studio-primary" />{f}</li>)}
               </ul>
               {me?.subscriptionTier === plan.tier ? (
                 <Badge tone="green" className="mt-6">Current plan</Badge>
