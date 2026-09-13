@@ -393,6 +393,53 @@ nav.links a:hover{color:var(--txt)}
 @media(prefers-reduced-motion:reduce){
   .aurora-snakes{display:none}
 }
+
+/* ── DAWN BREAK ─────────────────────────────────────────
+   Cinematic scroll beat: the aurora's night sky warms into a soft dawn
+   as the user arrives at Features, then settles back to neutral once
+   they move on to How It Works. Scoped INSIDE .features (not a fixed
+   full-page layer) — .features already paints an opaque background at
+   z-index:2 to stop the hero's crystal canvas bleeding through, which
+   would hide a fixed wash just as completely. Living inside .features
+   as an absolute layer (z-index:auto, so it paints above the section's
+   static in-flow content per normal stacking rules) means it tints
+   exactly the section it's meant to, nothing more. Driven by a class
+   toggled directly on this element from the existing scroll-reveal
+   IntersectionObserver — no new scroll listener. */
+.dawn-wash{
+  position:absolute;inset:0;
+  pointer-events:none;
+  opacity:0;
+  background:
+    radial-gradient(ellipse 90% 55% at 50% 0%,rgba(255,207,158,.18) 0%,rgba(255,170,130,.08) 40%,transparent 72%),
+    linear-gradient(to bottom,rgba(255,200,150,.10) 0%,transparent 42%);
+  mix-blend-mode:screen;
+  transition:opacity 1.4s var(--ease-out);
+}
+.dawn-wash.is-warm{opacity:1}
+
+/* Decorative "flight path" divider under the Features heading — a thin
+   line that draws itself left to right, warming from violet to dawn
+   amber, with a few star-points landing along it. */
+.dawn-path-wrap{margin:28px auto 0;max-width:520px}
+.dawn-path-wrap svg{width:100%;height:auto;display:block;overflow:visible}
+.dawn-path-line{
+  fill:none;stroke:url(#dawn-path-grad);stroke-width:1.5;stroke-linecap:round;
+  stroke-dasharray:700;stroke-dashoffset:700;
+  transition:stroke-dashoffset 1.6s var(--ease-out) .1s;
+}
+.dawn-path-wrap.vis .dawn-path-line{stroke-dashoffset:0}
+.dawn-path-star{
+  fill:#ffcf9e;
+  opacity:0;transform:scale(.3);transform-origin:center;transform-box:fill-box;
+  transition:opacity .5s ease,transform .5s var(--ease-spring);
+}
+.dawn-path-wrap.vis .dawn-path-star{opacity:1;transform:scale(1)}
+.dawn-path-wrap.vis .dawn-path-star:nth-of-type(2){transition-delay:.5s}
+.dawn-path-wrap.vis .dawn-path-star:nth-of-type(3){transition-delay:.9s}
+.dawn-path-wrap.vis .dawn-path-star:nth-of-type(4){transition-delay:1.25s}
+@media(max-width:640px){.dawn-path-wrap{display:none}}
+
 .hero-figure-wrap{
   position:relative;
   display:flex;justify-content:flex-end;align-items:flex-end;
@@ -1079,14 +1126,33 @@ body.no-webgl #hero-canvas{display:none}
 
 <!-- FEATURES -->
 <section class="features" id="features">
+  <div class="dawn-wash" aria-hidden="true"></div>
   <div class="wrap">
-    <div class="section-head reveal">
+    <div class="section-head reveal" id="dawn-trigger">
       <span class="eyebrow">Everything You Need</span>
       <h2>One platform. Every tool you need to pass.</h2>
       <p>
         LIPRO combines intelligent practice, document analysis, planning, and analytics
         — all tailored to your exact university programme, no generic content.
       </p>
+      <div class="dawn-path-wrap reveal" aria-hidden="true">
+        <svg viewBox="0 0 640 40" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="dawn-path-grad" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="#8a6eff" stop-opacity="0"/>
+              <stop offset="20%" stop-color="#8a6eff" stop-opacity=".55"/>
+              <stop offset="50%" stop-color="#ffcf9e" stop-opacity=".8"/>
+              <stop offset="80%" stop-color="#ffcf9e" stop-opacity=".55"/>
+              <stop offset="100%" stop-color="#ffcf9e" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+          <path class="dawn-path-line" d="M8,28 C120,4 220,36 320,20 C420,4 520,32 632,10"/>
+          <circle class="dawn-path-star" cx="8" cy="28" r="3"/>
+          <circle class="dawn-path-star" cx="220" cy="30" r="2.5"/>
+          <circle class="dawn-path-star" cx="420" cy="10" r="2.5"/>
+          <circle class="dawn-path-star" cx="632" cy="10" r="3.5"/>
+        </svg>
+      </div>
     </div>
     <div class="feat-grid reveal-stagger reveal">
       <div class="feat-card si">
@@ -1209,7 +1275,7 @@ body.no-webgl #hero-canvas{display:none}
 <!-- HOW IT WORKS -->
 <section class="how" id="how">
   <div class="wrap">
-    <div class="section-head reveal">
+    <div class="section-head reveal" id="dawn-fade-trigger">
       <span class="eyebrow">The Process</span>
       <h2>From sign-up to straight A's in 8 steps.</h2>
       <p>Everything is set up in minutes. No tutorials needed — it works around your actual curriculum from day one.</p>
@@ -1685,6 +1751,17 @@ window.addEventListener('scroll', function () {
     entries.forEach(function (entry) {
       if (entry.isIntersecting) {
         entry.target.classList.add('vis');
+        // Dawn-break cinematic: warm the Features section's color wash
+        // on arrival, settle it back to neutral on arrival at How It
+        // Works — same section boundary the crystal canvas already
+        // fades at.
+        if (entry.target.id === 'dawn-trigger') {
+          var dw = document.querySelector('.dawn-wash');
+          if (dw) dw.classList.add('is-warm');
+        } else if (entry.target.id === 'dawn-fade-trigger') {
+          var dw2 = document.querySelector('.dawn-wash');
+          if (dw2) dw2.classList.remove('is-warm');
+        }
         io.unobserve(entry.target);
       }
     });
