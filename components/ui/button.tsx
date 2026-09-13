@@ -10,10 +10,10 @@ interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variants: Record<Variant, string> = {
-  primary: 'bg-gradient-to-r from-lipro-600 to-lipro-500 text-white shadow-lg shadow-lipro-600/20 hover:brightness-110',
-  ghost: 'bg-transparent text-lipro-700 dark:text-lipro-200 hover:bg-lipro-50 dark:hover:bg-lipro-950/40',
-  outline: 'border border-lipro-300/40 text-lipro-700 dark:text-lipro-200 hover:bg-lipro-50 dark:hover:bg-lipro-950/40',
-  danger: 'bg-red-500 text-white hover:bg-red-600',
+  primary: 'bg-studio-primary text-studio-primary-fg shadow-studio-border hover:brightness-110',
+  ghost: 'bg-transparent text-studio-muted hover:bg-studio-elevated hover:text-studio-fg',
+  outline: 'border border-studio-border-strong text-studio-muted hover:bg-studio-elevated hover:text-studio-fg',
+  danger: 'bg-studio-danger text-white hover:brightness-110',
 };
 const sizes: Record<Size, string> = {
   sm: 'px-3 py-1.5 text-xs',

@@ -25,7 +25,7 @@ export function CardTitle({ className, ...props }: HTMLAttributes<HTMLHeadingEle
   return <h3 className={cn('text-lg font-semibold tracking-tight break-words', className)} {...props} />;
 }
 export function CardDescription({ className, ...props }: HTMLAttributes<HTMLParagraphElement>) {
-  return <p className={cn('text-sm text-lipro-600/70 dark:text-lipro-200/60', className)} {...props} />;
+  return <p className={cn('text-sm text-studio-muted', className)} {...props} />;
 }
 export function CardContent({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return <div className={cn('space-y-3', className)} {...props} />;

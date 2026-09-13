@@ -13,13 +13,6 @@ import { useRouter } from 'next/navigation';
 import { useViewMode } from '@/components/view-mode-provider';
 import { MobileModeFrame } from '@/components/mobile-mode-frame';
 
-// Exact colors sampled from the NeuroBank dashboard reference clip — used
-// verbatim here rather than the app's lipro-violet tokens, since matching
-// the reference precisely was the point of this pass.
-const REF_ACCENT = '#3559F7';
-const REF_ACCENT_2 = '#545AC5';
-const REF_ELEVATED = '#20212C';
-
 const ADMIN_NAV_ITEM = { label: 'Admin', href: '/admin', icon: ShieldCheck, highlight: false };
 
 const NAV = [
@@ -79,32 +72,26 @@ export function LayoutShell({ children, roleLabel, isAdmin, unreadCount = 0 }: {
   };
 
   const Sidebar = () => (
-    <aside className="flex h-full w-72 max-w-[85vw] flex-col p-4">
+    <aside className="flex h-full w-72 max-w-[85vw] flex-col bg-studio-surface p-4">
       <div className="mb-4 flex shrink-0 items-center gap-2.5 px-2">
-        <div
-          className="grid h-9 w-9 shrink-0 place-items-center rounded-xl ring-1 ring-white/10"
-          style={{ background: `linear-gradient(135deg, ${REF_ACCENT_2}, ${REF_ACCENT})` }}
-        >
-          <LiproLogo className="h-5 w-5 text-white" />
+        <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-studio-primary">
+          <LiproLogo className="h-5 w-5 text-studio-primary-fg" />
         </div>
         <div className="min-w-0">
-          <div className="heading truncate text-sm font-bold tracking-tight uppercase">LIPRO Academy</div>
-          <div className="truncate text-[10px] uppercase tracking-wider text-lipro-500">{roleLabel || 'AI Learning Platform'}</div>
+          <div className="truncate font-studio-display text-sm tracking-tight text-studio-fg">LIPRO Academy</div>
+          <div className="truncate text-[10px] uppercase tracking-wider text-studio-subtle">{roleLabel || 'AI Learning Platform'}</div>
         </div>
       </div>
 
-      {/* Welcome card — avatar, greeting, date, theme toggle, matching the reference sidebar */}
-      <div
-        className="mb-4 flex shrink-0 items-center justify-between gap-2 rounded-2xl p-3"
-        style={{ background: REF_ELEVATED }}
-      >
+      {/* Welcome card — avatar, greeting, date, theme toggle */}
+      <div className="mb-4 flex shrink-0 items-center justify-between gap-2 rounded-xl bg-studio-elevated p-3">
         <div className="flex min-w-0 items-center gap-2.5">
-          <div className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-lipro-500 to-indigo-500 text-xs font-bold text-white">
+          <div className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full bg-studio-primary text-xs font-bold text-studio-primary-fg">
             {avatarUrl ? <img src={avatarUrl} alt="Your avatar" className="h-full w-full object-cover" /> : firstName[0]?.toUpperCase()}
           </div>
           <div className="min-w-0">
-            <div className="truncate text-[10px] font-semibold uppercase tracking-wider text-white/40">{today}</div>
-            <div className="truncate text-sm font-bold text-white">Welcome back, {firstName}!</div>
+            <div className="truncate text-[10px] font-medium uppercase tracking-wider text-studio-subtle">{today}</div>
+            <div className="truncate text-sm font-medium text-studio-fg">Welcome back, {firstName}!</div>
           </div>
         </div>
         <div className="shrink-0"><ThemeToggle /></div>
@@ -123,21 +110,19 @@ export function LayoutShell({ children, roleLabel, isAdmin, unreadCount = 0 }: {
               href={item.href}
               onClick={() => setMobileOpen(false)}
               className={cn(
-                'group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all',
-                active
-                  ? 'bg-[rgb(168_85_247_/_0.08)] text-lipro-900 dark:bg-[#20212C] dark:text-white'
-                  : 'text-lipro-600/70 hover:bg-lipro-50 dark:text-lipro-200/70 dark:hover:bg-white/[0.04]'
+                'group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors',
+                active ? 'bg-studio-elevated text-studio-fg' : 'text-studio-muted hover:bg-studio-elevated/60 hover:text-studio-fg'
               )}
             >
-              {active && <span className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-full" style={{ background: REF_ACCENT }} aria-hidden="true" />}
-              <Icon className="h-4 w-4 shrink-0" style={active ? { color: REF_ACCENT } : undefined} />
+              {active && <span className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-full bg-studio-primary" aria-hidden="true" />}
+              <Icon className={cn('h-4 w-4 shrink-0', active && 'text-studio-primary')} />
               <span className="truncate">{item.label}</span>
               {item.highlight && (
-                <span className="ml-auto flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white" style={{ background: REF_ACCENT }}>
+                <span className="ml-auto flex shrink-0 items-center gap-1 rounded-full bg-studio-primary px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-studio-primary-fg">
                   <Sparkles className="h-2.5 w-2.5" /> AI
                 </span>
               )}
-              {active && !item.highlight && <ArrowRight className="ml-auto h-3.5 w-3.5 shrink-0" style={{ color: REF_ACCENT }} />}
+              {active && !item.highlight && <ArrowRight className="ml-auto h-3.5 w-3.5 shrink-0 text-studio-primary" />}
             </Link>
           );
         })}
@@ -147,16 +132,15 @@ export function LayoutShell({ children, roleLabel, isAdmin, unreadCount = 0 }: {
         <Link
           href="/lipro-ai"
           onClick={() => setMobileOpen(false)}
-          className="mb-2 flex w-full flex-col items-start gap-1 rounded-2xl p-4 text-left text-white shadow-lg transition-transform hover:scale-[1.02] active:scale-[0.99]"
-          style={{ background: `linear-gradient(135deg, ${REF_ACCENT_2}, ${REF_ACCENT})`, boxShadow: `0 12px 28px -12px ${REF_ACCENT}66` }}
+          className="mb-2 flex w-full flex-col items-start gap-1 rounded-xl bg-studio-primary p-4 text-left text-studio-primary-fg shadow-studio-float transition-transform hover:scale-[1.02] active:scale-[0.99]"
         >
           <span className="inline-flex items-center gap-1.5 text-sm font-bold"><Sparkles className="h-4 w-4" /> Ask LIPRO AI</span>
-          <span className="text-xs text-white/80">Get instant help with any topic</span>
+          <span className="text-xs text-studio-primary-fg/80">Get instant help with any topic</span>
         </Link>
-        <Link href="/" onClick={() => setMobileOpen(false)} className="mb-2 flex w-full items-center gap-3 rounded-xl border border-lipro-200/50 bg-lipro-50/50 px-3 py-2.5 text-sm font-medium text-lipro-700 transition-colors hover:bg-lipro-100/60 dark:border-lipro-500/20 dark:bg-lipro-950/30 dark:text-lipro-200 dark:hover:bg-lipro-950/50">
+        <Link href="/" onClick={() => setMobileOpen(false)} className="mb-2 flex w-full items-center gap-3 rounded-xl bg-studio-elevated px-3 py-2.5 text-sm font-medium text-studio-muted shadow-studio-border transition-colors hover:text-studio-fg">
           <Home className="h-4 w-4 shrink-0" /> <span className="truncate">Visit homepage</span>
         </Link>
-        <button onClick={logout} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-rose-500 transition-all hover:bg-rose-50 dark:hover:bg-rose-950/30">
+        <button onClick={logout} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-studio-danger transition-colors hover:bg-studio-danger/10">
           <LogOut className="h-4 w-4 shrink-0" /> Sign out
         </button>
       </div>
@@ -167,49 +151,49 @@ export function LayoutShell({ children, roleLabel, isAdmin, unreadCount = 0 }: {
     viewMode === 'mobile' && !inFrame && !isMobile ? (
       <MobileModeFrame src={pathname} onExit={() => setViewMode('desktop')} />
     ) : (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen bg-studio-bg text-studio-fg">
       <div className="sticky top-0 hidden h-screen lg:block">{Sidebar()}</div>
-      {mobileOpen && <div className="fixed inset-0 z-50 lg:hidden"><div className="absolute inset-0 bg-black/40" onClick={() => setMobileOpen(false)} /><div className="absolute left-0 top-0 h-full glass">{Sidebar()}</div></div>}
+      {mobileOpen && <div className="fixed inset-0 z-50 lg:hidden"><div className="absolute inset-0 bg-studio-bg/70" onClick={() => setMobileOpen(false)} /><div className="absolute left-0 top-0 h-full">{Sidebar()}</div></div>}
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-40 flex h-16 items-center justify-between gap-3 border-b border-lipro-100/60 bg-white/70 px-4 backdrop-blur-xl dark:border-lipro-500/10 dark:bg-surface-dark/70">
-          <button className="tap lg:hidden" onClick={() => setMobileOpen(true)} aria-label="Open menu"><Menu className="h-6 w-6" /></button>
+        <header className="sticky top-0 z-40 flex h-16 items-center justify-between gap-3 border-b border-studio-border bg-studio-bg/80 px-4 backdrop-blur-xl">
+          <button className="lg:hidden" onClick={() => setMobileOpen(true)} aria-label="Open menu"><Menu className="h-6 w-6" /></button>
           <div className="ml-auto flex items-center gap-2">
             {!inFrame && (
-              <button onClick={() => setViewMode(viewMode === 'mobile' ? 'desktop' : 'mobile')} className="tap hidden lg:flex items-center gap-1.5 rounded-xl border border-lipro-200/60 px-3 py-2 text-xs font-medium text-lipro-700 transition-colors hover:bg-lipro-50 dark:border-lipro-500/20 dark:text-lipro-200 dark:hover:bg-lipro-950/40" aria-label="Toggle view mode" title="Toggle mobile/desktop view">
+              <button onClick={() => setViewMode(viewMode === 'mobile' ? 'desktop' : 'mobile')} className="hidden items-center gap-1.5 rounded-full bg-studio-elevated px-3 py-2 text-xs font-medium text-studio-muted shadow-studio-border transition-colors hover:text-studio-fg lg:flex" aria-label="Toggle view mode" title="Toggle mobile/desktop view">
                 {viewMode === 'mobile' ? <Monitor className="h-4 w-4" /> : <Smartphone className="h-4 w-4" />}
                 {viewMode === 'mobile' ? 'Desktop' : 'Mobile'}
               </button>
             )}
-            <Link href="/notifications" className="tap relative grid h-10 w-10 place-items-center rounded-xl glass-hover" aria-label={unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications'}>
+            <Link href="/notifications" className="relative grid h-10 w-10 place-items-center rounded-full text-studio-muted hover:bg-studio-elevated hover:text-studio-fg" aria-label={unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications'}>
               <Bell className="h-5 w-5" />
               {unreadCount > 0 && (
-                <span className="absolute right-1.5 top-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-rose-500 px-1 text-[10px] font-semibold leading-none text-white">
+                <span className="absolute right-1.5 top-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-studio-danger px-1 text-[10px] font-semibold leading-none text-white">
                   {unreadCount > 9 ? '9+' : unreadCount}
                 </span>
               )}
             </Link>
-            <Link href="/settings" className="tap ml-1 flex items-center gap-2 rounded-xl glass px-3 py-1.5" aria-label="Account">
-              <div className="grid h-7 w-7 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-lipro-500 to-lipro-700 text-xs font-bold text-white">
+            <Link href="/settings" className="ml-1 flex items-center gap-2 rounded-full bg-studio-elevated px-3 py-1.5 shadow-studio-border" aria-label="Account">
+              <div className="grid h-7 w-7 place-items-center overflow-hidden rounded-full bg-studio-primary text-xs font-bold text-studio-primary-fg">
                 {avatarUrl ? <img src={avatarUrl} alt="Avatar" className="h-full w-full object-cover" /> : 'U'}
               </div>
-              <span className="hidden text-xs font-medium sm:inline">Account</span>
+              <span className="hidden text-xs font-medium text-studio-muted sm:inline">Account</span>
             </Link>
           </div>
         </header>
         <main className="flex-1 px-4 pb-tabbar pt-2 lg:pb-12">{children}</main>
       </div>
-      <nav className="fixed inset-x-0 bottom-0 z-50 flex items-stretch border-t border-lipro-100/60 bg-white/80 backdrop-blur-xl lg:hidden dark:border-lipro-500/10 dark:bg-surface-dark/80" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+      <nav className="fixed inset-x-0 bottom-0 z-50 flex items-stretch border-t border-studio-border bg-studio-bg/90 backdrop-blur-xl lg:hidden" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
         {MOBILE_TABS.map((item) => {
           const active = pathname === item.href || pathname.startsWith(item.href + '/');
           const Icon = item.icon;
           return (
-            <Link key={item.href} href={item.href} onClick={() => setMobileOpen(false)} className={cn('tap flex min-w-0 flex-1 flex-col items-center justify-center gap-1 py-2 text-[10px] font-medium transition-colors', active ? 'text-lipro-600 dark:text-lipro-400' : 'text-lipro-600/60 dark:text-lipro-200/50')}>
+            <Link key={item.href} href={item.href} onClick={() => setMobileOpen(false)} className={cn('flex min-w-0 flex-1 flex-col items-center justify-center gap-1 py-2 text-[10px] font-medium transition-colors', active ? 'text-studio-primary' : 'text-studio-subtle')}>
               <Icon className={cn('h-5 w-5', active && 'scale-110')} />
               <span className="truncate">{item.label}</span>
             </Link>
           );
         })}
-        <button onClick={() => setMobileOpen(true)} className={cn('tap flex min-w-0 flex-1 flex-col items-center justify-center gap-1 py-2 text-[10px] font-medium transition-colors', mobileOpen ? 'text-lipro-600 dark:text-lipro-400' : 'text-lipro-600/60 dark:text-lipro-200/50')} aria-label="More">
+        <button onClick={() => setMobileOpen(true)} className={cn('flex min-w-0 flex-1 flex-col items-center justify-center gap-1 py-2 text-[10px] font-medium transition-colors', mobileOpen ? 'text-studio-primary' : 'text-studio-subtle')} aria-label="More">
           <MoreHorizontal className="h-5 w-5" />
           <span>More</span>
         </button>
