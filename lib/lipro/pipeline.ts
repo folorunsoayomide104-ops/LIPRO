@@ -313,11 +313,29 @@ export async function runLiproAiPipeline(input: PipelineInput): Promise<Pipeline
   const userMessage = input.messages[input.messages.length - 1]?.content ?? '';
   const isStreaming = !!input.onDelta;
 
+  // TEMPORARY: per-stage timing to find the real latency source instead of
+  // guessing further — remove once diagnosed.
+  const t0 = Date.now();
+  let firstDeltaAt: number | null = null;
+  const wrappedOnDelta = input.onDelta
+    ? (text: string) => {
+        if (firstDeltaAt === null) {
+          firstDeltaAt = Date.now();
+          console.log(`[LIPRO_AI_TIMING] first reasoning token at +${firstDeltaAt - t0}ms`);
+        }
+        input.onDelta!(text);
+      }
+    : undefined;
+
   // TASK PLANNER
   const plan = await planTask(input);
+  const tPlanner = Date.now();
+  console.log(`[LIPRO_AI_TIMING] planner done at +${tPlanner - t0}ms (intent=${plan.intent})`);
 
   // REASONING ENGINE (final answer — streamed live when input.onDelta is set)
-  const { content: raw, usedTools } = await reason(input, plan);
+  const { content: raw, usedTools } = await reason({ ...input, onDelta: wrappedOnDelta }, plan);
+  const tReasoning = Date.now();
+  console.log(`[LIPRO_AI_TIMING] reasoning done at +${tReasoning - t0}ms (since planner: ${tReasoning - tPlanner}ms, tools used: ${usedTools.join(',') || 'none'})`);
 
   // SELF-EVALUATION — for a streaming reply, its correction is never applied
   // retroactively (the text already reached the client), so awaiting it here

@@ -42,6 +42,7 @@ async function persistConversation(userId: string, conversationId: string | unde
 }
 
 export async function POST(req: Request) {
+  const tRequestStart = Date.now(); // TEMPORARY timing — remove once diagnosed.
   const { ok, user, response } = await guard();
   if (!ok || !user) return response!;
 
@@ -207,7 +208,8 @@ export async function POST(req: Request) {
   const shouldStream = wantStream && apiKey.trim().length > 0;
 
   if (shouldStream) {
-    return handleStream(user.userId, conversation, history, message, docs, materialIds, failedFiles, pipelineInput, providers);
+    console.log(`[LIPRO_AI_TIMING] request parsed, entering handleStream at +${Date.now() - tRequestStart}ms`);
+    return handleStream(user.userId, conversation, history, message, docs, materialIds, failedFiles, pipelineInput, providers, tRequestStart);
   }
   let replyText: string;
   let usedFallback = false;
@@ -250,7 +252,8 @@ async function handleStream(
   materialIds: string[] = [],
   failedFiles: Array<{ name: string; reason: string }> = [],
   pipelineInput: PipelineInput,
-  providers: AiProviderConfig[]
+  providers: AiProviderConfig[],
+  tRequestStart: number = Date.now() // TEMPORARY timing — remove once diagnosed.
 ): Promise<Response> {
   // Persist the thread up-front (user message only) so we have a conversationId for the client.
   let convId: string;
@@ -299,9 +302,11 @@ async function handleStream(
       // client — once tokens have gone out, a silent retry would duplicate
       // or garble what the user already sees, so a mid-stream failure keeps
       // the partial text instead of trying another provider.
+      console.log(`[LIPRO_AI_TIMING] stream open, starting provider loop at +${Date.now() - tRequestStart}ms (${providers.length} candidates, first=${providers[0]?.model})`);
       for (const cfg of providers) {
         let streamedAny = false;
         let attemptText = '';
+        const tAttemptStart = Date.now();
         try {
           const result = await runLiproAiPipeline({
             ...pipelineInput,
@@ -317,9 +322,11 @@ async function handleStream(
           // runLiproAiPipeline), result.reply already equals attemptText.
           finalText = result.reply || attemptText;
           outcome = 'success';
+          console.log(`[LIPRO_AI_TIMING] provider ${cfg.model} succeeded, total elapsed +${Date.now() - tRequestStart}ms (this attempt: ${Date.now() - tAttemptStart}ms)`);
           break;
         } catch (err: any) {
           console.error(`LIPRO AI stream error on ${cfg.provider}:`, err?.message || err);
+          console.log(`[LIPRO_AI_TIMING] provider ${cfg.model} FAILED after ${Date.now() - tAttemptStart}ms, total elapsed +${Date.now() - tRequestStart}ms`);
           if (streamedAny) {
             finalText = attemptText;
             outcome = 'partial';
@@ -343,6 +350,7 @@ async function handleStream(
       if (usedFallback) {
         controller.enqueue(encoder2.encode(`data: ${JSON.stringify({ fallback: true })}\n\n`));
       }
+      console.log(`[LIPRO_AI_TIMING] sending [DONE], total request time +${Date.now() - tRequestStart}ms`);
       controller.enqueue(encoder2.encode('data: [DONE]\n\n'));
       controller.close();
     },
