@@ -393,6 +393,23 @@ nav.links a:hover{color:var(--txt)}
 @media(prefers-reduced-motion:reduce){
   .aurora-snakes{display:none}
 }
+.campus-skyline{
+  position:absolute;left:0;right:0;bottom:0;z-index:1;
+  height:clamp(90px,14vh,170px);
+  pointer-events:none;
+}
+.campus-skyline svg{width:100%;height:100%;display:block}
+.sky-building{fill:var(--bg)}
+.sky-window{
+  fill:#ffcf9e;opacity:.15;
+  animation:sky-twinkle 5.5s ease-in-out infinite;
+}
+@keyframes sky-twinkle{
+  0%,100%{opacity:.12}
+  50%{opacity:.8}
+}
+@media(max-width:640px){.campus-skyline{height:clamp(56px,10vh,100px)}}
+@media(prefers-reduced-motion:reduce){.sky-window{animation:none;opacity:.45}}
 
 /* ── DAWN BREAK ─────────────────────────────────────────
    Cinematic scroll beat: the aurora's night sky warms into a soft dawn
@@ -1176,6 +1193,42 @@ body.no-webgl #hero-canvas{display:none}
     </path>
   </svg>
   <div class="hero-aurora-overlay" aria-hidden="true"></div>
+
+  <!-- Grounding silhouette: a modest campus skyline along the bottom
+       edge, with a taller domed hall at its centre — turns "aurora
+       photo" into "a real Nigerian campus at night" instead of generic
+       nature photography, cheap (SVG/CSS, no WebGL) and specific to
+       who this product is actually for. -->
+  <div class="campus-skyline" aria-hidden="true">
+    <svg viewBox="0 0 1200 220" preserveAspectRatio="xMidYMax slice">
+      <rect class="sky-building" x="0" y="140" width="90" height="80"/>
+      <rect class="sky-building" x="90" y="170" width="60" height="50"/>
+      <rect class="sky-building" x="150" y="110" width="110" height="110"/>
+      <rect class="sky-building" x="260" y="60" width="140" height="160"/>
+      <circle class="sky-building" cx="330" cy="60" r="28"/>
+      <rect class="sky-building" x="325" y="14" width="10" height="30"/>
+      <rect class="sky-building" x="400" y="150" width="80" height="70"/>
+      <rect class="sky-building" x="480" y="125" width="100" height="95"/>
+      <rect class="sky-building" x="580" y="165" width="70" height="55"/>
+      <rect class="sky-building" x="650" y="100" width="120" height="120"/>
+      <rect class="sky-building" x="770" y="145" width="90" height="75"/>
+      <rect class="sky-building" x="860" y="120" width="140" height="100"/>
+      <rect class="sky-building" x="1000" y="160" width="80" height="60"/>
+      <rect class="sky-building" x="1080" y="135" width="120" height="85"/>
+      <rect class="sky-window" x="190" y="140" width="5" height="7" style="animation-delay:.2s"/>
+      <rect class="sky-window" x="210" y="165" width="5" height="7" style="animation-delay:1.6s"/>
+      <rect class="sky-window" x="300" y="100" width="6" height="8" style="animation-delay:.9s"/>
+      <rect class="sky-window" x="360" y="130" width="6" height="8" style="animation-delay:2.4s"/>
+      <rect class="sky-window" x="300" y="160" width="6" height="8" style="animation-delay:3.1s"/>
+      <rect class="sky-window" x="510" y="150" width="5" height="7" style="animation-delay:.5s"/>
+      <rect class="sky-window" x="545" y="175" width="5" height="7" style="animation-delay:2.9s"/>
+      <rect class="sky-window" x="690" y="130" width="6" height="8" style="animation-delay:1.3s"/>
+      <rect class="sky-window" x="720" y="165" width="6" height="8" style="animation-delay:3.6s"/>
+      <rect class="sky-window" x="900" y="145" width="6" height="8" style="animation-delay:.1s"/>
+      <rect class="sky-window" x="935" y="175" width="6" height="8" style="animation-delay:2.1s"/>
+      <rect class="sky-window" x="1120" y="160" width="5" height="7" style="animation-delay:1.8s"/>
+    </svg>
+  </div>
 
   <div class="hero-content wrap">
     <div class="hero-inner">
