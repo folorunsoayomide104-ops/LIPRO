@@ -1,9 +1,11 @@
 'use client';
 import { useRef, useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input, Label } from '@/components/ui/input';
 import { Camera, Loader2, ImageOff } from 'lucide-react';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
+
+const inputCls = 'h-11 w-full rounded-lg bg-studio-elevated px-3 text-sm text-studio-fg shadow-studio-border outline-none placeholder:text-studio-subtle';
+const labelCls = 'text-xs font-medium uppercase tracking-[0.14em] text-studio-subtle';
 
 export function ProfileEditor({ user }: { user: any }) {
   const [form, setForm] = useState({ fullName: user.fullName, matricNumber: user.matricNumber, university: user.university, faculty: user.faculty, department: user.department, level: user.level, semester: user.semester });
@@ -47,17 +49,17 @@ export function ProfileEditor({ user }: { user: any }) {
   };
 
   return (
-    <div className="space-y-5">
+    <div className="flex flex-col gap-5">
       <div className="flex items-center gap-4">
         <div className="relative">
-          <div className="grid h-20 w-20 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-lipro-500 to-lipro-700 text-2xl font-bold text-white shadow-lg">
+          <div className="grid h-20 w-20 place-items-center overflow-hidden rounded-full bg-studio-primary text-2xl font-bold text-studio-primary-fg">
             {avatarUrl ? <img src={avatarUrl} alt="Profile" className="h-full w-full object-cover" /> : (form.fullName || 'U').charAt(0).toUpperCase()}
           </div>
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
             disabled={uploading}
-            className="absolute -bottom-1 -right-1 grid h-8 w-8 place-items-center rounded-full border-2 border-surface bg-lipro-600 text-white shadow transition-transform hover:scale-110 disabled:opacity-50"
+            className="absolute -bottom-1 -right-1 grid h-8 w-8 place-items-center rounded-full border-2 border-studio-surface bg-studio-elevated text-studio-fg shadow-studio-border transition-transform hover:scale-110 disabled:opacity-50"
             aria-label="Change profile picture"
           >
             {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
@@ -65,10 +67,10 @@ export function ProfileEditor({ user }: { user: any }) {
           <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="hidden" onChange={uploadAvatar} />
         </div>
         <div>
-          <div className="text-sm font-medium">Profile picture</div>
-          <p className="text-xs text-lipro-600/60">PNG, JPG, WEBP or GIF · max 5MB</p>
+          <div className="text-sm font-medium text-studio-fg">Profile picture</div>
+          <p className="text-xs text-studio-subtle">PNG, JPG, WEBP or GIF · max 5MB</p>
           {avatarUrl && (
-            <button type="button" onClick={() => fileRef.current?.click()} className="mt-1 flex items-center gap-1 text-xs font-medium text-lipro-600 hover:underline">
+            <button type="button" onClick={() => fileRef.current?.click()} className="mt-1 flex items-center gap-1 text-xs font-medium text-studio-primary hover:underline">
               <ImageOff className="h-3 w-3" /> Change picture
             </button>
           )}
@@ -76,14 +78,18 @@ export function ProfileEditor({ user }: { user: any }) {
       </div>
 
       <form onSubmit={save} className="grid gap-3 md:grid-cols-2">
-        <div><Label>Full name</Label><Input value={form.fullName} onChange={set('fullName')} /></div>
-        <div><Label>Matric number</Label><Input value={form.matricNumber} onChange={set('matricNumber')} /></div>
-        <div><Label>University</Label><Input value={form.university} onChange={set('university')} /></div>
-        <div><Label>Faculty</Label><Input value={form.faculty} onChange={set('faculty')} /></div>
-        <div><Label>Department</Label><Input value={form.department} onChange={set('department')} /></div>
-        <div><Label>Level</Label><select className="input" value={form.level} onChange={set('level')}>{['100','200','300','400','500','600','Staff'].map(l => <option key={l}>{l}</option>)}</select></div>
-        <div><Label>Semester</Label><select className="input" value={form.semester} onChange={set('semester')}><option>First</option><option>Second</option></select></div>
-        <div className="md:col-span-2"><Button type="submit" disabled={loading}>{loading ? 'Saving…' : 'Save changes'}</Button></div>
+        <div><label className={labelCls}>Full name</label><input className={cn(inputCls, 'mt-1')} value={form.fullName} onChange={set('fullName')} /></div>
+        <div><label className={labelCls}>Matric number</label><input className={cn(inputCls, 'mt-1')} value={form.matricNumber} onChange={set('matricNumber')} /></div>
+        <div><label className={labelCls}>University</label><input className={cn(inputCls, 'mt-1')} value={form.university} onChange={set('university')} /></div>
+        <div><label className={labelCls}>Faculty</label><input className={cn(inputCls, 'mt-1')} value={form.faculty} onChange={set('faculty')} /></div>
+        <div><label className={labelCls}>Department</label><input className={cn(inputCls, 'mt-1')} value={form.department} onChange={set('department')} /></div>
+        <div><label className={labelCls}>Level</label><select className={cn(inputCls, 'mt-1')} value={form.level} onChange={set('level')}>{['100','200','300','400','500','600','Staff'].map(l => <option key={l}>{l}</option>)}</select></div>
+        <div><label className={labelCls}>Semester</label><select className={cn(inputCls, 'mt-1')} value={form.semester} onChange={set('semester')}><option>First</option><option>Second</option></select></div>
+        <div className="md:col-span-2">
+          <button type="submit" disabled={loading} className="inline-flex h-10 items-center rounded-full bg-studio-primary px-5 text-sm font-medium text-studio-primary-fg disabled:opacity-60">
+            {loading ? 'Saving…' : 'Save changes'}
+          </button>
+        </div>
       </form>
     </div>
   );

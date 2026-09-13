@@ -1,8 +1,5 @@
 'use client';
 import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { KeyRound, CheckCircle2, Loader2, Trash2, ExternalLink } from 'lucide-react';
 
 export function ApiKeyEditor({
@@ -38,47 +35,62 @@ export function ApiKeyEditor({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-3">
-        <div className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-lipro-500/20 to-lipro-700/20 text-lipro-600 dark:text-lipro-300">
+        <div className="grid h-10 w-10 place-items-center rounded-lg bg-studio-elevated text-studio-primary shadow-studio-border">
           <KeyRound className="h-5 w-5" />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-medium">NVIDIA NIM API key</span>
-            {hasKey ? <Badge tone="green">Configured{masked ? ` · ${masked}` : ''}</Badge> : <Badge tone="amber">Not configured</Badge>}
+            <span className="text-sm font-medium text-studio-fg">NVIDIA NIM API key</span>
+            {hasKey ? (
+              <span className="rounded-full bg-studio-primary/15 px-2.5 py-0.5 text-xs font-medium text-studio-primary">Configured{masked ? ` · ${masked}` : ''}</span>
+            ) : (
+              <span className="rounded-full bg-amber-500/15 px-2.5 py-0.5 text-xs font-medium text-amber-400">Not configured</span>
+            )}
           </div>
-          <p className="mt-1 text-xs text-lipro-600/70 dark:text-lipro-200/70">
+          <p className="mt-1 text-xs text-studio-subtle">
             Powers LIPRO AI chat, CBT question generation, and PDF Intelligence. Your key is stored on your account and used for your own requests only — it isn&apos;t shared with other students.
           </p>
         </div>
       </div>
 
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-        <Input
+        <input
           type="password"
           placeholder={hasKey ? 'Paste a new key to replace the current one' : 'Paste your NVIDIA NIM API key…'}
           value={value}
           onChange={(e) => setValue(e.target.value)}
           autoComplete="off"
+          className="h-11 flex-1 rounded-lg bg-studio-elevated px-3 text-sm text-studio-fg shadow-studio-border outline-none placeholder:text-studio-subtle"
         />
-        <Button onClick={() => save('save')} disabled={saving || value.trim().length === 0} className="sm:shrink-0">
+        <button
+          type="button"
+          onClick={() => save('save')}
+          disabled={saving || value.trim().length === 0}
+          className="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-full bg-studio-primary px-4 text-sm font-medium text-studio-primary-fg disabled:opacity-50"
+        >
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />} Save key
-        </Button>
+        </button>
         {hasKey && (
-          <Button variant="outline" onClick={() => save('clear')} disabled={saving} className="sm:shrink-0 text-rose-500 hover:text-rose-600">
+          <button
+            type="button"
+            onClick={() => save('clear')}
+            disabled={saving}
+            className="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-full bg-studio-elevated px-4 text-sm font-medium text-studio-danger shadow-studio-border disabled:opacity-50"
+          >
             <Trash2 className="h-4 w-4" /> Remove
-          </Button>
+          </button>
         )}
       </div>
 
-      {status === 'saved' && <p className="text-sm text-green-600 dark:text-green-400">NVIDIA NIM API key saved.</p>}
-      {status === 'cleared' && <p className="text-sm text-lipro-600/70">NVIDIA NIM API key removed. Falling back to server key or demo mode.</p>}
-      {error && <p className="text-sm text-rose-500">{error}</p>}
+      {status === 'saved' && <p className="text-sm text-studio-primary">NVIDIA NIM API key saved.</p>}
+      {status === 'cleared' && <p className="text-sm text-studio-muted">NVIDIA NIM API key removed. Falling back to server key or demo mode.</p>}
+      {error && <p className="text-sm text-studio-danger">{error}</p>}
 
-      <p className="flex items-center gap-1.5 text-xs text-lipro-600/60 dark:text-lipro-200/50">
+      <p className="flex items-center gap-1.5 text-xs text-studio-subtle">
         No key yet? Get a free one at
-        <a href="https://build.nvidia.com" target="_blank" rel="noreferrer" className="inline-flex items-center gap-0.5 font-medium text-lipro-600 hover:underline dark:text-lipro-300">
+        <a href="https://build.nvidia.com" target="_blank" rel="noreferrer" className="inline-flex items-center gap-0.5 font-medium text-studio-primary hover:underline">
           build.nvidia.com <ExternalLink className="h-3 w-3" />
         </a>
       </p>

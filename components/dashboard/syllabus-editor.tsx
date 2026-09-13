@@ -1,7 +1,5 @@
 'use client';
 import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/input';
 import { Pencil } from 'lucide-react';
 
 export function SyllabusEditor({ courseId, initialSyllabus, canManage }: { courseId: string; initialSyllabus: string | null; canManage: boolean }) {
@@ -27,12 +25,20 @@ export function SyllabusEditor({ courseId, initialSyllabus, canManage }: { cours
 
   if (editing) {
     return (
-      <div className="space-y-2">
-        <Textarea value={value} onChange={(e) => setValue(e.target.value)} rows={8} placeholder="Course outline, topics by week, recommended texts…" />
-        {error && <p className="text-sm text-rose-500">{error}</p>}
+      <div className="flex flex-col gap-2">
+        <textarea
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          rows={8}
+          placeholder="Course outline, topics by week, recommended texts…"
+          className="w-full resize-y rounded-lg bg-studio-elevated px-3 py-2.5 text-sm text-studio-fg shadow-studio-border outline-none placeholder:text-studio-subtle"
+        />
+        {error && <p className="text-sm text-studio-danger">{error}</p>}
         <div className="flex gap-2">
-          <Button size="sm" onClick={save} disabled={loading}>{loading ? 'Saving…' : 'Save syllabus'}</Button>
-          <Button size="sm" variant="ghost" onClick={() => { setValue(saved || ''); setEditing(false); }}>Cancel</Button>
+          <button onClick={save} disabled={loading} className="inline-flex h-9 items-center rounded-full bg-studio-primary px-4 text-xs font-medium text-studio-primary-fg disabled:opacity-60">
+            {loading ? 'Saving…' : 'Save syllabus'}
+          </button>
+          <button onClick={() => { setValue(saved || ''); setEditing(false); }} className="inline-flex h-9 items-center rounded-full px-4 text-xs font-medium text-studio-subtle hover:text-studio-fg">Cancel</button>
         </div>
       </div>
     );
@@ -40,7 +46,7 @@ export function SyllabusEditor({ courseId, initialSyllabus, canManage }: { cours
 
   if (!saved) {
     return canManage ? (
-      <button onClick={() => setEditing(true)} className="text-sm font-medium text-lipro-600 hover:underline dark:text-lipro-300">
+      <button onClick={() => setEditing(true)} className="text-sm font-medium text-studio-primary hover:underline">
         + Add a syllabus
       </button>
     ) : null;
@@ -48,9 +54,9 @@ export function SyllabusEditor({ courseId, initialSyllabus, canManage }: { cours
 
   return (
     <div>
-      <p className="whitespace-pre-wrap text-sm text-lipro-700/80 dark:text-lipro-200/80">{saved}</p>
+      <p className="whitespace-pre-wrap text-sm text-studio-muted">{saved}</p>
       {canManage && (
-        <button onClick={() => setEditing(true)} className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-lipro-600/70 hover:underline dark:text-lipro-300/70">
+        <button onClick={() => setEditing(true)} className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-studio-subtle hover:text-studio-fg">
           <Pencil className="h-3 w-3" /> Edit syllabus
         </button>
       )}

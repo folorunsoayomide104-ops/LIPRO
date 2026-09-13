@@ -1,9 +1,9 @@
 'use client';
 import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input, Label, Textarea } from '@/components/ui/input';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Plus } from 'lucide-react';
+
+const inputCls = 'h-11 w-full rounded-lg bg-studio-elevated px-3 text-sm text-studio-fg shadow-studio-border outline-none placeholder:text-studio-subtle';
+const labelCls = 'text-xs font-medium uppercase tracking-[0.14em] text-studio-subtle';
 
 export function CourseForm() {
   const [open, setOpen] = useState(false);
@@ -22,36 +22,45 @@ export function CourseForm() {
   };
 
   if (!open) return (
-    <Button variant="outline" size="sm" onClick={() => setOpen(true)}><Plus className="h-4 w-4" /> New course</Button>
+    <button
+      type="button"
+      onClick={() => setOpen(true)}
+      className="inline-flex h-9 w-fit items-center gap-1.5 rounded-full bg-studio-elevated px-3 text-xs font-medium text-studio-muted shadow-studio-border hover:text-studio-fg"
+    >
+      <Plus className="h-4 w-4" /> New course
+    </button>
   );
 
   return (
-    <Card>
-      <CardHeader><CardTitle>Create a course</CardTitle><CardDescription>Material for your students</CardDescription></CardHeader>
-      <CardContent>
-        <form onSubmit={submit} className="grid gap-3 md:grid-cols-2">
-          <div><Label>Code</Label><Input value={form.code} onChange={set('code')} placeholder="CSC401" required /></div>
-          <div><Label>Title</Label><Input value={form.title} onChange={set('title')} required /></div>
-          <div className="md:col-span-2"><Label>Description</Label><Input value={form.description} onChange={set('description')} required /></div>
-          <div className="md:col-span-2">
-            <Label>Syllabus <span className="font-normal text-lipro-600/60 dark:text-lipro-300/60">(optional)</span></Label>
-            <Textarea value={form.syllabus} onChange={set('syllabus')} rows={5} placeholder="Course outline, topics by week, recommended texts…" />
-          </div>
-          <div><Label>Faculty</Label><Input value={form.faculty} onChange={set('faculty')} required /></div>
-          <div><Label>Department</Label><Input value={form.department} onChange={set('department')} required /></div>
-          <div><Label>Level</Label>
-            <select className="input" value={form.level} onChange={set('level')}>{['100','200','300','400','500','600','Staff'].map(l => <option key={l}>{l}</option>)}</select>
-          </div>
-          <div><Label>Semester</Label>
-            <select className="input" value={form.semester} onChange={set('semester')}><option>First</option><option>Second</option></select>
-          </div>
-          {error && <p className="text-sm text-rose-500 md:col-span-2">{error}</p>}
-          <div className="md:col-span-2 flex gap-2">
-            <Button type="submit" disabled={loading}>{loading ? 'Creating…' : 'Create course'}</Button>
-            <Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
+    <div className="rounded-xl bg-studio-surface p-5 shadow-studio-border">
+      <h3 className="font-studio-display text-lg tracking-tight text-studio-fg">Create a course</h3>
+      <p className="mt-1 text-sm text-studio-muted">Material for your students.</p>
+      <form onSubmit={submit} className="mt-4 grid gap-3 md:grid-cols-2">
+        <div><label className={labelCls}>Code</label><input className={`${inputCls} mt-1`} value={form.code} onChange={set('code')} placeholder="CSC401" required /></div>
+        <div><label className={labelCls}>Title</label><input className={`${inputCls} mt-1`} value={form.title} onChange={set('title')} required /></div>
+        <div className="md:col-span-2"><label className={labelCls}>Description</label><input className={`${inputCls} mt-1`} value={form.description} onChange={set('description')} required /></div>
+        <div className="md:col-span-2">
+          <label className={labelCls}>Syllabus <span className="normal-case tracking-normal text-studio-subtle">(optional)</span></label>
+          <textarea className={`${inputCls} mt-1 min-h-28 resize-y py-2.5`} value={form.syllabus} onChange={set('syllabus')} rows={5} placeholder="Course outline, topics by week, recommended texts…" />
+        </div>
+        <div><label className={labelCls}>Faculty</label><input className={`${inputCls} mt-1`} value={form.faculty} onChange={set('faculty')} required /></div>
+        <div><label className={labelCls}>Department</label><input className={`${inputCls} mt-1`} value={form.department} onChange={set('department')} required /></div>
+        <div>
+          <label className={labelCls}>Level</label>
+          <select className={`${inputCls} mt-1`} value={form.level} onChange={set('level')}>{['100','200','300','400','500','600','Staff'].map(l => <option key={l}>{l}</option>)}</select>
+        </div>
+        <div>
+          <label className={labelCls}>Semester</label>
+          <select className={`${inputCls} mt-1`} value={form.semester} onChange={set('semester')}><option>First</option><option>Second</option></select>
+        </div>
+        {error && <p className="text-sm text-studio-danger md:col-span-2">{error}</p>}
+        <div className="flex gap-2 md:col-span-2">
+          <button type="submit" disabled={loading} className="inline-flex h-9 items-center rounded-full bg-studio-primary px-4 text-xs font-medium text-studio-primary-fg disabled:opacity-60">
+            {loading ? 'Creating…' : 'Create course'}
+          </button>
+          <button type="button" onClick={() => setOpen(false)} className="inline-flex h-9 items-center rounded-full px-4 text-xs font-medium text-studio-subtle hover:text-studio-fg">Cancel</button>
+        </div>
+      </form>
+    </div>
   );
 }
