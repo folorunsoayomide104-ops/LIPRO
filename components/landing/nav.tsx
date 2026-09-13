@@ -25,7 +25,7 @@ export function LandingNav() {
           <div className="grid h-9 w-9 place-items-center rounded-xl bg-[#0a0a0c] ring-1 ring-white/10">
             <LiproLogo className="h-5 w-5" />
           </div>
-          <span className="text-base font-bold tracking-tight">LIPRO ACADEMY</span>
+          <span className="text-base font-bold tracking-tight">LIPRO</span>
         </Link>
         <div className="hidden items-center gap-5 text-sm font-medium text-lipro-700/80 dark:text-lipro-200/80 lg:flex">
           {NAV.map((item) => (

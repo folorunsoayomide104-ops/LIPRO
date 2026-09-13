@@ -9,7 +9,7 @@ export default function PrivacyPage() {
         <h1>Privacy Policy</h1>
         <p className="text-sm text-lipro-600/70 dark:text-lipro-200/70">Last updated: {new Date().getFullYear()}.</p>
         <h2>1. Data we collect</h2>
-        <p>When you register for LIPRO Academy we collect your name, email address, matric number, university, faculty, department, level and semester — the minimum required to personalize your learning experience. We also store course materials, notes, exam attempts and chat history with LIPRO AI that you create.</p>
+        <p>When you register for LIPRO we collect your name, email address, matric number, university, faculty, department, level and semester — the minimum required to personalize your learning experience. We also store course materials, notes, exam attempts and chat history with LIPRO AI that you create.</p>
         <h2>2. How we use data</h2>
         <p>Your information is used to provide educational features, to enforce role-based access, to improve AI quality, and to send academic and payment notifications. We never sell your data to third parties.</p>
         <h2>3. AI processing by third-party providers</h2>

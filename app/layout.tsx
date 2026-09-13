@@ -7,8 +7,8 @@ import './globals.css';
 
 export const metadata: Metadata = {
   title: {
-    default: 'LIPRO ACADEMY | Your Life In Progress',
-    template: '%s | LIPRO ACADEMY',
+    default: 'LIPRO | Your Life In Progress',
+    template: '%s | LIPRO',
   },
   description: 'Revision materials, past questions, notes and CBT practice for Nigerian university students.',
   manifest: '/manifest.webmanifest',
@@ -22,7 +22,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'LIPRO Academy',
+    title: 'LIPRO',
   },
   formatDetection: { telephone: false },
 };

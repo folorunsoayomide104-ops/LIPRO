@@ -110,7 +110,7 @@ export default async function StudentDashboard() {
         <div className="min-w-0">
           <h1 className="heading truncate text-xl font-bold">Good to see you, {firstName}</h1>
           <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-studio-subtle">
-            <span>{me?.university || 'LIPRO Academy'} · Level {me?.level || '—'}</span>
+            <span>{me?.university || 'LIPRO'} · Level {me?.level || '—'}</span>
             <Badge tone="indigo">{me?.subscriptionTier || 'FREE'} plan</Badge>
           </div>
         </div>

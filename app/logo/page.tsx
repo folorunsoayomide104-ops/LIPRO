@@ -44,7 +44,7 @@ export default function LogoPage() {
       <section className="relative overflow-hidden border-b border-white/5">
         <div className="pointer-events-none absolute left-1/2 top-0 h-[500px] w-[900px] -translate-x-1/2 rounded-full bg-[#1e293b]/30 blur-[140px]" />
         <div className="relative mx-auto max-w-4xl px-6 py-24 text-center md:py-32">
-          <img src="/logo/lipro-lockup.svg" alt="LIPRO ACADEMY" className="mx-auto w-[320px] max-w-full sm:w-[420px]" />
+          <img src="/logo/lipro-lockup.svg" alt="LIPRO" className="mx-auto w-[320px] max-w-full sm:w-[420px]" />
           <p className="mt-10 text-[11px] font-medium uppercase tracking-[0.45em] text-zinc-500">Intelligence · Education · Excellence</p>
           <p className="mx-auto mt-4 max-w-md text-sm leading-relaxed text-zinc-500">
             A luxury EdTech identity — the L &amp; P monogram rendered as a single
@@ -112,7 +112,6 @@ export default function LogoPage() {
             <p className="mt-2 text-sm text-zinc-500">Outfit — geometric, futuristic, precise.</p>
             <div className="mt-8 rounded-2xl border border-white/10 bg-[#0a0a0c] p-8">
               <div className="text-4xl font-bold tracking-[0.18em] text-white">LIPRO</div>
-              <div className="mt-2 text-sm font-medium tracking-[0.4em] text-zinc-500">ACADEMY</div>
             </div>
             <p className="mt-4 text-xs leading-relaxed text-zinc-600">
               Tight weight contrast: bold letterspaced display over a light, widely tracked

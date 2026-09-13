@@ -22,7 +22,7 @@ export function LandingHero() {
 
         <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.2 }}
           className="mx-auto mt-6 max-w-2xl text-base text-lipro-700/80 dark:text-lipro-200/70 md:text-lg">
-          From CBT exams to instant AI-generated revision guides, LIPRO Academy is the all-in-one platform built for Nigerian students who want to study smarter, not harder.
+          From CBT exams to instant AI-generated revision guides, LIPRO is the all-in-one platform built for Nigerian students who want to study smarter, not harder.
         </motion.p>
 
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.3 }}

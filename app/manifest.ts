@@ -2,7 +2,7 @@ import type { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'LIPRO Academy',
+    name: 'LIPRO',
     short_name: 'LIPRO',
     description: 'Revision materials, past questions, notes and CBT practice for university students.',
     start_url: '/dashboard',

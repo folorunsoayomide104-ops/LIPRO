@@ -53,7 +53,7 @@ export async function POST(req: Request) {
     data: {
       userId: user.id,
       type: 'INFO',
-      title: 'Welcome to LIPRO Academy',
+      title: 'Welcome to LIPRO',
       message: `Hi ${user.fullName.split(' ')[0]}, your account is ready. Start by exploring courses or chatting with LIPRO AI.`,
     },
   });

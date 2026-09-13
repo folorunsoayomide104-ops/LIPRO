@@ -78,7 +78,7 @@ export function LayoutShell({ children, roleLabel, isAdmin, unreadCount = 0 }: {
           <LiproLogo className="h-5 w-5 text-studio-primary-fg" />
         </div>
         <div className="min-w-0">
-          <div className="truncate font-studio-display text-sm tracking-tight text-studio-fg">LIPRO Academy</div>
+          <div className="truncate font-studio-display text-sm tracking-tight text-studio-fg">LIPRO</div>
           <div className="truncate text-[10px] uppercase tracking-wider text-studio-subtle">{roleLabel || 'AI Learning Platform'}</div>
         </div>
       </div>

@@ -8,7 +8,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   google_not_configured: 'Google Sign-In isn’t set up yet, so there’s no way to reset a password right now. Contact support for help.',
   google_state: 'That didn’t go through — please try again.',
   google_failed: 'That didn’t go through — please try again.',
-  no_account: 'No LIPRO Academy account uses that Google email. Double-check you’re signing in with the right Google account, or create an account instead.',
+  no_account: 'No LIPRO account uses that Google email. Double-check you’re signing in with the right Google account, or create an account instead.',
 };
 
 export default function ForgotPasswordPage() {
@@ -40,7 +40,7 @@ export default function ForgotPasswordPage() {
         )}
 
         <p className="mb-5 text-sm text-lipro-600/70 dark:text-lipro-200/60">
-          This account&apos;s email doesn&apos;t need to match how you originally signed up — as long as it&apos;s the same email your LIPRO Academy account uses, signing in with Google proves it&apos;s you and lets you set a new password.
+          This account&apos;s email doesn&apos;t need to match how you originally signed up — as long as it&apos;s the same email your LIPRO account uses, signing in with Google proves it&apos;s you and lets you set a new password.
         </p>
 
         <a

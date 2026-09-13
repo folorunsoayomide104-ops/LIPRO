@@ -11,7 +11,7 @@ export function LandingFooter() {
               <div className="grid h-9 w-9 place-items-center rounded-xl bg-[#0a0a0c] ring-1 ring-white/10">
                 <LiproLogo className="h-5 w-5" />
               </div>
-              <span className="font-bold">LIPRO ACADEMY</span>
+              <span className="font-bold">LIPRO</span>
             </Link>
             <p className="mt-3 text-xs text-lipro-700/60 dark:text-lipro-200/60">Smarter revision for Nigerian university students.</p>
           </div>
@@ -32,7 +32,7 @@ export function LandingFooter() {
           ))}
         </div>
         <div className="mt-8 border-t border-lipro-200/30 pt-6 text-center text-xs text-lipro-700/50 dark:text-lipro-200/50">
-          © {new Date().getFullYear()} LIPRO ACADEMY. All rights reserved.
+          © {new Date().getFullYear()} LIPRO. All rights reserved.
         </div>
       </div>
     </footer>

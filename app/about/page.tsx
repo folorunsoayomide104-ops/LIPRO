@@ -5,7 +5,7 @@ import { GraduationCap, BookOpen, Wallet, HeartHandshake, Target, Award, Users }
 
 export const metadata: Metadata = {
   title: 'About — Our story and mission',
-  description: 'LIPRO ACADEMY makes serious revision possible for every Nigerian university student — structured notes, past questions and CBT practice that follow your curriculum, at a price any student can afford.',
+  description: 'LIPRO makes serious revision possible for every Nigerian university student — structured notes, past questions and CBT practice that follow your curriculum, at a price any student can afford.',
 };
 
 const VALUES = [
@@ -21,9 +21,9 @@ export default function AboutPage() {
       <LandingNav />
       <main>
         <section className="mx-auto max-w-3xl px-4 py-16 text-center md:py-20">
-          <h1 className="text-4xl font-bold tracking-tight md:text-5xl">About LIPRO ACADEMY</h1>
+          <h1 className="text-4xl font-bold tracking-tight md:text-5xl">About LIPRO</h1>
           <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-lipro-700/80 dark:text-lipro-200/80">
-            LIPRO ACADEMY exists to make serious revision possible for every Nigerian university
+            LIPRO exists to make serious revision possible for every Nigerian university
             student — structured notes, past questions and CBT practice that follow your curriculum,
             at a price any student can afford.
           </p>
@@ -33,7 +33,7 @@ export default function AboutPage() {
           <h2 className="text-2xl font-bold tracking-tight">Our story</h2>
           <div className="mt-4 space-y-4 text-[15px] leading-relaxed text-lipro-700/80 dark:text-lipro-200/75">
             <p>
-              LIPRO ACADEMY was founded by an independent team of Nigerian educators and engineers
+              LIPRO was founded by an independent team of Nigerian educators and engineers
               who saw the same problem repeat itself: smart students failing courses they could have
               passed — not because they lacked ability, but because they had no organised way to revise.
             </p>
@@ -44,7 +44,7 @@ export default function AboutPage() {
               when we were students.
             </p>
             <p>
-              Today that system is LIPRO ACADEMY: course materials that follow your syllabus,
+              Today that system is LIPRO: course materials that follow your syllabus,
               question banks that mirror real exam patterns, timed CBT practice that conditions you
               for the real thing, and progress tracking that shows you exactly where you stand.
             </p>
@@ -70,13 +70,13 @@ export default function AboutPage() {
         <section className="mx-auto max-w-3xl px-4 py-10 text-center">
           <div className="card">
             <Users className="mx-auto h-8 w-8 text-lipro-500" />
-            <h2 className="mt-3 text-2xl font-bold tracking-tight">The team behind LIPRO ACADEMY</h2>
+            <h2 className="mt-3 text-2xl font-bold tracking-tight">The team behind LIPRO</h2>
             <p className="mx-auto mt-3 max-w-xl text-[15px] leading-relaxed text-lipro-700/80 dark:text-lipro-200/75">
-              LIPRO Academy didn&apos;t start as a company — it started with one nursing student
+              LIPRO didn&apos;t start as a company — it started with one nursing student
               turning dense course PDFs into revision guides for coursemates, because the material
               we were handed wasn&apos;t built for how we actually study.
               <br /><br />
-              That same process now powers LIPRO Academy: every revision guide and practice question
+              That same process now powers LIPRO: every revision guide and practice question
               is built directly from your university&apos;s actual course material — not generic
               content, not a template. If it&apos;s in your syllabus, it&apos;s in here.
               <br /><br />

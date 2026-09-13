@@ -58,7 +58,7 @@ export function DevicePreview() {
           </div>
           <div>
             <div className="text-sm font-bold tracking-tight">Device Preview</div>
-            <div className="text-[10px] uppercase tracking-wider text-white/50">LIPRO Academy · iPhone 14 Pro Max 430×932</div>
+            <div className="text-[10px] uppercase tracking-wider text-white/50">LIPRO · iPhone 14 Pro Max 430×932</div>
           </div>
         </div>
         <button
