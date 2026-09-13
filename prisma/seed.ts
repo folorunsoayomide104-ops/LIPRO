@@ -53,7 +53,7 @@ async function main() {
   });
 
   await prisma.notification.create({
-    data: { userId: student.id, type: "INFO", title: "Welcome to LIPRO Academy", message: "Your account is ready. Start by enrolling in a course." },
+    data: { userId: student.id, type: "INFO", title: "Welcome to LIPRO", message: "Your account is ready. Start by enrolling in a course." },
   });
 
   console.log("Seed complete. Demo accounts:");
