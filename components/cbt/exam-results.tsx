@@ -1,10 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { CheckCircle2, XCircle, Loader2, Sparkles, AlertTriangle, Pencil } from 'lucide-react';
+import { Check, X, Loader2, Sparkles, AlertTriangle, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type ReviewItem = {
@@ -54,12 +51,6 @@ const GRADE_LABEL: Record<string, string> = {
   heuristic: 'Estimated',
   override: 'Lecturer-graded',
 };
-
-function scoreTone(pct: number): 'green' | 'amber' | 'rose' {
-  if (pct >= 70) return 'green';
-  if (pct >= 40) return 'amber';
-  return 'rose';
-}
 
 export function ExamResults({ attemptId }: { attemptId: string }) {
   const router = useRouter();
@@ -111,19 +102,21 @@ export function ExamResults({ attemptId }: { attemptId: string }) {
 
   if (error) {
     return (
-      <Card>
-        <CardContent>
-          <p className="text-sm">{error}</p>
-          <Button className="mt-3" onClick={() => router.push('/cbt')}>Back to CBT</Button>
-        </CardContent>
-      </Card>
+      <div className="min-h-dvh bg-studio-bg p-8">
+        <div className="mx-auto max-w-md rounded-xl bg-studio-surface p-6 shadow-studio-border">
+          <p className="text-sm text-studio-fg">{error}</p>
+          <button type="button" onClick={() => router.push('/cbt')} className="mt-4 inline-flex h-10 items-center rounded-full bg-studio-primary px-4 text-sm font-medium text-studio-primary-fg">
+            Back to CBT
+          </button>
+        </div>
+      </div>
     );
   }
 
   if (!data) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-lipro-500" />
+      <div className="flex h-64 items-center justify-center bg-studio-bg">
+        <Loader2 className="h-6 w-6 animate-spin text-studio-primary" />
       </div>
     );
   }
@@ -132,57 +125,59 @@ export function ExamResults({ attemptId }: { attemptId: string }) {
   const grading = attempt.gradingStatus === 'pending' || attempt.gradingStatus === 'grading';
 
   return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader className="flex-row flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0">
-            <CardTitle className="break-words">{attempt.sourceTitle} — {attempt.percentage}%</CardTitle>
-            <p className="text-sm text-lipro-600/70">
-              Score: {attempt.score} / {attempt.totalPoints} points
-              {attempt.autoSubmitted && ' · Auto-submitted when time ran out'}
-              {attempt.student && ` · ${attempt.student.name}`}
-            </p>
-          </div>
-          <Badge tone={scoreTone(attempt.percentage)} className="shrink-0 text-sm">{attempt.percentage}%</Badge>
-        </CardHeader>
-        <CardContent>
+    <div className="min-h-dvh bg-studio-bg text-studio-fg">
+      <div className="mx-auto flex w-full max-w-3xl flex-col px-4 pb-12 pt-6 md:px-8">
+        <header className="mb-8 studio-rise">
+          <p className="text-xs font-medium uppercase tracking-[0.18em] text-studio-subtle">Review</p>
+          <h2 className="mt-2 break-words font-studio-display text-3xl tracking-tight md:text-4xl">
+            {attempt.sourceTitle} — {attempt.percentage}%
+          </h2>
+          <p className="mt-3 text-sm leading-normal text-studio-muted">
+            Score: {attempt.score} / {attempt.totalPoints} points
+            {attempt.autoSubmitted && ' · Auto-submitted when time ran out'}
+            {attempt.student && ` · ${attempt.student.name}`}
+          </p>
+
           {attempt.legacy && (
-            <div className="mb-3 flex items-center gap-2 rounded-xl border border-amber-300/50 bg-amber-50/60 p-3 text-xs text-amber-800 dark:border-amber-500/30 dark:bg-amber-950/20 dark:text-amber-200">
+            <div className="mt-4 flex items-center gap-2 rounded-lg bg-amber-500/10 px-4 py-3 text-xs text-amber-400">
               <AlertTriangle className="h-4 w-4 shrink-0" /> This is an older attempt with limited detail — no AI feedback is available for it.
             </div>
           )}
           {grading && (
-            <div className="mb-3 flex items-center gap-2 rounded-xl border border-lipro-300/50 bg-lipro-50/60 p-3 text-xs text-lipro-700 dark:border-lipro-500/30 dark:bg-lipro-950/20 dark:text-lipro-200">
+            <div className="mt-4 flex items-center gap-2 rounded-lg bg-studio-elevated px-4 py-3 text-xs text-studio-muted shadow-studio-border">
               <Loader2 className="h-4 w-4 shrink-0 animate-spin" /> Grading your written answers…
             </div>
           )}
           {attempt.gradingStatus === 'degraded' && (
-            <div className="mb-3 flex items-center gap-2 rounded-xl border border-amber-300/50 bg-amber-50/60 p-3 text-xs text-amber-800 dark:border-amber-500/30 dark:bg-amber-950/20 dark:text-amber-200">
+            <div className="mt-4 flex items-center gap-2 rounded-lg bg-amber-500/10 px-4 py-3 text-xs text-amber-400">
               <AlertTriangle className="h-4 w-4 shrink-0" /> Written answers were graded with a fallback estimator (AI grading was unavailable). Scores for those questions are approximate.
             </div>
           )}
           {attempt.aiFeedback && (
-            <div className="mb-3 flex items-start gap-2 rounded-xl border border-lipro-300/50 bg-lipro-50/60 p-3 text-xs text-lipro-700 dark:border-lipro-500/30 dark:bg-lipro-950/20 dark:text-lipro-200">
-              <Sparkles className="h-4 w-4 shrink-0" /> {attempt.aiFeedback}
+            <div className="mt-4 flex items-start gap-2 rounded-lg bg-studio-primary/10 px-4 py-3 text-xs leading-relaxed text-studio-fg">
+              <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-studio-primary" /> {attempt.aiFeedback}
             </div>
           )}
 
-          <div className="space-y-3">
-            {items.map((item) => (
-              <ReviewCard key={item.itemId} item={item} attemptId={attemptId} canOverride={attempt.canOverride} onOverridden={load} />
-            ))}
-          </div>
+          <button type="button" onClick={() => router.push('/cbt')} className="mt-6 inline-flex h-10 items-center rounded-full bg-studio-elevated px-4 text-sm font-medium text-studio-muted shadow-studio-border hover:text-studio-fg">
+            Back to CBT
+          </button>
+        </header>
 
-          <Button className="mt-4" onClick={() => router.push('/cbt')}>Back to CBT</Button>
-        </CardContent>
-      </Card>
+        <ol className="flex flex-col gap-4">
+          {items.map((item, i) => (
+            <ReviewCard key={item.itemId} index={i} item={item} attemptId={attemptId} canOverride={attempt.canOverride} onOverridden={load} />
+          ))}
+        </ol>
+      </div>
     </div>
   );
 }
 
 function ReviewCard({
-  item, attemptId, canOverride, onOverridden,
+  index, item, attemptId, canOverride, onOverridden,
 }: {
+  index: number;
   item: ReviewItem;
   attemptId: string;
   canOverride: boolean;
@@ -212,40 +207,43 @@ function ReviewCard({
   };
 
   return (
-    <div className="rounded-xl p-3 glass-hover">
-      <div className="flex flex-wrap items-center gap-2">
-        <Badge tone={item.isCorrect ? 'green' : item.awarded > 0 ? 'amber' : 'rose'}>
-          {item.isCorrect ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
+    <li className="rounded-xl bg-studio-surface p-5 shadow-studio-border">
+      <p className="flex flex-wrap items-center gap-2 text-xs font-medium uppercase tracking-[0.16em] text-studio-subtle">
+        <span>{index + 1}</span>
+        <span className={cn(item.isCorrect ? 'text-studio-primary' : item.awarded > 0 ? 'text-amber-400' : 'text-studio-danger')}>
+          {item.isCorrect ? <Check className="inline h-3 w-3" /> : <X className="inline h-3 w-3" />}{' '}
           {item.isCorrect ? 'Correct' : item.awarded > 0 ? 'Partial credit' : 'Incorrect'}
-        </Badge>
-        <span className="text-xs">{item.awarded} / {item.points} pts</span>
+        </span>
+        <span className="normal-case tracking-normal text-studio-subtle">· {item.awarded} / {item.points} pts</span>
         {item.gradeMethod && (
-          <span className={cn('text-[11px] font-medium', item.overridden ? 'text-lipro-600' : 'text-lipro-500/70')}>
-            {GRADE_LABEL[item.gradeMethod] ?? item.gradeMethod}
-          </span>
+          <span className="normal-case tracking-normal text-studio-subtle">· {GRADE_LABEL[item.gradeMethod] ?? item.gradeMethod}</span>
         )}
-        {!item.isGraded && <span className="text-[11px] text-lipro-500/70">Grading…</span>}
+        {!item.isGraded && <span className="normal-case tracking-normal text-studio-subtle">· Grading…</span>}
         {canOverride && (
-          <button type="button" className="ml-auto text-lipro-500 hover:text-lipro-700" onClick={() => setEditing((e) => !e)} title="Override grade">
+          <button type="button" className="ml-auto text-studio-subtle hover:text-studio-fg" onClick={() => setEditing((e) => !e)} title="Override grade">
             <Pencil className="h-3.5 w-3.5" />
           </button>
         )}
+      </p>
+      <p className="mt-2 text-sm leading-normal text-studio-fg">{item.prompt}</p>
+      <div className="mt-3 space-y-1.5 text-sm text-studio-muted">
+        <p>Your answer: <span className="text-studio-fg">{item.response || '—'}</span></p>
+        <p>Correct: <span className="text-studio-fg">{item.correctAnswer || '—'}</span></p>
       </div>
-      <div className="mt-1 text-sm">{item.prompt}</div>
-      <div className="mt-2 text-xs">
-        <div><strong>Your answer:</strong> {item.response || '—'}</div>
-        <div className="mt-1"><strong>Correct:</strong> {item.correctAnswer || '—'}</div>
-      </div>
-      {item.explanation && <p className="mt-2 text-xs text-lipro-600/70 dark:text-lipro-200/70">{item.explanation}</p>}
-      {item.feedback && <p className="mt-1 text-xs italic text-lipro-600/70 dark:text-lipro-200/60">{item.feedback}</p>}
+      {item.explanation ? (
+        <p className="mt-3 flex gap-2 text-sm leading-normal text-studio-muted">
+          <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-studio-primary" /> {item.explanation}
+        </p>
+      ) : null}
+      {item.feedback && <p className="mt-2 text-sm italic text-studio-subtle">{item.feedback}</p>}
       {item.overridden && item.overrideNote && (
-        <p className="mt-1 text-xs text-lipro-600/70 dark:text-lipro-200/60"><strong>Lecturer note:</strong> {item.overrideNote}</p>
+        <p className="mt-2 text-sm text-studio-subtle">Lecturer note: {item.overrideNote}</p>
       )}
 
       {editing && (
-        <div className="mt-3 flex flex-wrap items-end gap-2 rounded-xl border border-lipro-200/50 p-3 dark:border-lipro-700/40">
-          <label className="text-xs">
-            <div className="mb-1 text-lipro-600/70">Award (max {item.points})</div>
+        <div className="mt-4 flex flex-wrap items-end gap-3 rounded-lg bg-studio-elevated p-3">
+          <label className="text-xs text-studio-subtle">
+            <div className="mb-1">Award (max {item.points})</div>
             <input
               type="number"
               min={0}
@@ -253,18 +251,28 @@ function ReviewCard({
               step={0.5}
               value={awarded}
               onChange={(e) => setAwarded(Math.min(item.points, Math.max(0, Number(e.target.value))))}
-              className="input !w-24 !py-1"
+              className="h-9 w-24 rounded-md bg-studio-surface px-2 text-sm text-studio-fg shadow-studio-border outline-none"
             />
           </label>
-          <label className="flex-1 text-xs">
-            <div className="mb-1 text-lipro-600/70">Note (optional)</div>
-            <input type="text" value={note} onChange={(e) => setNote(e.target.value)} className="input !py-1" />
+          <label className="flex-1 text-xs text-studio-subtle">
+            <div className="mb-1">Note (optional)</div>
+            <input
+              type="text"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              className="h-9 w-full rounded-md bg-studio-surface px-3 text-sm text-studio-fg shadow-studio-border outline-none"
+            />
           </label>
-          <Button size="sm" onClick={submitOverride} disabled={saving}>
+          <button
+            type="button"
+            onClick={submitOverride}
+            disabled={saving}
+            className="inline-flex h-9 items-center gap-1.5 rounded-full bg-studio-primary px-4 text-xs font-medium text-studio-primary-fg disabled:opacity-60"
+          >
             {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null} Save
-          </Button>
+          </button>
         </div>
       )}
-    </div>
+    </li>
   );
 }

@@ -1,12 +1,11 @@
 'use client';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Clock, Send, ChevronLeft, ChevronRight, CheckCircle2, XCircle, LayoutGrid, Loader2, RefreshCw, LogOut, Cloud, CloudOff, Flame, Star } from 'lucide-react';
+import { Clock, Send, ChevronLeft, ChevronRight, Check, LayoutGrid, Loader2, RefreshCw, LogOut, Cloud, CloudOff, Flame, Star } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAttempt, type AttemptItem } from '@/lib/cbt/use-attempt';
+
+const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'] as const;
 
 function fmtTime(s: number): string {
   const m = Math.floor(s / 60);
@@ -15,12 +14,12 @@ function fmtTime(s: number): string {
 }
 
 /** Timer urgency scales with remaining time, not a permanent red badge. */
-function timerTone(remaining: number, durationSec: number | null): 'green' | 'amber' | 'rose' {
+function timerTone(remaining: number, durationSec: number | null): 'fg' | 'amber' | 'danger' {
   if (!durationSec) return 'amber';
   const ratio = remaining / durationSec;
-  if (ratio > 0.5) return 'green';
+  if (ratio > 0.5) return 'fg';
   if (ratio > 0.2) return 'amber';
-  return 'rose';
+  return 'danger';
 }
 
 export function ExamRunner({ attemptId }: { attemptId: string }) {
@@ -35,44 +34,27 @@ export function ExamRunner({ attemptId }: { attemptId: string }) {
   const answeredCount = useMemo(() => items.filter((i) => (i.response ?? '').trim().length > 0).length, [items]);
   const unansweredCount = items.length - answeredCount;
 
-  // Practice-mode running score/streak — purely a motivational UI layer
-  // derived from data useAttempt already provides (item.revealed/isCorrect),
-  // no grading logic touched. A ref tracks which items have already been
-  // counted so re-renders (or checking questions out of order via the nav
-  // grid) never double-count or misattribute a streak to array position.
   const countedRef = useRef<Set<string>>(new Set());
   const [practiceScore, setPracticeScore] = useState(0);
   const [streak, setStreak] = useState(0);
-  const [bestStreak, setBestStreak] = useState(0);
   const [justRevealed, setJustRevealed] = useState<{ itemId: string; correct: boolean } | null>(null);
 
   useEffect(() => {
     for (const it of items) {
       if (!it.revealed || countedRef.current.has(it.itemId)) continue;
       countedRef.current.add(it.itemId);
-      // A pending-review item (AI grading disabled) is neither right nor
-      // wrong yet — don't break the streak or add to the score for it.
       if (it.gradeMethod === 'ungraded') continue;
       if (it.isCorrect) {
         setPracticeScore((s) => s + (it.awarded ?? it.points));
-        setStreak((s) => {
-          const next = s + 1;
-          setBestStreak((b) => Math.max(b, next));
-          return next;
-        });
+        setStreak((s) => s + 1);
       } else {
         setStreak(0);
       }
       setJustRevealed({ itemId: it.itemId, correct: !!it.isCorrect });
-      // Clear after the animation window so revisiting this question later
-      // (via Previous/Next or the nav grid) doesn't replay the reveal
-      // animation — it should only play at the moment of the real event.
       const id = it.itemId;
       setTimeout(() => setJustRevealed((cur) => (cur?.itemId === id ? null : cur)), 500);
     }
   }, [items]);
-
-  const parseOptions = useCallback((item: AttemptItem): string[] => item.options ?? [], []);
 
   const doCheck = async (item: AttemptItem) => {
     setChecking(item.itemId);
@@ -87,24 +69,26 @@ export function ExamRunner({ attemptId }: { attemptId: string }) {
 
   if (loading) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-lipro-500" />
+      <div className="flex h-64 items-center justify-center bg-studio-bg">
+        <Loader2 className="h-6 w-6 animate-spin text-studio-primary" />
       </div>
     );
   }
 
   if (error || !attempt) {
     return (
-      <div className="p-8">
-        <Card>
-          <CardContent>
-            <p className="text-sm">{error || 'Could not load this attempt.'}</p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <Button onClick={reload}><RefreshCw className="h-4 w-4" /> Retry</Button>
-              <Button variant="outline" onClick={() => router.push('/cbt')}>Back to CBT</Button>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="min-h-dvh bg-studio-bg p-8">
+        <div className="mx-auto max-w-md rounded-xl bg-studio-surface p-6 shadow-studio-border">
+          <p className="text-sm text-studio-fg">{error || 'Could not load this attempt.'}</p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button type="button" onClick={reload} className="inline-flex h-10 items-center gap-2 rounded-full bg-studio-primary px-4 text-sm font-medium text-studio-primary-fg">
+              <RefreshCw className="h-4 w-4" /> Retry
+            </button>
+            <button type="button" onClick={() => router.push('/cbt')} className="inline-flex h-10 items-center gap-2 rounded-full bg-studio-elevated px-4 text-sm font-medium text-studio-muted shadow-studio-border hover:text-studio-fg">
+              Back to CBT
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -120,163 +104,183 @@ export function ExamRunner({ attemptId }: { attemptId: string }) {
     saveState === 'error' ? 'Could not save' : null;
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="min-w-0">
-          <h2 className="text-lg font-semibold">{isPractice ? 'Practice' : 'Exam'} mode</h2>
-          <p className="flex flex-wrap items-center gap-x-2 text-xs text-lipro-600/60">
-            <span className="truncate">{attempt.sourceTitle ? `${attempt.sourceTitle} · ` : ''}{items.length} questions · {answeredCount} answered</span>
-            {saveLabel && (
-              <span className="inline-flex shrink-0 items-center gap-1">
-                {saveState === 'offline' || saveState === 'error' ? <CloudOff className="h-3 w-3" /> : <Cloud className="h-3 w-3" />}
-                {saveLabel}
+    <div className="min-h-dvh bg-studio-bg pb-28 text-studio-fg lg:pb-4">
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 pb-6 pt-6 md:px-8">
+        <div className="flex flex-wrap items-center justify-between gap-3 studio-rise">
+          <div className="min-w-0">
+            <p className="text-xs font-medium uppercase tracking-[0.18em] text-studio-subtle">{isPractice ? 'Practice' : 'Exam'}</p>
+            <p className="mt-1 flex flex-wrap items-center gap-x-2 text-sm text-studio-muted">
+              <span className="truncate">{attempt.sourceTitle ? `${attempt.sourceTitle} · ` : ''}{items.length} questions · {answeredCount} answered</span>
+              {saveLabel && (
+                <span className="inline-flex shrink-0 items-center gap-1 text-xs text-studio-subtle">
+                  {saveState === 'offline' || saveState === 'error' ? <CloudOff className="h-3 w-3" /> : <Cloud className="h-3 w-3" />}
+                  {saveLabel}
+                </span>
+              )}
+            </p>
+          </div>
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            {isPractice && (
+              <>
+                {streak >= 2 && (
+                  <span className="inline-flex h-8 items-center gap-1.5 rounded-full bg-studio-primary px-3 text-xs font-medium text-studio-primary-fg">
+                    <Flame className="h-3.5 w-3.5" /> {streak} in a row
+                  </span>
+                )}
+                <span className="inline-flex h-8 items-center gap-1.5 rounded-full bg-studio-elevated px-3 text-xs font-medium text-studio-muted shadow-studio-border">
+                  <Star className="h-3.5 w-3.5" /> {practiceScore} pts
+                </span>
+              </>
+            )}
+            <button type="button" onClick={() => setShowNav((s) => !s)} className="inline-flex h-9 items-center gap-1.5 rounded-full bg-studio-surface px-3 text-xs font-medium text-studio-muted shadow-studio-border hover:text-studio-fg">
+              <LayoutGrid className="h-3.5 w-3.5" /> Questions
+            </button>
+            {!isPractice && remaining != null && (
+              <span className={cn(
+                'inline-flex h-9 items-center gap-1.5 rounded-full px-3 font-studio-mono text-sm tabular-nums',
+                timerTone(remaining, attempt.durationSec) === 'fg' && 'bg-studio-elevated text-studio-fg',
+                timerTone(remaining, attempt.durationSec) === 'amber' && 'bg-amber-500/15 text-amber-400',
+                timerTone(remaining, attempt.durationSec) === 'danger' && 'bg-studio-danger/15 text-studio-danger',
+                remaining <= 60 && 'animate-pulse',
+              )}>
+                <Clock className="h-3.5 w-3.5" /> {fmtTime(remaining)}
               </span>
             )}
-          </p>
+            <button
+              type="button"
+              title="Abandon this attempt"
+              onClick={() => { if (confirm('Abandon this attempt? Your progress will not be graded.')) abandon(); }}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full text-studio-subtle hover:bg-studio-elevated hover:text-studio-fg"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+          </div>
         </div>
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
-          {isPractice && (
-            <>
-              {streak >= 2 && (
-                <Badge tone="amber" className="cbt-pop-in">
-                  <Flame className="h-3 w-3" /> {streak} in a row
-                </Badge>
-              )}
-              <Badge tone="purple">
-                <Star className="h-3 w-3" /> {practiceScore} pts
-              </Badge>
-            </>
-          )}
-          <Button size="sm" variant="outline" onClick={() => setShowNav((s) => !s)}><LayoutGrid className="h-4 w-4" /> Questions</Button>
-          {!isPractice && remaining != null && (
-            <Badge tone={timerTone(remaining, attempt.durationSec)} className={cn('shrink-0 text-sm', remaining <= 60 && 'animate-pulse')}>
-              <Clock className="h-3 w-3" /> {fmtTime(remaining)}
-            </Badge>
-          )}
-          <Button
-            size="sm"
-            variant="ghost"
-            title="Abandon this attempt"
-            onClick={() => {
-              if (confirm('Abandon this attempt? Your progress will not be graded.')) abandon();
-            }}
-          >
-            <LogOut className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
 
-      {showNav && (
-        <Card>
-          <CardContent>
+        {showNav && (
+          <div className="rounded-xl bg-studio-surface p-4 shadow-studio-border">
             <div className="flex flex-wrap gap-2">
               {items.map((it, i) => (
                 <button
                   key={it.itemId}
                   type="button"
                   onClick={() => { setCurrent(i); setShowNav(false); }}
-                  className={cn('grid h-9 w-9 place-items-center rounded-lg border text-xs font-medium transition-all',
-                    i === current ? 'border-lipro-500 bg-lipro-600 text-white'
-                    : answered.has(it.itemId) ? 'border-green-400/60 bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-300'
-                    : 'border-lipro-200/60 text-lipro-600/70 hover:bg-lipro-50 dark:border-lipro-700/40 dark:text-lipro-200/70')}
+                  className={cn('grid h-9 w-9 place-items-center rounded-lg text-xs font-medium transition-colors',
+                    i === current ? 'bg-studio-primary text-studio-primary-fg'
+                    : answered.has(it.itemId) ? 'bg-studio-elevated text-studio-fg shadow-studio-border'
+                    : 'bg-studio-elevated/50 text-studio-subtle shadow-studio-border hover:text-studio-fg')}
                 >
                   {i + 1}
                 </button>
               ))}
             </div>
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        )}
 
-      <div className="h-1.5 overflow-hidden rounded-full bg-lipro-100/60 dark:bg-lipro-900/40">
-        <div
-          className="h-full rounded-full bg-gradient-to-r from-lipro-500 to-lipro-400 transition-all duration-500 ease-out"
-          style={{ width: `${items.length ? (answeredCount / items.length) * 100 : 0}%` }}
-        />
-      </div>
+        <div className="h-1 overflow-hidden rounded-full bg-studio-elevated">
+          <div
+            className="h-full rounded-full bg-studio-primary transition-[width] duration-300 ease-out"
+            style={{ width: `${items.length ? (answeredCount / items.length) * 100 : 0}%` }}
+          />
+        </div>
 
-      {!item ? (
-        <Card><CardContent><p className="text-sm text-lipro-600/70">No questions in this attempt.</p></CardContent></Card>
-      ) : (
-        <QuestionCard
-          item={item}
-          index={current}
-          isPractice={isPractice}
-          checking={checking === item.itemId}
-          justRevealed={justRevealed?.itemId === item.itemId ? justRevealed.correct : null}
-          onAnswer={(v) => setAnswer(item.itemId, v)}
-          onCheck={() => doCheck(item)}
-        />
-      )}
-
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Button variant="outline" onClick={() => setCurrent((c) => Math.max(0, c - 1))} disabled={current === 0}>
-          <ChevronLeft className="h-4 w-4" /> Previous
-        </Button>
-        {current < items.length - 1 ? (
-          <Button onClick={() => setCurrent((c) => Math.min(items.length - 1, c + 1))}>Next <ChevronRight className="h-4 w-4" /></Button>
+        {!item ? (
+          <div className="rounded-xl bg-studio-surface p-6 shadow-studio-border">
+            <p className="text-sm text-studio-muted">No questions in this attempt.</p>
+          </div>
         ) : (
-          <SubmitControl
-            unansweredCount={unansweredCount}
-            confirmOpen={confirmSubmit}
-            submitting={submitting}
-            onRequestSubmit={() => (unansweredCount > 0 ? setConfirmSubmit(true) : submit())}
-            onConfirm={() => { setConfirmSubmit(false); submit(); }}
-            onCancel={() => setConfirmSubmit(false)}
+          <QuestionCard
+            item={item}
+            index={current}
+            isPractice={isPractice}
+            checking={checking === item.itemId}
+            justRevealed={justRevealed?.itemId === item.itemId ? justRevealed.correct : null}
+            onAnswer={(v) => setAnswer(item.itemId, v)}
+            onCheck={() => doCheck(item)}
           />
         )}
+
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={() => setCurrent((c) => Math.max(0, c - 1))}
+            disabled={current === 0}
+            className="inline-flex h-11 items-center gap-1.5 rounded-full bg-studio-surface px-4 text-sm font-medium text-studio-muted shadow-studio-border hover:text-studio-fg disabled:opacity-40"
+          >
+            <ChevronLeft className="h-4 w-4" /> Previous
+          </button>
+          {current < items.length - 1 ? (
+            <button
+              type="button"
+              onClick={() => setCurrent((c) => Math.min(items.length - 1, c + 1))}
+              className="inline-flex h-11 items-center gap-1.5 rounded-full bg-studio-primary px-5 text-sm font-medium text-studio-primary-fg"
+            >
+              Next <ChevronRight className="h-4 w-4" />
+            </button>
+          ) : (
+            <div className="hidden sm:block">
+              <SubmitButton
+                unansweredCount={unansweredCount}
+                submitting={submitting}
+                onClick={() => (unansweredCount > 0 ? setConfirmSubmit(true) : submit())}
+              />
+            </div>
+          )}
+        </div>
       </div>
 
       <div
-        className="lg:hidden sticky bottom-0 z-10 -mx-4 mt-6 border-t border-lipro-100/60 bg-[rgb(var(--bg))]/90 px-4 py-3 backdrop-blur-xl dark:border-lipro-500/10"
+        className="fixed inset-x-0 bottom-0 z-10 border-t border-studio-border bg-studio-bg/90 px-4 py-3 backdrop-blur-xl lg:hidden"
         style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0.75rem)' }}
       >
-        <Button
+        <button
+          type="button"
           onClick={() => (unansweredCount > 0 ? setConfirmSubmit(true) : submit())}
           disabled={submitting}
-          size="lg"
-          className="w-full"
+          className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-studio-primary text-sm font-medium text-studio-primary-fg disabled:opacity-60"
         >
           <Send className="h-4 w-4" /> {submitting ? 'Submitting…' : `Submit answers (${answeredCount}/${items.length})`}
-        </Button>
+        </button>
       </div>
 
       {confirmSubmit && (
-        <div className="fixed inset-0 z-20 grid place-items-center bg-black/40 p-4" onClick={() => setConfirmSubmit(false)}>
-          <Card className="max-w-sm" onClick={(e) => e.stopPropagation()}>
-            <CardHeader><h3 className="text-base font-semibold">Submit with {unansweredCount} unanswered?</h3></CardHeader>
-            <CardContent>
-              <p className="text-sm text-lipro-600/70">
-                {unansweredCount} of {items.length} question{unansweredCount === 1 ? '' : 's'} still {unansweredCount === 1 ? 'has' : 'have'} no answer. Unanswered questions score zero.
-              </p>
-              <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
-                <Button variant="outline" className="w-full sm:w-auto" onClick={() => setConfirmSubmit(false)}>Keep answering</Button>
-                <Button className="w-full sm:w-auto" onClick={() => { setConfirmSubmit(false); submit(); }} disabled={submitting}>
-                  {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Submit anyway
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+        <div className="fixed inset-0 z-20 grid place-items-center bg-studio-bg/70 p-4" onClick={() => setConfirmSubmit(false)}>
+          <div className="w-full max-w-sm rounded-xl bg-studio-surface p-5 shadow-studio-float" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-studio-display text-xl tracking-tight text-studio-fg">Submit with {unansweredCount} unanswered?</h3>
+            <p className="mt-2 text-sm leading-normal text-studio-muted">
+              {unansweredCount} of {items.length} question{unansweredCount === 1 ? '' : 's'} still {unansweredCount === 1 ? 'has' : 'have'} no answer. Unanswered questions score zero.
+            </p>
+            <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
+              <button type="button" onClick={() => setConfirmSubmit(false)} className="h-10 w-full rounded-full bg-studio-elevated px-4 text-sm font-medium text-studio-muted hover:text-studio-fg sm:w-auto">
+                Keep answering
+              </button>
+              <button
+                type="button"
+                onClick={() => { setConfirmSubmit(false); submit(); }}
+                disabled={submitting}
+                className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-full bg-studio-primary px-4 text-sm font-medium text-studio-primary-fg sm:w-auto"
+              >
+                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Submit anyway
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
   );
 }
 
-function SubmitControl(props: {
-  unansweredCount: number;
-  confirmOpen: boolean;
-  submitting: boolean;
-  onRequestSubmit: () => void;
-  onConfirm: () => void;
-  onCancel: () => void;
-}) {
-  const { unansweredCount, submitting, onRequestSubmit } = props;
+function SubmitButton({ unansweredCount, submitting, onClick }: { unansweredCount: number; submitting: boolean; onClick: () => void }) {
   return (
-    <Button onClick={onRequestSubmit} disabled={submitting}>
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={submitting}
+      className="inline-flex h-11 items-center gap-2 rounded-full bg-studio-primary px-5 text-sm font-medium text-studio-primary-fg disabled:opacity-60"
+    >
       {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
       {submitting ? 'Submitting…' : unansweredCount > 0 ? `Submit (${unansweredCount} unanswered)` : 'Submit answers'}
-    </Button>
+    </button>
   );
 }
 
@@ -287,7 +291,6 @@ function QuestionCard({
   index: number;
   isPractice: boolean;
   checking: boolean;
-  /** true/false right as this item's check result lands, null once the reveal moment has passed. */
   justRevealed: boolean | null;
   onAnswer: (v: string) => void;
   onCheck: () => void;
@@ -296,71 +299,64 @@ function QuestionCard({
   const done = item.revealed;
   const selected = item.response ?? '';
   const isFreeText = opts.length === 0;
-  // FILL_BLANK is graded by exact text match against a single word/short
-  // phrase (lib/cbt/grading.ts) — a multi-line essay box with a word count
-  // (the THEORY treatment) invites a full sentence that can never match,
-  // so a conceptually correct answer gets marked wrong. Give it its own
-  // compact single-line input instead.
   const isFillBlank = item.type === 'FILL_BLANK';
   const wordCount = isFreeText && !isFillBlank ? (selected.trim() ? selected.trim().split(/\s+/).length : 0) : 0;
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge tone="amber">{item.type}</Badge>
-          <span className="text-xs">{item.points} pts</span>
-          {isPractice && done && (
-            item.gradeMethod === 'ungraded'
-              ? <Badge tone="amber"><Clock className="h-3 w-3" /> Pending manual review</Badge>
-              : item.isCorrect
-                ? <Badge tone="green"><CheckCircle2 className="h-3 w-3" /> Correct{typeof item.awarded === 'number' && item.awarded > 0 && item.awarded < item.points ? ` (${item.awarded}/${item.points})` : ''}</Badge>
-                : <Badge tone="rose"><XCircle className="h-3 w-3" /> {item.awarded ? `Partial (${item.awarded}/${item.points})` : 'Incorrect'}</Badge>
-          )}
-        </div>
-        <h3 className="mt-2 text-base font-medium">{index + 1}. {item.prompt}</h3>
-      </CardHeader>
-      <CardContent>
+    <div key={item.itemId} className="rounded-xl bg-studio-surface p-6 shadow-studio-border studio-rise">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="rounded-full bg-studio-elevated px-2.5 py-1 text-[11px] font-medium uppercase tracking-wide text-studio-subtle">{item.type}</span>
+        <span className="text-xs text-studio-subtle">{item.points} pts</span>
+        {isPractice && done && (
+          item.gradeMethod === 'ungraded'
+            ? <span className="inline-flex items-center gap-1 text-xs text-amber-400"><Clock className="h-3 w-3" /> Pending manual review</span>
+            : item.isCorrect
+              ? <span className="inline-flex items-center gap-1 text-xs text-studio-primary"><Check className="h-3 w-3" /> Correct{typeof item.awarded === 'number' && item.awarded > 0 && item.awarded < item.points ? ` (${item.awarded}/${item.points})` : ''}</span>
+              : <span className="inline-flex items-center gap-1 text-xs text-studio-danger">{item.awarded ? `Partial (${item.awarded}/${item.points})` : 'Incorrect'}</span>
+        )}
+      </div>
+      <h3 className="mt-4 font-studio-display text-2xl leading-snug tracking-tight text-studio-fg md:text-3xl">
+        {index + 1}. {item.prompt}
+      </h3>
+
+      <div className="mt-6">
         {item.imageUrl && (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={item.imageUrl} alt="Question illustration" className="mb-3 max-h-72 w-auto rounded-xl border border-lipro-200/50 object-contain dark:border-lipro-700/40" />
+          <img src={item.imageUrl} alt="Question illustration" className="mb-4 max-h-72 w-auto rounded-lg shadow-studio-border" />
         )}
 
         {!isFreeText ? (
-          <div className="space-y-2">
+          <div className="flex flex-col gap-2">
             {opts.map((opt, idx) => {
               const isAnswer = isPractice && done && item.correctAnswer != null && opt === item.correctAnswer;
               const isPicked = opt === selected;
               return (
-                <label
+                <button
                   key={idx}
+                  type="button"
+                  disabled={isPractice && done}
+                  onClick={() => onAnswer(opt)}
                   className={cn(
-                    'tap flex items-center gap-3 rounded-xl border p-3.5 cursor-pointer transition-all',
-                    isPractice && done && isAnswer ? 'border-green-400/70 bg-green-50/70 dark:bg-green-950/30'
-                    : isPractice && done && isPicked && !isAnswer ? 'border-rose-400/70 bg-rose-50/70 dark:bg-rose-950/30'
-                    : 'border-lipro-200/50 hover:bg-lipro-50/50 dark:border-lipro-700/40 dark:hover:bg-lipro-950/30',
-                    justRevealed !== null && isPicked && (justRevealed ? 'cbt-pulse-correct' : 'cbt-shake-wrong')
+                    'flex min-h-12 items-start gap-3 rounded-lg px-4 py-3 text-left text-sm leading-normal shadow-studio-border transition-colors',
+                    isAnswer && 'bg-studio-primary text-studio-primary-fg',
+                    isPractice && done && isPicked && !isAnswer && 'bg-studio-danger/15 text-studio-danger',
+                    !done && isPicked && 'bg-studio-primary text-studio-primary-fg',
+                    !isPicked && !isAnswer && 'bg-studio-elevated text-studio-fg hover:bg-studio-elevated/70',
+                    done && !isAnswer && !isPicked && 'text-studio-muted',
+                    justRevealed !== null && isPicked && (justRevealed ? 'animate-pulse' : ''),
                   )}
                 >
-                  <input
-                    type="radio"
-                    name={item.itemId}
-                    value={opt}
-                    checked={isPicked}
-                    disabled={isPractice && done}
-                    onChange={(e) => onAnswer(e.target.value)}
-                    className="h-5 w-5 shrink-0 accent-lipro-600"
-                  />
-                  <span className="text-sm leading-snug">{opt}</span>
-                  {isPractice && done && isAnswer && <CheckCircle2 className="ml-auto h-4 w-4 shrink-0 text-green-500" />}
-                </label>
+                  <span className="mt-0.5 font-studio-mono text-xs opacity-70">{LETTERS[idx]}</span>
+                  <span>{opt}</span>
+                  {isAnswer && <Check className="ml-auto h-4 w-4 shrink-0" />}
+                </button>
               );
             })}
           </div>
         ) : isFillBlank ? (
           <input
             type="text"
-            className="input"
+            className="h-12 w-full rounded-lg bg-studio-elevated px-4 text-sm text-studio-fg shadow-studio-border outline-none placeholder:text-studio-subtle disabled:opacity-70"
             placeholder="Type the missing word or phrase…"
             value={selected}
             disabled={isPractice && done}
@@ -370,29 +366,34 @@ function QuestionCard({
         ) : (
           <div>
             <textarea
-              className="input min-h-24"
+              className="min-h-32 w-full rounded-lg bg-studio-elevated px-4 py-3 text-sm text-studio-fg shadow-studio-border outline-none placeholder:text-studio-subtle disabled:opacity-70"
               placeholder="Type your answer…"
               value={selected}
               disabled={isPractice && done}
               onChange={(e) => onAnswer(e.target.value)}
             />
-            <div className="mt-1 text-right text-xs text-lipro-600/50">{wordCount} word{wordCount === 1 ? '' : 's'}</div>
+            <div className="mt-1 text-right text-xs text-studio-subtle">{wordCount} word{wordCount === 1 ? '' : 's'}</div>
           </div>
         )}
 
         {isPractice && done && (
-          <div className="mt-3 rounded-xl border border-lipro-200/50 bg-lipro-50/40 p-3 text-xs dark:border-lipro-700/40 dark:bg-lipro-950/30">
-            <div><strong>Answer:</strong> {item.correctAnswer || '—'}</div>
-            {item.explanation && <p className="mt-1 text-lipro-600/80 dark:text-lipro-200/70">{item.explanation}</p>}
-            {item.feedback && <p className="mt-1 italic text-lipro-600/70 dark:text-lipro-200/60">{item.feedback}</p>}
+          <div className="mt-4 rounded-lg bg-studio-elevated px-4 py-3 text-sm leading-normal text-studio-muted">
+            <p><span className="text-studio-fg">Answer:</span> {item.correctAnswer || '—'}</p>
+            {item.explanation && <p className="mt-2">{item.explanation}</p>}
+            {item.feedback && <p className="mt-2 italic text-studio-subtle">{item.feedback}</p>}
           </div>
         )}
         {isPractice && !done && (
-          <Button size="sm" variant="outline" className="mt-3" onClick={onCheck} disabled={!selected.trim() || checking}>
+          <button
+            type="button"
+            onClick={onCheck}
+            disabled={!selected.trim() || checking}
+            className="mt-4 inline-flex h-10 items-center gap-2 rounded-full bg-studio-elevated px-4 text-sm font-medium text-studio-muted shadow-studio-border hover:text-studio-fg disabled:opacity-40"
+          >
             {checking ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null} Check answer
-          </Button>
+          </button>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

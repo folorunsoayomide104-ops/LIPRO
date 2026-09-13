@@ -229,3 +229,38 @@ input[type="checkbox"], input[type="radio"] {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(168,85,247,0.25); border-radius: 999px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(168,85,247,0.45); }
+
+/* ── Studio design system (CBT / Flashcards / LIPRO AI) ──────────────
+   Ported from the LIPRO AI App reference (liproaiappn.vercel.app) —
+   see the studio-* Tailwind tokens above. These three classes are the
+   only pieces that don't map to a plain Tailwind utility. */
+@keyframes studio-rise {
+  from { opacity: 0; transform: translateY(12px); filter: blur(4px); }
+  to { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+@keyframes studio-shimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+@keyframes studio-pulse {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 1; }
+}
+.studio-rise { animation: studio-rise 400ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+.studio-rise-delay-1 { animation-delay: 60ms; }
+.studio-rise-delay-2 { animation-delay: 120ms; }
+.studio-rise-delay-3 { animation-delay: 180ms; }
+.studio-shimmer-text {
+  background-image: linear-gradient(90deg, #6e6c67 0%, #f2f0eb 45%, #6e6c67 90%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: studio-shimmer 1.6s linear infinite;
+}
+.studio-caret-pulse { animation: studio-pulse 1s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .studio-rise, .studio-rise-delay-1, .studio-rise-delay-2, .studio-rise-delay-3 { animation: none; }
+  .studio-shimmer-text { animation: none; color: #9a9892; background: none; }
+  .studio-caret-pulse { animation: none; }
+}

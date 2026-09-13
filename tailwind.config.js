@@ -59,6 +59,24 @@ module.exports = {
           600: '#dc2626',
           700: '#b91c1c',
         },
+        // Design tokens ported 1:1 from the LIPRO AI App reference (see
+        // liproaiappn.vercel.app's src/styles.css @theme block) for the
+        // CBT/Flashcards/LIPRO AI redesign — a distinct near-black/sage
+        // palette scoped to `studio-*` classes so it doesn't touch the
+        // `lipro-*` purple palette used everywhere else in this app.
+        studio: {
+          bg: '#0b0b0c',
+          surface: '#141416',
+          elevated: '#1c1c1f',
+          fg: '#f2f0eb',
+          muted: '#9a9892',
+          subtle: '#6e6c67',
+          primary: '#b7d4ce',
+          'primary-fg': '#0b0b0c',
+          border: 'rgba(242, 240, 235, 0.12)',
+          'border-strong': 'rgba(242, 240, 235, 0.22)',
+          danger: '#c45c4a',
+        },
       },
       height: {
         screen: '100dvh',
@@ -73,6 +91,8 @@ module.exports = {
         sans: ['Manrope', 'system-ui', 'sans-serif'],
         display: ['Outfit', 'system-ui', 'sans-serif'],
         mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
+        'studio-display': ['"Instrument Serif"', 'ui-serif', 'Georgia', 'serif'],
+        'studio-mono': ['"IBM Plex Mono"', 'ui-monospace', 'SF Mono', 'Menlo', 'monospace'],
       },
       borderRadius: {
         xs: '0.25rem',
@@ -87,6 +107,9 @@ module.exports = {
         level2: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)',
         level3: '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)',
         level4: '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)',
+        'studio-border': '0 0 0 1px rgba(242, 240, 235, 0.08)',
+        'studio-border-hover': '0 0 0 1px rgba(242, 240, 235, 0.13)',
+        'studio-float': '0 18px 40px -24px rgba(0, 0, 0, 0.7)',
       },
       animation: {
         'fade-in': 'fadeIn 0.6s ease-out',
