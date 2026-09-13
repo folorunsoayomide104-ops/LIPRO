@@ -68,11 +68,19 @@ export const NVIDIA_MODEL = process.env.NVIDIA_MODEL || 'nvidia/llama-3.1-nemotr
 // rather than failing over, so don't add one without that confirmation).
 // Individual-model callability still depends on each user's own account
 // entitlements — that's exactly what this chain exists to fail through.
+// Reordered off live production evidence (real timing logs from a genuine
+// chat request), not guessed: 'nvidia/llama-3.1-nemotron-70b-instruct' now
+// 404s outright — "Function ... Not Found for account" — it's no longer
+// accessible on this NVIDIA key at all, so it was wasting time on the front
+// of every single request. 'nvidia/nemotron-3.5-lightning-30b-a3b' was
+// worse: it doesn't fail cleanly, it HANGS for ~92s before finally timing
+// out, which is far more costly than a clean miss. Both removed rather than
+// left later in the chain — a hanging model is a landmine wherever it sits.
+// 'mistralai/mistral-nemotron' was the only one of the three that actually
+// answered in that same request, so it's promoted to first.
 export const NVIDIA_MODEL_CHAIN = (
   process.env.NVIDIA_MODEL_CHAIN?.split(',').map((s) => s.trim()).filter(Boolean)
 ) || [
-  'nvidia/llama-3.1-nemotron-70b-instruct',
-  'nvidia/nemotron-3.5-lightning-30b-a3b',
   'mistralai/mistral-nemotron',
   'nvidia/llama-3.1-nemotron-51b-instruct',
   'deepseek-ai/deepseek-v4-pro-0813',
