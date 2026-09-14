@@ -281,6 +281,8 @@
   @media (max-width: 880px) {
     #lp-burger { display: flex !important; }
   }
+  [data-lp-rail] { display: none; opacity: 0; transition: opacity 0.45s ease; }
+  @media (max-width: 760px) { [data-lp-rail] { display: flex !important; } }
   .lp-burger-bar { display: block; width: 18px; height: 1.5px; background: oklch(0.96 0.005 250); border-radius: 1px; transition: transform 0.3s cubic-bezier(0.22,1,0.36,1), opacity 0.2s ease; }
   #lp-burger[aria-expanded="true"] .lp-burger-bar:nth-child(1) { transform: translateY(6.5px) rotate(45deg); }
   #lp-burger[aria-expanded="true"] .lp-burger-bar:nth-child(2) { opacity: 0; }
@@ -311,6 +313,13 @@
 <div style="background: oklch(0.16 0.012 250); color: oklch(0.96 0.005 250); font-family: 'Space Grotesk', Helvetica, sans-serif; font-size: 16px; line-height: 1.55; overflow-x: hidden; position: relative;">
 
   <div style="position: fixed; inset: 0; pointer-events: none; z-index: 60; opacity: 0.055; background-image: repeating-linear-gradient(0deg, rgba(255,255,255,0.9) 0 1px, transparent 1px 3px); mix-blend-mode: overlay;"></div>
+
+  <div data-lp-rail="" aria-hidden="true" style="position: fixed; z-index: 70; left: 14px; bottom: 16px; right: 14px; align-items: center; gap: 10px; pointer-events: none;">
+    <div style="flex: 1 1 auto; height: 2px; border-radius: 2px; background: oklch(1 0 0 / 0.14); overflow: hidden;">
+      <div data-lp-railfill="" style="height: 100%; width: 0%; background: oklch(0.8 0.16 140); box-shadow: 0 0 12px oklch(0.8 0.16 140 / 0.7);"></div>
+    </div>
+    <div data-lp-raillabel="" style="font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: oklch(0.74 0.01 250); background: oklch(0.16 0.012 250 / 0.7); backdrop-filter: blur(8px); padding: 5px 9px; border-radius: 999px; border: 1px solid oklch(1 0 0 / 0.1); white-space: nowrap;">Hero</div>
+  </div>
 
   <header style="position: sticky; top: 0; z-index: 50; backdrop-filter: blur(18px); background: oklch(0.16 0.012 250 / 0.72); border-bottom: 1px solid oklch(1 0 0 / 0.08);">
     <nav style="max-width: 1280px; margin: 0 auto; padding: 16px clamp(20px, 4vw, 48px); display: flex; align-items: center; gap: clamp(14px, 2.4vw, 36px);">
@@ -347,7 +356,8 @@
     </div>
   </div>
 
-  <section id="top" style="position: relative; overflow: hidden; border-bottom: 1px solid oklch(1 0 0 / 0.08);">
+  <section id="top" data-screen-label="Hero" style="position: relative; overflow: hidden; border-bottom: 1px solid oklch(1 0 0 / 0.08);">
+    <lp-webgl style="position: absolute; inset: 0; z-index: 0; opacity: 0.55;"></lp-webgl>
     <div style="position: absolute; inset: 0; background: radial-gradient(100% 80% at 50% 8%, oklch(0.45 0.11 152 / 0.55), transparent 62%), radial-gradient(80% 60% at 12% 95%, oklch(0.8 0.16 55 / 0.1), transparent 65%);"></div>
     <div style="position: absolute; inset: 0; opacity: 0.5; background-image: linear-gradient(oklch(1 0 0 / 0.05) 1px, transparent 1px), linear-gradient(90deg, oklch(1 0 0 / 0.05) 1px, transparent 1px); background-size: 84px 84px; mask-image: radial-gradient(70% 60% at 50% 40%, black, transparent);"></div>
     <div style="position: absolute; inset: 0; overflow: hidden; pointer-events: none;"><div style="position: absolute; left: 0; right: 0; height: 40%; background: linear-gradient(oklch(0.8 0.16 140 / 0), oklch(0.8 0.16 140 / 0.05), oklch(0.8 0.16 140 / 0)); animation: lp-scan 9s linear infinite;"></div></div>
@@ -364,11 +374,11 @@
       </div>
 
       <div style="position: relative; margin-top: clamp(8px, 2vh, 28px); min-height: clamp(420px, 54vh, 620px); display: grid; place-items: end center;">
-        <div aria-hidden="true" style="position: absolute; top: 0; left: 0; right: 0; display: flex; justify-content: center; pointer-events: none; user-select: none;">
+        <div data-lp-par="wordmark" aria-hidden="true" style="position: absolute; top: 0; left: 0; right: 0; display: flex; justify-content: center; pointer-events: none; user-select: none; will-change: transform;">
           <span style="font-family: 'Instrument Serif', Georgia, serif; font-size: clamp(104px, 22vw, 340px); line-height: 0.78; letter-spacing: -0.04em; color: oklch(0.56 0.14 150); opacity: 0.34; background: linear-gradient(oklch(0.72 0.15 150), oklch(0.34 0.07 155)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;">LIPRO</span>
         </div>
-        <div aria-hidden="true" style="position: absolute; left: 50%; top: 46%; transform: translate(-50%, -50%); width: min(70%, 520px); aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle, oklch(0.8 0.16 140 / 0.2), transparent 70%); filter: blur(14px);"></div>
-        <div style="position: relative; z-index: 2; grid-area: 1 / 1; width: 100%; height: clamp(420px, 54vh, 620px); display: flex; align-items: flex-end; justify-content: center;">
+        <div data-lp-par="glow" aria-hidden="true" style="position: absolute; left: 50%; top: 46%; transform: translate(-50%, -50%); width: min(70%, 520px); aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle, oklch(0.8 0.16 140 / 0.2), transparent 70%); filter: blur(14px);"></div>
+        <div data-lp-par="hero-img" style="position: relative; z-index: 2; grid-area: 1 / 1; width: 100%; height: clamp(420px, 54vh, 620px); display: flex; align-items: flex-end; justify-content: center; will-change: transform;">
           <img src="design-assets/img/i6.png" alt="LIPRO student with headphones studying on a laptop" style="height: 100%; width: auto; max-width: 100%; object-fit: contain; filter: drop-shadow(0 40px 60px oklch(0.1 0.02 250 / 0.75)); animation: lp-float 7s ease-in-out infinite;">
         </div>
         <div style="position: absolute; z-index: 3; bottom: clamp(0px, 1vh, 14px); left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-radius: 14px; background: oklch(0.22 0.014 250 / 0.85); border: 1px solid oklch(1 0 0 / 0.12); backdrop-filter: blur(10px); font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: oklch(0.82 0.01 250); white-space: nowrap;">
@@ -396,7 +406,7 @@
             <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: oklch(0.6 0.01 250); margin-top: 4px;">No card needed</div>
           </div>
           <div>
-            <div style="font-family: 'Instrument Serif', serif; font-size: 24px;">₦1,700 <span style="color: oklch(0.6 0.01 250);">/ month</span></div>
+            <div style="font-family: 'Instrument Serif', serif; font-size: 24px;"><span data-lp-count="1700" data-lp-prefix="₦">₦1,700</span> <span style="color: oklch(0.6 0.01 250);">/ month</span></div>
             <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: oklch(0.6 0.01 250); margin-top: 4px;">Premium</div>
           </div>
         </div>
@@ -409,7 +419,7 @@
   </section>
 
   <section style="border-bottom: 1px solid oklch(1 0 0 / 0.08); overflow: hidden; padding: 18px 0; background: oklch(0.19 0.013 250);">
-    <div style="display: flex; width: max-content; animation: lp-marquee 30s linear infinite;">
+    <div data-lp-marquee="" style="display: flex; width: max-content; animation: lp-marquee 30s linear infinite;">
       <div style="display: flex; gap: 56px; padding-right: 56px; white-space: nowrap; font-family: 'JetBrains Mono', monospace; font-size: 13px; letter-spacing: 0.2em; text-transform: uppercase; color: oklch(0.58 0.01 250);">
         <span>UNIOSUN</span><span>UNILAG</span><span>UI</span><span>OAU</span><span>FUTA</span><span>LASU</span><span>UNILORIN</span><span style="color: oklch(0.8 0.16 140);">+ expanding nationwide</span>
       </div>
@@ -419,7 +429,7 @@
     </div>
   </section>
 
-  <section id="features" style="max-width: 1280px; margin: 0 auto; padding: clamp(72px, 12vh, 140px) clamp(20px, 4vw, 48px);">
+  <section id="features" data-screen-label="Features" style="max-width: 1280px; margin: 0 auto; padding: clamp(72px, 12vh, 140px) clamp(20px, 4vw, 48px);">
     <div data-reveal="" style="max-width: 760px;">
       <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; color: oklch(0.8 0.16 140);">Everything You Need</div>
       <h2 style="font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: clamp(34px, 4.6vw, 64px); line-height: 1.02; letter-spacing: -0.02em; margin: 16px 0 0;">One platform. Every tool you need to pass.</h2>
@@ -524,7 +534,7 @@
     </div>
   </section>
 
-  <section id="how" style="max-width: 1280px; margin: 0 auto; padding: clamp(72px, 12vh, 140px) clamp(20px, 4vw, 48px);">
+  <section id="how" data-screen-label="How It Works" style="max-width: 1280px; margin: 0 auto; padding: clamp(72px, 12vh, 140px) clamp(20px, 4vw, 48px);">
     <div data-reveal="" style="max-width: 720px;">
       <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; color: oklch(0.8 0.16 140);">The Process</div>
       <h2 style="font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: clamp(34px, 4.6vw, 64px); line-height: 1.02; letter-spacing: -0.02em; margin: 16px 0 0;">From sign-up to straight A's in 8 steps.</h2>
@@ -574,7 +584,7 @@
     </div>
   </section>
 
-  <section id="pricing" style="border-top: 1px solid oklch(1 0 0 / 0.08); background: oklch(0.19 0.013 250);">
+  <section id="pricing" data-screen-label="Pricing" style="border-top: 1px solid oklch(1 0 0 / 0.08); background: oklch(0.19 0.013 250);">
     <div style="max-width: 1280px; margin: 0 auto; padding: clamp(72px, 12vh, 140px) clamp(20px, 4vw, 48px);">
       <div data-reveal="" style="max-width: 700px;">
         <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; color: oklch(0.8 0.16 140);">Pricing</div>
@@ -632,7 +642,7 @@
     </div>
   </section>
 
-  <section id="testimonials" style="max-width: 1280px; margin: 0 auto; padding: clamp(72px, 12vh, 140px) clamp(20px, 4vw, 48px);">
+  <section id="testimonials" data-screen-label="Students" style="max-width: 1280px; margin: 0 auto; padding: clamp(72px, 12vh, 140px) clamp(20px, 4vw, 48px);">
     <div data-reveal="" style="max-width: 680px;">
       <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; color: oklch(0.8 0.16 140);">Student Voices</div>
       <h2 style="font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: clamp(34px, 4.6vw, 64px); line-height: 1.02; letter-spacing: -0.02em; margin: 16px 0 0;">Students are saying it themselves.</h2>
@@ -679,7 +689,7 @@
     </div>
   </section>
 
-  <section id="faq" style="max-width: 1000px; margin: 0 auto; padding: clamp(72px, 12vh, 140px) clamp(20px, 4vw, 48px);">
+  <section id="faq" data-screen-label="FAQ" style="max-width: 1000px; margin: 0 auto; padding: clamp(72px, 12vh, 140px) clamp(20px, 4vw, 48px);">
     <div data-reveal="">
       <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; color: oklch(0.8 0.16 140);">FAQ</div>
       <h2 style="font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: clamp(32px, 4.4vw, 58px); line-height: 1.02; letter-spacing: -0.02em; margin: 16px 0 0;">Frequently asked questions.</h2>
@@ -751,7 +761,7 @@
     </div>
   </section>
 
-  <section id="contact" style="border-top: 1px solid oklch(1 0 0 / 0.08); background: oklch(0.19 0.013 250);">
+  <section id="contact" data-screen-label="Contact" style="border-top: 1px solid oklch(1 0 0 / 0.08); background: oklch(0.19 0.013 250);">
     <div style="max-width: 1280px; margin: 0 auto; padding: clamp(72px, 12vh, 130px) clamp(20px, 4vw, 48px); display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: clamp(32px, 5vw, 64px);">
       <div data-reveal="">
         <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; color: oklch(0.8 0.16 55);">Contact</div>
@@ -842,6 +852,181 @@
 </div>
 
 <script>
+// <lp-webgl> — atmospheric shader layer for the LIPRO hero.
+// Domain-warped fbm aurora in the brand green with amber undertones.
+// Transform/opacity-free: all motion happens on the GPU.
+(function () {
+  if (window.customElements && customElements.get('lp-webgl')) return;
+
+  const VERT = `attribute vec2 p; void main(){ gl_Position = vec4(p, 0.0, 1.0); }`;
+
+  const FRAG = `
+precision highp float;
+uniform vec2 u_res;
+uniform float u_time;
+uniform vec2 u_mouse;
+
+float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123); }
+
+float noise(vec2 p){
+  vec2 i = floor(p), f = fract(p);
+  vec2 u = f * f * (3.0 - 2.0 * f);
+  return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x),
+             mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x), u.y);
+}
+
+float fbm(vec2 p){
+  float v = 0.0, a = 0.5;
+  for (int i = 0; i < 5; i++) { v += a * noise(p); p *= 2.02; a *= 0.5; }
+  return v;
+}
+
+void main(){
+  vec2 uv = gl_FragCoord.xy / u_res;
+  vec2 st = uv;
+  st.x *= u_res.x / u_res.y;
+
+  float t = u_time * 0.045;
+  vec2 warp = vec2(fbm(st * 1.6 + vec2(t, -t * 0.7)), fbm(st * 1.6 + vec2(4.2 - t, t * 0.6)));
+  float bands = fbm(st * 2.1 + warp * 1.5 + vec2(0.0, -t * 1.8));
+
+  // parallax nudge from the pointer, very slight
+  bands += (u_mouse.x - 0.5) * 0.035 + (u_mouse.y - 0.5) * 0.02;
+
+  vec3 ink   = vec3(0.055, 0.065, 0.075);
+  vec3 green = vec3(0.243, 0.647, 0.396);
+  vec3 deep  = vec3(0.086, 0.278, 0.208);
+  vec3 amber = vec3(0.878, 0.596, 0.259);
+
+  float glow = smoothstep(0.42, 0.98, bands);
+  vec3 col = mix(ink, deep, glow);
+  col = mix(col, green, pow(glow, 2.4) * 0.72);
+  col += amber * pow(smoothstep(0.72, 1.0, bands), 3.0) * 0.16;
+
+  // soft light shafts drifting across the frame
+  float shaft = sin((st.x * 3.1) + t * 2.4 + bands * 2.2) * 0.5 + 0.5;
+  col += green * pow(shaft, 6.0) * 0.06;
+
+  // keep the top and edges dark so headline type stays legible
+  float vign = smoothstep(1.15, 0.18, length((uv - vec2(0.5, 0.62)) * vec2(1.25, 1.0)));
+  col *= vign * 0.82;
+  col *= smoothstep(-0.05, 0.55, uv.y) * 0.92 + 0.08;
+
+  // dither away banding on wide gradients
+  col += (hash(gl_FragCoord.xy) - 0.5) * 0.012;
+
+  gl_FragColor = vec4(col, 1.0);
+}`;
+
+  class LproWebgl extends HTMLElement {
+    connectedCallback() {
+      if (this._booted) return;
+      this._booted = true;
+      this.style.display = 'block';
+      this.style.position = 'absolute';
+      this.style.inset = '0';
+      this.style.overflow = 'hidden';
+      this.style.pointerEvents = 'none';
+
+      const c = document.createElement('canvas');
+      c.style.cssText = 'display:block;width:100%;height:100%';
+      this.appendChild(c);
+      this._canvas = c;
+
+      const gl = c.getContext('webgl', { antialias: false, alpha: false, powerPreference: 'low-power' })
+        || c.getContext('experimental-webgl');
+      if (!gl) { this.style.background = 'radial-gradient(120% 90% at 50% 20%, #0d3a2c, #0e1013)'; return; }
+      this._gl = gl;
+
+      const sh = (type, src) => {
+        const s = gl.createShader(type);
+        gl.shaderSource(s, src);
+        gl.compileShader(s);
+        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s) || 'shader');
+        return s;
+      };
+      const prog = gl.createProgram();
+      gl.attachShader(prog, sh(gl.VERTEX_SHADER, VERT));
+      gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FRAG));
+      gl.linkProgram(prog);
+      gl.useProgram(prog);
+
+      const buf = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+      const loc = gl.getAttribLocation(prog, 'p');
+      gl.enableVertexAttribArray(loc);
+      gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+
+      this._u = {
+        res: gl.getUniformLocation(prog, 'u_res'),
+        time: gl.getUniformLocation(prog, 'u_time'),
+        mouse: gl.getUniformLocation(prog, 'u_mouse')
+      };
+
+      this._mouse = [0.5, 0.5];
+      this._target = [0.5, 0.5];
+      this._visible = true;
+      this._reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      this._onResize = () => this.resize();
+      window.addEventListener('resize', this._onResize, { passive: true });
+      this._onMove = (e) => {
+        const r = this.getBoundingClientRect();
+        this._target = [(e.clientX - r.left) / Math.max(1, r.width), 1 - (e.clientY - r.top) / Math.max(1, r.height)];
+      };
+      window.addEventListener('pointermove', this._onMove, { passive: true });
+
+      if ('IntersectionObserver' in window) {
+        this._io = new IntersectionObserver((es) => { this._visible = es.some((e) => e.isIntersecting); }, { threshold: 0 });
+        this._io.observe(this);
+      }
+
+      this.resize();
+      this._t0 = performance.now();
+      const frame = (now) => {
+        this._raf = requestAnimationFrame(frame);
+        if (!this._visible) return;
+        this._mouse[0] += (this._target[0] - this._mouse[0]) * 0.05;
+        this._mouse[1] += (this._target[1] - this._mouse[1]) * 0.05;
+        const t = this._reduce ? 8 : (now - this._t0) / 1000;
+        gl.uniform1f(this._u.time, t);
+        gl.uniform2f(this._u.mouse, this._mouse[0], this._mouse[1]);
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+        if (this._reduce) { cancelAnimationFrame(this._raf); }
+      };
+      this._raf = requestAnimationFrame(frame);
+    }
+
+    resize() {
+      const gl = this._gl;
+      if (!gl) return;
+      const dpr = Math.min(window.devicePixelRatio || 1, 1.75);
+      const r = this.getBoundingClientRect();
+      const w = Math.max(1, Math.round(r.width * dpr));
+      const h = Math.max(1, Math.round(r.height * dpr));
+      if (this._canvas.width !== w || this._canvas.height !== h) {
+        this._canvas.width = w;
+        this._canvas.height = h;
+      }
+      gl.viewport(0, 0, w, h);
+      gl.uniform2f(this._u.res, w, h);
+    }
+
+    disconnectedCallback() {
+      cancelAnimationFrame(this._raf);
+      window.removeEventListener('resize', this._onResize);
+      window.removeEventListener('pointermove', this._onMove);
+      if (this._io) this._io.disconnect();
+      this._booted = false;
+    }
+  }
+
+  customElements.define('lp-webgl', LproWebgl);
+})();
+
+</script>
+<script>
 (function () {
   document.querySelectorAll('[style-hover]').forEach(function (el) {
     var base = el.getAttribute('style') || '';
@@ -850,20 +1035,112 @@
     el.addEventListener('mouseleave', function () { el.style.cssText = base; });
   });
 
+  function countUp(el) {
+    if (el.getAttribute('data-lp-counted') === '1') return;
+    el.setAttribute('data-lp-counted', '1');
+    var target = parseFloat(el.getAttribute('data-lp-count')) || 0;
+    var prefix = el.getAttribute('data-lp-prefix') || '';
+    var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce) { el.textContent = prefix + target.toLocaleString('en-US'); return; }
+    var t0 = performance.now(), dur = 1500;
+    function step(t) {
+      var p = Math.min(1, (t - t0) / dur);
+      var e = 1 - Math.pow(1 - p, 3);
+      el.textContent = prefix + Math.round(target * e).toLocaleString('en-US');
+      if (p < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
+  function initMobileCinema() {
+    var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce) return;
+    var mq = window.matchMedia('(max-width: 760px)');
+    var rail = document.querySelector('[data-lp-rail]');
+    var fill = document.querySelector('[data-lp-railfill]');
+    var label = document.querySelector('[data-lp-raillabel]');
+    var marquee = document.querySelector('[data-lp-marquee]');
+    var layers = {
+      img: document.querySelector('[data-lp-par="hero-img"]'),
+      word: document.querySelector('[data-lp-par="wordmark"]'),
+      glow: document.querySelector('[data-lp-par="glow"]')
+    };
+    var sections = Array.from(document.querySelectorAll('[data-screen-label]'));
+    var last = window.scrollY || 0, vel = 0, ticking = false, lastLabel = '';
+    if (label) label.style.transition = 'opacity .22s ease, transform .22s ease';
+    if (rail) rail.style.transition = 'opacity .45s ease';
+
+    function frame() {
+      ticking = false;
+      var on = mq.matches;
+      var y = window.scrollY || document.documentElement.scrollTop || 0;
+      vel = vel * 0.82 + (y - last) * 0.18;
+      last = y;
+      if (!on) {
+        if (layers.img) layers.img.style.transform = '';
+        if (layers.word) layers.word.style.transform = '';
+        if (layers.glow) layers.glow.style.transform = 'translate(-50%, -50%)';
+        if (marquee) marquee.style.animationDuration = '30s';
+        return;
+      }
+      var vh = window.innerHeight || 800;
+      var doc = document.documentElement.scrollHeight - vh;
+      var p = doc > 0 ? Math.min(1, Math.max(0, y / doc)) : 0;
+      if (fill) fill.style.width = (p * 100).toFixed(2) + '%';
+      var h = Math.min(1, y / (vh * 0.9));
+      var ease = h * h * (3 - 2 * h);
+      if (layers.word) layers.word.style.transform = 'translate3d(0,' + (-ease * 46).toFixed(1) + 'px,0) scale(' + (1 + ease * 0.06).toFixed(3) + ')';
+      if (layers.img) layers.img.style.transform = 'translate3d(0,' + (ease * 54).toFixed(1) + 'px,0) scale(' + (1 - ease * 0.05).toFixed(3) + ')';
+      if (layers.glow) layers.glow.style.transform = 'translate(-50%, -50%) scale(' + (1 + ease * 0.22).toFixed(3) + ')';
+      if (marquee) {
+        var boost = Math.min(22, Math.abs(vel) * 0.55);
+        marquee.style.animationDuration = (30 - boost).toFixed(1) + 's';
+      }
+      var current = '';
+      sections.forEach(function (s) {
+        var r = s.getBoundingClientRect();
+        if (r.top <= vh * 0.45 && r.bottom > vh * 0.2) current = s.getAttribute('data-screen-label');
+      });
+      if (label && current && current !== lastLabel) {
+        lastLabel = current;
+        label.style.opacity = '0';
+        label.style.transform = 'translateY(4px)';
+        setTimeout(function () {
+          label.textContent = current;
+          label.style.opacity = '1';
+          label.style.transform = 'none';
+        }, 130);
+      }
+      if (rail) rail.style.opacity = y > vh * 0.35 ? '1' : '0';
+    }
+
+    function onScroll() { if (!ticking) { ticking = true; requestAnimationFrame(frame); } }
+    window.addEventListener('scroll', onScroll, { passive: true, capture: true });
+    document.addEventListener('scroll', onScroll, { passive: true, capture: true });
+    window.addEventListener('resize', onScroll, { passive: true });
+    frame();
+  }
+
   var revealEls = document.querySelectorAll('[data-reveal]');
   if ('IntersectionObserver' in window) {
     var io = new IntersectionObserver(function (entries) {
       entries.forEach(function (entry) {
         if (entry.isIntersecting) {
           entry.target.classList.add('lp-revealed');
+          entry.target.querySelectorAll('[data-lp-count]').forEach(countUp);
           io.unobserve(entry.target);
         }
       });
     }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
     revealEls.forEach(function (e) { io.observe(e); });
   } else {
-    revealEls.forEach(function (e) { e.classList.add('lp-revealed'); });
+    revealEls.forEach(function (e) {
+      e.classList.add('lp-revealed');
+      e.querySelectorAll('[data-lp-count]').forEach(countUp);
+    });
   }
+
+  initMobileCinema();
 
   document.querySelectorAll('.faq-toggle').forEach(function (btn) {
     btn.addEventListener('click', function () {
