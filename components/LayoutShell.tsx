@@ -3,15 +3,13 @@ import { ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  LayoutDashboard, BookOpen, StickyNote, Layers, Brain, Wallet as WalletIcon, Bell, Settings, LogOut, Menu, Home, ArrowRight, MoreHorizontal, Smartphone, Monitor, Sparkles, ShieldCheck
+  LayoutDashboard, BookOpen, StickyNote, Layers, Brain, Wallet as WalletIcon, Bell, Settings, LogOut, Menu, Home, ArrowRight, MoreHorizontal, Sparkles, ShieldCheck
 } from 'lucide-react';
 import { LiproLogo } from '@/components/LiproLogo';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { cn } from '@/lib/utils';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useViewMode } from '@/components/view-mode-provider';
-import { MobileModeFrame } from '@/components/mobile-mode-frame';
 
 const ADMIN_NAV_ITEM = { label: 'Admin', href: '/admin', icon: ShieldCheck, highlight: false };
 
@@ -39,14 +37,7 @@ export function LayoutShell({ children, roleLabel, isAdmin, unreadCount = 0 }: {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [fullName, setFullName] = useState<string | null>(null);
-  const [inFrame, setInFrame] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
-  const { viewMode, setViewMode } = useViewMode();
 
-  useEffect(() => {
-    setInFrame(typeof window !== 'undefined' && window.self !== window.top);
-    setIsMobile(typeof window !== 'undefined' && window.innerWidth < 768);
-  }, []);
 
   useEffect(() => {
     fetch('/api/auth/me').then((r) => r.json()).then((d) => {
@@ -148,22 +139,13 @@ export function LayoutShell({ children, roleLabel, isAdmin, unreadCount = 0 }: {
   );
 
   return (
-    viewMode === 'mobile' && !inFrame && !isMobile ? (
-      <MobileModeFrame src={pathname} onExit={() => setViewMode('desktop')} />
-    ) : (
-    <div className="flex min-h-screen bg-studio-bg text-studio-fg">
+    <div className="flex min-h-dvh min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-studio-bg text-studio-fg">
       <div className="sticky top-0 hidden h-screen lg:block">{Sidebar()}</div>
       {mobileOpen && <div className="fixed inset-0 z-50 lg:hidden"><div className="absolute inset-0 bg-studio-bg/70" onClick={() => setMobileOpen(false)} /><div className="absolute left-0 top-0 h-full">{Sidebar()}</div></div>}
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-w-0 w-full flex-1 flex-col overflow-x-hidden">
         <header className="sticky top-0 z-40 flex h-16 items-center justify-between gap-3 border-b border-studio-border bg-studio-bg/80 px-4 backdrop-blur-xl">
           <button className="lg:hidden" onClick={() => setMobileOpen(true)} aria-label="Open menu"><Menu className="h-6 w-6" /></button>
           <div className="ml-auto flex items-center gap-2">
-            {!inFrame && (
-              <button onClick={() => setViewMode(viewMode === 'mobile' ? 'desktop' : 'mobile')} className="hidden items-center gap-1.5 rounded-full bg-studio-elevated px-3 py-2 text-xs font-medium text-studio-muted shadow-studio-border transition-colors hover:text-studio-fg lg:flex" aria-label="Toggle view mode" title="Toggle mobile/desktop view">
-                {viewMode === 'mobile' ? <Monitor className="h-4 w-4" /> : <Smartphone className="h-4 w-4" />}
-                {viewMode === 'mobile' ? 'Desktop' : 'Mobile'}
-              </button>
-            )}
             <Link href="/notifications" className="relative grid h-10 w-10 place-items-center rounded-full text-studio-muted hover:bg-studio-elevated hover:text-studio-fg" aria-label={unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications'}>
               <Bell className="h-5 w-5" />
               {unreadCount > 0 && (
@@ -180,7 +162,7 @@ export function LayoutShell({ children, roleLabel, isAdmin, unreadCount = 0 }: {
             </Link>
           </div>
         </header>
-        <main className="flex-1 px-4 pb-tabbar pt-2 lg:pb-12">{children}</main>
+        <main className="w-full min-w-0 flex-1 overflow-x-hidden px-4 pb-tabbar pt-2 lg:pb-12">{children}</main>
       </div>
       <nav className="fixed inset-x-0 bottom-0 z-50 flex items-stretch border-t border-studio-border bg-studio-bg/90 backdrop-blur-xl lg:hidden" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
         {MOBILE_TABS.map((item) => {
@@ -199,6 +181,5 @@ export function LayoutShell({ children, roleLabel, isAdmin, unreadCount = 0 }: {
         </button>
       </nav>
     </div>
-    )
   );
 }
