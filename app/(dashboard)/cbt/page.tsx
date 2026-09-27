@@ -52,8 +52,8 @@ export default async function CbtIndexPage() {
   }
 
   return (
-    <div className="-mx-4 -mt-2 min-h-[calc(100dvh-4rem)] bg-studio-bg p-4 text-studio-fg md:p-6">
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-8">
+    <div className="w-full min-w-0 max-w-[100vw] overflow-x-hidden bg-studio-bg text-studio-fg">
+      <div className="mx-auto flex w-full min-w-0 max-w-5xl flex-col gap-6 px-0 pb-4 pt-1 md:gap-8">
         <header className="studio-rise">
           <p className="text-xs font-medium uppercase tracking-[0.18em] text-studio-subtle">Exam</p>
           <h1 className="mt-2 font-studio-display text-3xl tracking-tight md:text-4xl">CBT Engine</h1>
@@ -63,7 +63,7 @@ export default async function CbtIndexPage() {
         </header>
 
         {inProgress.length > 0 && (
-          <section className="rounded-xl bg-studio-surface p-5 shadow-studio-border studio-rise studio-rise-delay-1">
+          <section className="min-w-0 rounded-xl bg-studio-surface p-4 shadow-studio-border sm:p-5 studio-rise studio-rise-delay-1">
             <p className="text-xs font-medium uppercase tracking-[0.16em] text-studio-subtle">Resume in progress</p>
             <p className="mt-1 text-sm text-studio-muted">Pick up where you left off — your answers and timer are saved.</p>
             <div className="mt-4 flex flex-col gap-2">
@@ -85,16 +85,16 @@ export default async function CbtIndexPage() {
           </section>
         )}
 
-        <div className="grid gap-6 lg:grid-cols-2">
-          <section className="rounded-xl bg-studio-surface p-5 shadow-studio-border studio-rise studio-rise-delay-2">
+        <div className="grid min-w-0 gap-6 lg:grid-cols-2">
+          <section className="min-w-0 rounded-xl bg-studio-surface p-4 shadow-studio-border sm:p-5 studio-rise studio-rise-delay-2">
             <p className="text-xs font-medium uppercase tracking-[0.16em] text-studio-subtle">From a document</p>
             <h2 className="mt-1 font-studio-display text-xl tracking-tight text-studio-fg">Practice or exam from a document</h2>
-            <p className="mt-1 text-sm text-studio-muted">Upload a PDF, choose a question format, then practice with instant feedback or start a timed exam.</p>
-            <div className="mt-5">
+            <p className="mt-1 text-sm leading-relaxed text-studio-muted">Upload a PDF, choose a question format, then practice with instant feedback or start a timed exam.</p>
+            <div className="mt-5 min-w-0">
               <PdfExamCreator materials={docs} />
             </div>
           </section>
-          <section className="rounded-xl bg-studio-surface p-5 shadow-studio-border studio-rise studio-rise-delay-2">
+          <section className="min-w-0 rounded-xl bg-studio-surface p-4 shadow-studio-border sm:p-5 studio-rise studio-rise-delay-2">
             <p className="text-xs font-medium uppercase tracking-[0.16em] text-studio-subtle">Results</p>
             <h2 className="mt-1 font-studio-display text-xl tracking-tight text-studio-fg">Recent results</h2>
             <p className="mt-1 text-sm text-studio-muted">Your last 10 completed sessions.</p>
@@ -115,7 +115,7 @@ export default async function CbtIndexPage() {
           </section>
         </div>
 
-        <section className="rounded-xl bg-studio-surface p-5 shadow-studio-border studio-rise studio-rise-delay-3">
+        <section className="min-w-0 rounded-xl bg-studio-surface p-4 shadow-studio-border sm:p-5 studio-rise studio-rise-delay-3">
           <p className="text-xs font-medium uppercase tracking-[0.16em] text-studio-subtle">From a course</p>
           <h2 className="mt-1 font-studio-display text-xl tracking-tight text-studio-fg">Start a session from a course</h2>
           <p className="mt-1 text-sm text-studio-muted">Pick a course, choose practice or exam mode, and set the number of questions.</p>
