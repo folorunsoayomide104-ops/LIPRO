@@ -139,11 +139,11 @@ export function LayoutShell({ children, roleLabel, isAdmin, unreadCount = 0 }: {
   );
 
   return (
-    <div className="flex min-h-dvh min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-studio-bg text-studio-fg">
+    <div className="flex h-dvh w-full max-w-[100vw] overflow-hidden bg-studio-bg text-studio-fg">
       <div className="sticky top-0 hidden h-screen lg:block">{Sidebar()}</div>
       {mobileOpen && <div className="fixed inset-0 z-50 lg:hidden"><div className="absolute inset-0 bg-studio-bg/70" onClick={() => setMobileOpen(false)} /><div className="absolute left-0 top-0 h-full">{Sidebar()}</div></div>}
-      <div className="flex min-w-0 w-full flex-1 flex-col overflow-x-hidden">
-        <header className="sticky top-0 z-40 flex h-16 items-center justify-between gap-3 border-b border-studio-border bg-studio-bg/80 px-4 backdrop-blur-xl">
+      <div className="flex h-full min-h-0 min-w-0 w-full flex-1 flex-col">
+        <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center justify-between gap-3 border-b border-studio-border bg-studio-bg/80 px-4 backdrop-blur-xl">
           <button className="lg:hidden" onClick={() => setMobileOpen(true)} aria-label="Open menu"><Menu className="h-6 w-6" /></button>
           <div className="ml-auto flex items-center gap-2">
             <Link href="/notifications" className="relative grid h-10 w-10 place-items-center rounded-full text-studio-muted hover:bg-studio-elevated hover:text-studio-fg" aria-label={unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications'}>
@@ -162,7 +162,12 @@ export function LayoutShell({ children, roleLabel, isAdmin, unreadCount = 0 }: {
             </Link>
           </div>
         </header>
-        <main className="w-full min-w-0 flex-1 overflow-x-hidden px-4 pb-tabbar pt-2 lg:pb-12">{children}</main>
+        <main
+          className="w-full min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain px-4 pb-tabbar pt-2 lg:pb-12"
+          style={{ WebkitOverflowScrolling: 'touch' }}
+        >
+          {children}
+        </main>
       </div>
       <nav className="fixed inset-x-0 bottom-0 z-50 flex items-stretch border-t border-studio-border bg-studio-bg/90 backdrop-blur-xl lg:hidden" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
         {MOBILE_TABS.map((item) => {
