@@ -99,9 +99,9 @@ export function PdfExamCreator({ materials }: { materials: Doc[] }) {
   const fmtBytes = (b: number) => (b > 1024 * 1024 ? `${(b / (1024 * 1024)).toFixed(1)} MB` : `${(b / 1024).toFixed(0)} KB`);
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex min-w-0 flex-col gap-6">
       <div
-        className="flex cursor-pointer flex-col items-center rounded-lg border border-dashed border-studio-border-strong px-4 py-8 text-center transition-colors hover:border-studio-primary/50 hover:bg-studio-bg/40"
+        className="flex cursor-pointer flex-col items-center rounded-lg border border-dashed border-studio-border-strong px-3 py-6 text-center transition-colors hover:border-studio-primary/50 hover:bg-studio-bg/40 sm:px-4 sm:py-8"
         onClick={() => inputRef.current?.click()}
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => {
@@ -132,7 +132,7 @@ export function PdfExamCreator({ materials }: { materials: Doc[] }) {
         )}
       </div>
 
-      <div>
+      <div className="min-w-0">
         <p className="text-xs font-medium uppercase tracking-[0.16em] text-studio-subtle">Question format</p>
         <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
           {FORMAT_OPTIONS.map((opt) => {
@@ -149,16 +149,16 @@ export function PdfExamCreator({ materials }: { materials: Doc[] }) {
                   active ? 'bg-studio-primary text-studio-primary-fg' : 'bg-studio-elevated text-studio-muted hover:text-studio-fg',
                 )}
               >
-                <span className="flex items-center gap-1.5 text-sm font-medium"><Icon className="h-4 w-4" /> {opt.label}</span>
-                <span className={cn('mt-1 block text-xs', active ? 'text-studio-primary-fg/70' : 'text-studio-subtle')}>{opt.hint}</span>
+                <span className="flex items-center gap-1.5 text-sm font-medium"><Icon className="h-4 w-4 shrink-0" /> {opt.label}</span>
+                <span className={cn('mt-1 block text-xs leading-snug', active ? 'text-studio-primary-fg/70' : 'text-studio-subtle')}>{opt.hint}</span>
               </button>
             );
           })}
         </div>
       </div>
 
-      <div>
-        <p className="text-xs font-medium uppercase tracking-[0.16em] text-studio-subtle">Sit as</p>
+      <div className="min-w-0">
+        <p className="text-xs font-medium uppercase tracking-[0.16em] text-studio-subtle">Mode</p>
         <div className="mt-3 grid grid-cols-2 gap-2">
           <button
             type="button"
@@ -177,7 +177,7 @@ export function PdfExamCreator({ materials }: { materials: Doc[] }) {
         </div>
       </div>
 
-      <div className={cn('grid grid-cols-1 gap-3', mode === 'exam' && 'sm:grid-cols-2')}>
+      <div className={cn('grid min-w-0 grid-cols-1 gap-3', mode === 'exam' && 'sm:grid-cols-2')}>
         <div>
           <label className="text-xs font-medium uppercase tracking-[0.16em] text-studio-subtle">Questions</label>
           <select
@@ -202,7 +202,7 @@ export function PdfExamCreator({ materials }: { materials: Doc[] }) {
         )}
       </div>
 
-      <div>
+      <div className="min-w-0">
         <button
           type="button"
           onClick={generateAndStart}
@@ -219,7 +219,7 @@ export function PdfExamCreator({ materials }: { materials: Doc[] }) {
           </div>
         )}
         {error && <p className="mt-2 text-xs text-studio-danger">{error}</p>}
-        <p className="mt-3 text-xs leading-normal text-studio-subtle">
+        <p className="mt-3 text-xs leading-relaxed text-studio-subtle">
           {mode === 'practice'
             ? `We'll analyze your document for the concepts most likely to be tested, then write up to ${count} ${FORMAT_OPTIONS.find((f) => f.value === format)!.label.toLowerCase()} question(s) from them. Check each answer as you go — no timer, instant feedback, and a running score.`
             : `We'll analyze your document for the concepts most likely to be tested, then write up to ${count} ${FORMAT_OPTIONS.find((f) => f.value === format)!.label.toLowerCase()} question(s) and start a countdown timed exam. Auto-submits when time runs out.`}
@@ -227,10 +227,10 @@ export function PdfExamCreator({ materials }: { materials: Doc[] }) {
       </div>
 
       {materials.length > 0 && (
-        <div className="flex flex-col gap-2 border-t border-studio-border pt-4">
+        <div className="flex min-w-0 flex-col gap-2 border-t border-studio-border pt-4">
           <p className="text-xs font-medium uppercase tracking-[0.16em] text-studio-subtle">Your documents</p>
           {materials.map((m) => (
-            <div key={m.id} className="rounded-lg bg-studio-elevated p-3">
+            <div key={m.id} className="min-w-0 rounded-lg bg-studio-elevated p-3">
               <div className="flex items-center justify-between gap-2">
                 <div className="min-w-0">
                   <div className="truncate text-sm font-medium text-studio-fg">{m.originalName}</div>
