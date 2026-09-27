@@ -168,15 +168,16 @@ export function LayoutShell({ children, roleLabel, isAdmin, unreadCount = 0 }: {
         {MOBILE_TABS.map((item) => {
           const active = pathname === item.href || pathname.startsWith(item.href + '/');
           const Icon = item.icon;
+          const shortLabel = item.href === '/cbt' ? 'CBT' : item.href === '/lipro-ai' ? 'AI' : item.label;
           return (
-            <Link key={item.href} href={item.href} onClick={() => setMobileOpen(false)} className={cn('flex min-w-0 flex-1 flex-col items-center justify-center gap-1 py-2 text-[10px] font-medium transition-colors', active ? 'text-studio-primary' : 'text-studio-subtle')}>
-              <Icon className={cn('h-5 w-5', active && 'scale-110')} />
-              <span className="truncate">{item.label}</span>
+            <Link key={item.href} href={item.href} onClick={() => setMobileOpen(false)} className={cn('flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-medium transition-colors', active ? 'text-studio-primary' : 'text-studio-subtle')}>
+              <Icon className={cn('h-5 w-5 shrink-0', active && 'scale-110')} />
+              <span className="max-w-full truncate px-0.5">{shortLabel}</span>
             </Link>
           );
         })}
-        <button onClick={() => setMobileOpen(true)} className={cn('flex min-w-0 flex-1 flex-col items-center justify-center gap-1 py-2 text-[10px] font-medium transition-colors', mobileOpen ? 'text-studio-primary' : 'text-studio-subtle')} aria-label="More">
-          <MoreHorizontal className="h-5 w-5" />
+        <button onClick={() => setMobileOpen(true)} className={cn('flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-medium transition-colors', mobileOpen ? 'text-studio-primary' : 'text-studio-subtle')} aria-label="More">
+          <MoreHorizontal className="h-5 w-5 shrink-0" />
           <span>More</span>
         </button>
       </nav>
