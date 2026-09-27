@@ -101,7 +101,7 @@ input[type="checkbox"], input[type="radio"] {
     padding-top: max(env(safe-area-inset-top), 0px);
   }
   .pb-tabbar {
-    padding-bottom: calc(max(env(safe-area-inset-bottom), 0px) + 4.5rem);
+    padding-bottom: calc(max(env(safe-area-inset-bottom), 0px) + 5.5rem);
   }
   .tap {
     -webkit-tap-highlight-color: transparent;
