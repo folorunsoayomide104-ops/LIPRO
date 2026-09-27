@@ -26,7 +26,7 @@ export function PdfExamCreator({ materials }: { materials: Doc[] }) {
   const [mode, setMode] = useState<'practice' | 'exam'>('practice');
   const [count, setCount] = useState(25);
   const [durationMin, setDurationMin] = useState(30);
-  const [phase, setPhase] = useState<'idle' | 'uploading' | 'generating' | 'starting'>('idle');
+  const [phase, setPhase] = useState<'idle' | 'uploading' | 'analyzing' | 'generating' | 'starting'>('idle');
   const [uploadProgress, setUploadProgress] = useState(0);
   const [managingId, setManagingId] = useState<string | null>(null);
   const [error, setError] = useState('');
@@ -70,7 +70,8 @@ export function PdfExamCreator({ materials }: { materials: Doc[] }) {
       if (!up.ok) throw new Error(upData?.error || 'Upload failed');
       materialId = upData.material.id;
 
-      setPhase('generating');
+      setPhase('analyzing');
+      setTimeout(() => setPhase((p) => (p === 'analyzing' ? 'generating' : p)), 1400);
       const gen = await fetch(`/api/materials/${materialId}/questions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -90,9 +91,10 @@ export function PdfExamCreator({ materials }: { materials: Doc[] }) {
   };
 
   const phaseText = phase === 'uploading' ? 'Uploading document…'
+    : phase === 'analyzing' ? 'Analyzing document for exam-likely concepts…'
     : phase === 'generating' ? `Writing ${FORMAT_OPTIONS.find((f) => f.value === format)!.label.toLowerCase()} questions…`
     : phase === 'starting' ? (mode === 'practice' ? 'Starting practice…' : 'Starting timed exam…')
-    : mode === 'practice' ? 'Generate & start practice' : 'Generate & start exam';
+    : mode === 'practice' ? 'Analyze & start practice' : 'Analyze & start exam';
 
   const fmtBytes = (b: number) => (b > 1024 * 1024 ? `${(b / (1024 * 1024)).toFixed(1)} MB` : `${(b / 1024).toFixed(0)} KB`);
 
@@ -219,8 +221,8 @@ export function PdfExamCreator({ materials }: { materials: Doc[] }) {
         {error && <p className="mt-2 text-xs text-studio-danger">{error}</p>}
         <p className="mt-3 text-xs leading-relaxed text-studio-subtle">
           {mode === 'practice'
-            ? `We'll generate up to ${count} ${FORMAT_OPTIONS.find((f) => f.value === format)!.label.toLowerCase()} question(s) from your document. Check each answer as you go — no timer, instant feedback, and a running score.`
-            : `We'll generate up to ${count} ${FORMAT_OPTIONS.find((f) => f.value === format)!.label.toLowerCase()} question(s) and start a countdown timed exam. Auto-submits when time runs out.`}
+            ? `We'll analyze your document for the concepts most likely to be tested, then write up to ${count} ${FORMAT_OPTIONS.find((f) => f.value === format)!.label.toLowerCase()} question(s) from them. Check each answer as you go — no timer, instant feedback, and a running score.`
+            : `We'll analyze your document for the concepts most likely to be tested, then write up to ${count} ${FORMAT_OPTIONS.find((f) => f.value === format)!.label.toLowerCase()} question(s) and start a countdown timed exam. Auto-submits when time runs out.`}
         </p>
       </div>
 
