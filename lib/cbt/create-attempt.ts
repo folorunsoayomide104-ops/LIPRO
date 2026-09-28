@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { sampleQuestions, shuffleOptions } from './sampling';
 import { MAX_OPEN_ATTEMPTS, MIN_DURATION_SEC, MAX_DURATION_SEC } from './constants';
+import { getWeakConceptLabels } from '@/lib/weak-topics';
 
 export interface CreateAttemptParams {
   courseId?: string;
@@ -9,6 +10,7 @@ export interface CreateAttemptParams {
   count: number;
   durationSec?: number;
   types?: string[];
+  adaptive?: boolean;
 }
 
 export type CreateAttemptResult =
@@ -21,17 +23,12 @@ export type CreateAttemptResult =
       durationSec: number | null;
       deadlineAt: string | null;
       sourceTitle: string;
+      adaptive?: boolean;
     }
   | { ok: false; status: 404 | 422 | 429; error: string };
 
-/**
- * Single source of truth for starting a CBT attempt — used by both
- * POST /api/cbt/attempts (the practice/exam picker UI) and the LIPRO AI
- * start_cbt tool, so a chat-initiated attempt goes through the exact same
- * open-attempt cap, sampling, and duration rules as the UI-initiated one.
- */
 export async function createExamAttempt(userId: string, params: CreateAttemptParams): Promise<CreateAttemptResult> {
-  const { courseId, materialId, mode, durationSec, types } = params;
+  const { courseId, materialId, mode, durationSec, types, adaptive } = params;
   const count = Math.max(1, Math.min(100, params.count || 10));
 
   const open = await prisma.examSession.count({ where: { userId, status: 'in_progress' } });
@@ -58,7 +55,15 @@ export async function createExamAttempt(userId: string, params: CreateAttemptPar
   const where: Record<string, unknown> = materialId ? { sourceId: materialId } : { courseId };
   if (types?.length) where.type = { in: types };
 
-  const sampled = await sampleQuestions(where, count);
+  let preferTopics: string[] | undefined;
+  if (adaptive && mode === 'practice') {
+    preferTopics = await getWeakConceptLabels(userId, 12);
+    if (preferTopics.length) {
+      sourceTitle = `${sourceTitle} · Weak-topic drill`;
+    }
+  }
+
+  const sampled = await sampleQuestions(where, count, preferTopics);
   if (sampled.length === 0) {
     return { ok: false, status: 422, error: 'No questions available for this selection yet. Generate some questions first.' };
   }
@@ -118,5 +123,6 @@ export async function createExamAttempt(userId: string, params: CreateAttemptPar
     durationSec: resolvedDuration,
     deadlineAt: deadlineAt?.toISOString() ?? null,
     sourceTitle,
+    adaptive: !!(adaptive && preferTopics && preferTopics.length > 0),
   };
 }
