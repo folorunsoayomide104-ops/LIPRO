@@ -1,10 +1,6 @@
 import { prisma } from '@/lib/prisma';
+import { unpackQuestionMeta } from '@/lib/question-gen';
 
-/**
- * Unbiased shuffle. The previous implementation used
- * `sort(() => Math.random() - 0.5)`, whose comparator is inconsistent and
- * produces a skewed distribution.
- */
 export function fisherYates<T>(input: readonly T[]): T[] {
   const arr = [...input];
   for (let i = arr.length - 1; i > 0; i--) {
@@ -26,22 +22,16 @@ export type SampledQuestion = {
 };
 
 /**
- * Pick `count` random questions matching `where`.
- *
- * Fetches ids only before sampling, so we don't pull an entire question bank
- * into memory just to slice it (which is what the old exam route did).
+ * Pick `count` questions matching `where`.
+ * When `preferTopics` is set, ~60% of the paper prefers matching weak concepts.
  */
 export async function sampleQuestions(
   where: Record<string, unknown>,
-  count: number
+  count: number,
+  preferTopics?: string[]
 ): Promise<SampledQuestion[]> {
-  const ids = await prisma.question.findMany({ where, select: { id: true } });
-  if (ids.length === 0) return [];
-
-  const chosen = fisherYates(ids.map((q) => q.id)).slice(0, Math.min(count, ids.length));
-
   const rows = await prisma.question.findMany({
-    where: { id: { in: chosen } },
+    where,
     select: {
       id: true,
       type: true,
@@ -53,20 +43,35 @@ export async function sampleQuestions(
       points: true,
     },
   });
+  if (rows.length === 0) return [];
 
-  // Prisma does not preserve the order of an `in` filter — restore the shuffle.
-  const byId = new Map(rows.map((r) => [r.id, r]));
-  return chosen.map((id) => byId.get(id)).filter((q): q is SampledQuestion => !!q);
+  const normalizedPrefer = (preferTopics || []).map((t) => t.toLowerCase().trim()).filter(Boolean);
+
+  if (normalizedPrefer.length === 0 || count <= 1) {
+    return fisherYates(rows).slice(0, Math.min(count, rows.length));
+  }
+
+  const preferred: typeof rows = [];
+  const rest: typeof rows = [];
+  for (const r of rows) {
+    const topic = (unpackQuestionMeta(r.explanation).topic || '').toLowerCase();
+    if (topic && normalizedPrefer.some((p) => topic.includes(p) || p.includes(topic))) {
+      preferred.push(r);
+    } else {
+      rest.push(r);
+    }
+  }
+
+  const preferCount = Math.min(preferred.length, Math.max(1, Math.ceil(count * 0.6)));
+  const fromPrefer = fisherYates(preferred).slice(0, preferCount);
+  const need = count - fromPrefer.length;
+  const fromRest = fisherYates(rest).slice(0, Math.max(0, need));
+  const used = new Set([...fromPrefer, ...fromRest].map((q) => q.id));
+  const fill = fisherYates(rows.filter((r) => !used.has(r.id))).slice(0, Math.max(0, count - used.size));
+
+  return fisherYates([...fromPrefer, ...fromRest, ...fill]).slice(0, count);
 }
 
-/**
- * Shuffle an MCQ's options for this attempt.
- *
- * `Question.answer` stores the option *text*, so reordering is normally safe.
- * If the answer isn't among the options (e.g. a generated question that stored
- * "A" against prose options), the original order is kept — reordering there
- * would make the question unanswerable.
- */
 export function shuffleOptions(optionsJson: string | null, answer: string): string | null {
   if (!optionsJson) return null;
 
