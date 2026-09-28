@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { Clock, Send, ChevronLeft, ChevronRight, Check, LayoutGrid, Loader2, RefreshCw, LogOut, Cloud, CloudOff, Flame, Star } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAttempt, type AttemptItem } from '@/lib/cbt/use-attempt';
+import { unpackQuestionMeta } from '@/lib/question-gen';
 
 const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'] as const;
 
@@ -184,6 +185,35 @@ export function ExamRunner({ attemptId }: { attemptId: string }) {
           />
         </div>
 
+        {items.length > 0 && (() => {
+          const metas = items.map((it) => unpackQuestionMeta(it.explanation));
+          const topics = Array.from(new Set(metas.map((m) => m.topic).filter(Boolean) as string[]));
+          const easy = metas.filter((m) => m.difficulty === 'easy').length;
+          const med = metas.filter((m) => m.difficulty === 'medium').length;
+          const hard = metas.filter((m) => m.difficulty === 'hard').length;
+          const totalPts = items.reduce((s, it) => s + (it.points || 0), 0);
+          if (!topics.length && !easy && !med && !hard) return null;
+          return (
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg bg-studio-elevated/60 px-3 py-2 text-xs text-studio-muted">
+              <span className="font-medium text-studio-fg">{totalPts} marks</span>
+              {(easy + med + hard) > 0 && (
+                <span>
+                  {easy > 0 && <span className="text-emerald-400">{easy} easy</span>}
+                  {easy > 0 && (med > 0 || hard > 0) && ' · '}
+                  {med > 0 && <span className="text-amber-400">{med} medium</span>}
+                  {med > 0 && hard > 0 && ' · '}
+                  {hard > 0 && <span className="text-rose-400">{hard} hard</span>}
+                </span>
+              )}
+              {topics.length > 0 && (
+                <span className="truncate" title={topics.join(', ')}>
+                  Topics: {topics.slice(0, 4).join(', ')}{topics.length > 4 ? ` +${topics.length - 4}` : ''}
+                </span>
+              )}
+            </div>
+          );
+        })()}
+
         {!item ? (
           <div className="rounded-xl bg-studio-surface p-6 shadow-studio-border">
             <p className="text-sm text-studio-muted">No questions in this attempt.</p>
@@ -301,12 +331,24 @@ function QuestionCard({
   const isFreeText = opts.length === 0;
   const isFillBlank = item.type === 'FILL_BLANK';
   const wordCount = isFreeText && !isFillBlank ? (selected.trim() ? selected.trim().split(/\s+/).length : 0) : 0;
+  const meta = unpackQuestionMeta(item.explanation);
 
   return (
     <div key={item.itemId} className="rounded-xl bg-studio-surface p-6 shadow-studio-border studio-rise">
       <div className="flex flex-wrap items-center gap-2">
         <span className="rounded-full bg-studio-elevated px-2.5 py-1 text-[11px] font-medium uppercase tracking-wide text-studio-subtle">{item.type}</span>
-        <span className="text-xs text-studio-subtle">{item.points} pts</span>
+        <span className="text-xs text-studio-subtle">{item.points} pt{item.points === 1 ? '' : 's'}</span>
+        {meta.difficulty && (
+          <span className={cn(
+            'rounded-full px-2.5 py-1 text-[11px] font-medium capitalize',
+            meta.difficulty === 'easy' && 'bg-emerald-500/15 text-emerald-400',
+            meta.difficulty === 'medium' && 'bg-amber-500/15 text-amber-400',
+            meta.difficulty === 'hard' && 'bg-rose-500/15 text-rose-400',
+          )}>{meta.difficulty}</span>
+        )}
+        {meta.topic && (
+          <span className="max-w-[12rem] truncate rounded-full bg-studio-elevated px-2.5 py-1 text-[11px] font-medium text-studio-muted" title={meta.topic}>{meta.topic}</span>
+        )}
         {isPractice && done && (
           item.gradeMethod === 'ungraded'
             ? <span className="inline-flex items-center gap-1 text-xs text-amber-400"><Clock className="h-3 w-3" /> Pending manual review</span>
@@ -379,7 +421,7 @@ function QuestionCard({
         {isPractice && done && (
           <div className="mt-4 rounded-lg bg-studio-elevated px-4 py-3 text-sm leading-normal text-studio-muted">
             <p><span className="text-studio-fg">Answer:</span> {item.correctAnswer || '—'}</p>
-            {item.explanation && <p className="mt-2">{item.explanation}</p>}
+            {(meta.explanation || item.explanation) && <p className="mt-2">{meta.explanation || item.explanation}</p>}
             {item.feedback && <p className="mt-2 italic text-studio-subtle">{item.feedback}</p>}
           </div>
         )}
@@ -390,7 +432,8 @@ function QuestionCard({
             disabled={!selected.trim() || checking}
             className="mt-4 inline-flex h-10 items-center gap-2 rounded-full bg-studio-elevated px-4 text-sm font-medium text-studio-muted shadow-studio-border hover:text-studio-fg disabled:opacity-40"
           >
-            {checking ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null} Check answer
+            {checking ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+            {checking ? 'Checking…' : 'Check answer'}
           </button>
         )}
       </div>
