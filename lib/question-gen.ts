@@ -37,23 +37,30 @@ export interface GeneratedQuestion {
   explanation: string;
 }
 
-const SYSTEM_PROMPT = `You are an expert Nigerian university examiner who writes high-quality, accurate CBT questions. You generate ONLY valid JSON — no markdown, no commentary, no code fences.
+const SYSTEM_PROMPT = `You are a senior Nigerian university examiner setting a real end-of-semester / continuous-assessment paper. You write ONLY questions a lecturer would actually put on the exam from the given notes. Generate ONLY valid JSON — no markdown, no commentary, no code fences.
 
-You receive lecture notes and must write questions based ONLY on the material given. Rules:
-- Every fact in a question, answer and explanation must come from the material. NEVER invent facts, definitions, figures or names that are not in the material.
-- Keep questions concise and exam-realistic for Nigerian universities.
-- MCQ: exactly 4 options with one correct answer. The correct answer must be verifiable from the material.
-- MCQ "answer" MUST be the full text of the correct option, copied EXACTLY character-for-character from that entry in "options" — never a letter like "A"/"B"/"C"/"D" and never an index. The grader matches "answer" against "options" by exact text; a letter will never match and the question becomes ungradeable.
-- TRUE_FALSE: the answer is exactly "True" or "False", and the statement must be directly answerable from the material.
-- FILL_BLANK: the missing word/phrase goes in the answer, and the blank appears as "___" in the question.
-- THEORY: the answer is a short model answer (2-4 sentences) grounded in the material.
+GOAL: Every question must be a LIKELY EXAM QUESTION — the kind students would see on a real paper for this course, not a random quiz from a sentence.
+
+What counts as a likely exam question:
+- Tests definitions, named laws/principles/theorems, processes and steps, classifications, comparisons, cause-and-effect, formulas, and clinical or applied facts that lecturers emphasise.
+- Uses exam language: "Which of the following…", "The primary function of…", "X is characterised by…", "All of the following are true EXCEPT…", "Define / Explain / List / Distinguish between…"
+- Stems are short and formal (one clear idea). No conversational or "from the passage above" wording.
+- MCQ distractors are plausible and drawn from related ideas in the material (not silly or unrelated).
+- Prefer concepts that appear with emphasis, repetition, lists, bold terms, or are central to the topic — skip introductions, transitions, and trivial asides.
+
+Hard rules:
+- Every fact in the question, answer and explanation MUST come from the material. NEVER invent facts, names, figures or definitions.
+- MCQ: exactly 4 options, one correct. "answer" MUST be the full text of the correct option, copied EXACTLY from "options" — never a letter (A/B/C/D) or index.
+- TRUE_FALSE: answer is exactly "True" or "False"; statement must be directly answerable from the material.
+- FILL_BLANK: blank is "___" in the question; answer is the missing term/phrase from the material.
+- THEORY: short model answer (2–4 sentences) grounded in the material, like a marking scheme.
 - Always include a one-sentence explanation citing the material.
-- The "type" field MUST be exactly one of these uppercase tokens: "MCQ", "TRUE_FALSE", "FILL_BLANK", "THEORY". Never use any other value (not "Multiple Choice", not "true/False", not "Essay").
-- Output a JSON array only, like: [{"type":"MCQ","question":"Which nerve controls plantar flexion?","options":["Tibial nerve","Peroneal nerve","Femoral nerve","Radial nerve"],"answer":"Tibial nerve","explanation":"..."}]`;
+- "type" MUST be exactly one of: "MCQ", "TRUE_FALSE", "FILL_BLANK", "THEORY".
+- Output a JSON array only, e.g. [{"type":"MCQ","question":"Which of the following nerves controls plantar flexion of the foot?","options":["Tibial nerve","Common peroneal nerve","Femoral nerve","Obturator nerve"],"answer":"Tibial nerve","explanation":"..."}]`;
 
 function buildUserPrompt(text: string, formats: QuestionFormat[], countPerFormat: number): string {
   const list = formats.length ? formats.join(', ') : 'MCQ';
-  return `Lecture material:\n---\n${text}\n---\nWrite ${countPerFormat} accurate question(s) for each of these formats: ${list}.\nBase every question ONLY on the material above. Return a JSON array.`;
+  return `Lecture material:\n---\n${text}\n---\nWrite ${countPerFormat} LIKELY EXAM question(s) for each format: ${list}.\nWrite questions a Nigerian university lecturer would put on a real CA or semester exam from this material — not random sentence quizzes.\nBase every question ONLY on the material above. Return a JSON array.`;
 }
 
 export interface ExamTopic {
@@ -61,14 +68,23 @@ export interface ExamTopic {
   context: string;
 }
 
-const ANALYSIS_SYSTEM_PROMPT = `You are an expert Nigerian university examiner reviewing lecture material before setting an exam. You generate ONLY valid JSON — no markdown, no commentary, no code fences.
+const ANALYSIS_SYSTEM_PROMPT = `You are a senior Nigerian university examiner preparing an exam paper from lecture notes. You generate ONLY valid JSON — no markdown, no commentary, no code fences.
 
-Identify the concepts in this material that a lecturer is MOST LIKELY to test: key definitions, named principles/laws/theorems, processes and their steps, classifications, comparisons, cause-and-effect relationships, and important numerical facts or formulas. Prioritize specific, testable content over trivial or incidental sentences (do not pick things like introductions, transitions, or "in this chapter we will discuss...").
+Extract ONLY concepts that are LIKELY TO APPEAR ON A REAL EXAM — the points a lecturer would test in CA or finals:
+- Key definitions and technical terms
+- Named laws, principles, theorems, theories
+- Steps of processes and procedures
+- Classifications and types
+- Comparisons and distinctions ("X vs Y")
+- Cause-and-effect and mechanisms
+- Important numbers, formulas, or criteria
 
-Output a JSON array of objects, each shaped like:
-[{"concept": "short name of the testable idea", "context": "the exact sentence(s) from the material this is based on, copied verbatim"}]
+SKIP: chapter intros, "in this lecture we will…", transitions, examples that are only illustrative, and anything a student would not be asked in a real paper.
 
-Return between 3 and 20 concepts depending on how much genuinely testable material is present. Never invent a concept that isn't actually in the text.`;
+Output a JSON array:
+[{"concept": "short exam-ready name", "context": "exact sentence(s) from the material, copied verbatim"}]
+
+Return 3–20 concepts ranked by how likely they are to be examined. Never invent content not in the text.`;
 
 function buildAnalysisPrompt(text: string, targetCount: number): string {
   return `Lecture material:\n---\n${text}\n---\nIdentify up to ${targetCount} of the most exam-likely concepts from this material. Return a JSON array.`;
@@ -142,7 +158,7 @@ function truncateContext(s: string, max = 400): string {
 
 function buildUserPromptFromTopics(topics: ExamTopic[], format: QuestionFormat, count: number): string {
   const list = topics.map((t, i) => `${i + 1}. ${t.concept} — context: "${truncateContext(t.context)}"`).join('\n');
-  return `Exam-relevant concepts already identified from the material, in order of importance:\n${list}\n\nWrite ${count} ${FORMAT_LABELS[format]} question(s). Each question must be based on a DIFFERENT concept from the list above — cycle back to the start of the list if you need more questions than there are concepts, but vary the angle each time so repeats aren't identical. Use ONLY the "context" text given for each concept; never invent facts beyond it. Return a JSON array of question objects (type "${format}").`;
+  return `These are the most exam-likely concepts from the lecture material (most important first):\n${list}\n\nWrite ${count} ${FORMAT_LABELS[format]} question(s) that could appear on a real Nigerian university exam.\nEach question must target a DIFFERENT concept from the list (cycle if needed, but change the angle).\nUse formal exam wording. For MCQ, make distractors plausible from related ideas in the contexts.\nUse ONLY the "context" text for each concept; never invent facts.\nReturn a JSON array of question objects (type "${format}").`;
 }
 
 function looksLikeQuestion(v: any): boolean {
@@ -354,7 +370,7 @@ async function callProviderRaw(text: string, formats: QuestionFormat[], count: n
       { role: 'system', content: SYSTEM_PROMPT },
       { role: 'user', content: buildUserPrompt(text, formats, count) },
     ],
-    temperature: 0.4,
+    temperature: 0.35,
     maxTokens: maxTokensFor(cfg, count),
     timeoutMs: 45000,
     retries,
@@ -373,7 +389,7 @@ async function callProviderWithTopics(topics: ExamTopic[], format: QuestionForma
       { role: 'system', content: SYSTEM_PROMPT },
       { role: 'user', content: buildUserPromptFromTopics(topics, format, count) },
     ],
-    temperature: 0.4,
+    temperature: 0.35,
     maxTokens: maxTokensFor(cfg, count),
     timeoutMs: 45000,
     retries,
