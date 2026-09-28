@@ -1,12 +1,5 @@
 'use client';
 
-/**
- * Client-side helper for starting an exam attempt. Used by both the exam
- * launcher and the PDF-to-exam creator so there's exactly one
- * "POST → navigate" code path instead of the two divergent copies that used
- * to live in start-exam-button and pdf-exam-creator.
- */
-
 export type AttemptSource = { kind: 'course'; id: string } | { kind: 'material'; id: string };
 
 export interface CreateAttemptParams {
@@ -14,8 +7,8 @@ export interface CreateAttemptParams {
   mode: 'practice' | 'exam';
   count: number;
   durationSec?: number;
-  /** Restrict the sampled question bank to these formats (e.g. ['MCQ']). Omit for any format. */
   types?: string[];
+  adaptive?: boolean;
 }
 
 export interface CreateAttemptResult {
@@ -26,6 +19,7 @@ export interface CreateAttemptResult {
   durationSec: number | null;
   deadlineAt: string | null;
   sourceTitle: string;
+  adaptive?: boolean;
 }
 
 export async function createAttempt(params: CreateAttemptParams): Promise<CreateAttemptResult> {
@@ -36,6 +30,7 @@ export async function createAttempt(params: CreateAttemptParams): Promise<Create
   };
   if (params.mode === 'exam' && params.durationSec) body.durationSec = params.durationSec;
   if (params.types?.length) body.types = params.types;
+  if (params.adaptive) body.adaptive = true;
 
   const res = await fetch('/api/cbt/attempts', {
     method: 'POST',
