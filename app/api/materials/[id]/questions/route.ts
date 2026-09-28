@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { guard } from '@/lib/api-guard';
-import { generateQuestionsFromText, fallbackGenerate, type QuestionFormat, type GeneratedQuestion } from '@/lib/question-gen';
+import { generateQuestionsFromText, fallbackGenerate, packQuestionMeta, type QuestionFormat, type GeneratedQuestion } from '@/lib/question-gen';
 import { resolveAiProviders, AI_FEATURES_ENABLED } from '@/lib/ai';
 import { pointsFor } from '@/lib/cbt/constants';
 import { checkRateLimit, rateLimitResponse } from '@/lib/rate-limit';
@@ -11,12 +11,14 @@ export const maxDuration = 300;
 const ALLOWED: QuestionFormat[] = ['MCQ', 'TRUE_FALSE', 'FILL_BLANK', 'THEORY'];
 
 function toRow(q: GeneratedQuestion, materialId: string, authorId: string, demo: boolean) {
+  const body = demo ? `[demo] ${q.explanation ?? ''}`.trim() : (q.explanation || '');
+  const explanation = packQuestionMeta(body, q.difficulty || 'medium', q.topic || 'General');
   return {
     type: q.type,
     question: q.question,
     options: q.options ? JSON.stringify(q.options) : null,
     answer: q.answer,
-    explanation: demo ? `[demo] ${q.explanation ?? ''}`.trim() : q.explanation || null,
+    explanation,
     points: pointsFor(q.type),
     sourceId: materialId,
     authorId,
@@ -114,6 +116,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       options: q.options,
       answer: q.answer,
       explanation: q.explanation,
+      difficulty: q.difficulty,
+      topic: q.topic,
+      points: pointsFor(q.type),
     })),
     count: generated.length,
     saved: save && savedIds.length === generated.length,
