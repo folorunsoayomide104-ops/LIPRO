@@ -4,12 +4,14 @@ import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
 import { StartExamButton } from '@/components/cbt/start-exam-button';
 import { PdfExamCreator } from '@/components/cbt/pdf-exam-creator';
+import { WeakTopicDrill } from '@/components/cbt/weak-topic-drill';
+import { getWeakTopics } from '@/lib/weak-topics';
 
 export default async function CbtIndexPage() {
   const session = await getSession();
   if (!session) redirect('/login');
 
-  const [courses, inProgress, completed, materials] = await Promise.all([
+  const [courses, inProgress, completed, materials, weakTopics] = await Promise.all([
     prisma.course.findMany({ include: { _count: { select: { questions: true } }, lecturer: { select: { fullName: true } } }, orderBy: { createdAt: 'desc' } }),
     prisma.examSession.findMany({
       where: { userId: session.userId, status: 'in_progress' },
@@ -28,6 +30,7 @@ export default async function CbtIndexPage() {
       orderBy: { createdAt: 'desc' },
       take: 10,
     }),
+    getWeakTopics(session.userId, 8),
   ]);
 
   const docs = materials.map((m) => ({
@@ -38,8 +41,6 @@ export default async function CbtIndexPage() {
     createdAt: m.createdAt.toISOString(),
   }));
 
-  // One grouped query for every course's per-format counts, rather than a
-  // query per course row — same pattern used on the admin students page.
   const typeGroups = courses.length
     ? await prisma.question.groupBy({ by: ['courseId', 'type'], where: { courseId: { in: courses.map((c) => c.id) } }, _count: true })
     : [];
@@ -84,6 +85,8 @@ export default async function CbtIndexPage() {
             </div>
           </section>
         )}
+
+        {weakTopics.length > 0 && <WeakTopicDrill topics={weakTopics} />}
 
         <div className="grid min-w-0 gap-6 lg:grid-cols-2">
           <section className="min-w-0 rounded-xl bg-studio-surface p-4 shadow-studio-border sm:p-5 studio-rise studio-rise-delay-2">
