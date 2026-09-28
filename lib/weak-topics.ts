@@ -1,23 +1,24 @@
 import { prisma } from '@/lib/prisma';
+import { unpackQuestionMeta } from '@/lib/question-gen';
 
 export interface WeakTopic {
   key: string;
   label: string;
-  kind: 'course' | 'material';
+  kind: 'course' | 'material' | 'concept';
   accuracyPct: number;
   answered: number;
   correct: number;
+  materialId?: string;
+  courseId?: string;
 }
 
-const MIN_SAMPLE = 3;
+const MIN_SAMPLE = 2;
 
 /**
- * Aggregates a student's graded CBT answers by course (or, for document-based
- * sessions with no course, by material) and returns the weakest topics first.
- * Uses points-weighted accuracy (awarded/points) rather than a plain correct
- * count so partially-graded THEORY/ESSAY answers are reflected proportionally.
+ * Aggregates graded CBT answers by concept topic (from packed meta), then by
+ * course/material. Weakest first — used for adaptive drill and dashboard.
  */
-export async function getWeakTopics(userId: string, limit = 5): Promise<WeakTopic[]> {
+export async function getWeakTopics(userId: string, limit = 8): Promise<WeakTopic[]> {
   const answers = await prisma.examAnswer.findMany({
     where: {
       isGraded: true,
@@ -26,6 +27,8 @@ export async function getWeakTopics(userId: string, limit = 5): Promise<WeakTopi
     select: {
       points: true,
       awarded: true,
+      isCorrect: true,
+      explanation: true,
       attempt: {
         select: {
           courseId: true,
@@ -35,12 +38,47 @@ export async function getWeakTopics(userId: string, limit = 5): Promise<WeakTopi
         },
       },
     },
+    take: 2000,
   });
 
-  const buckets = new Map<string, { label: string; kind: 'course' | 'material'; points: number; awarded: number; count: number }>();
+  type Bucket = {
+    label: string;
+    kind: 'course' | 'material' | 'concept';
+    points: number;
+    awarded: number;
+    count: number;
+    correct: number;
+    materialId?: string;
+    courseId?: string;
+  };
+  const buckets = new Map<string, Bucket>();
 
   for (const a of answers) {
     const { courseId, materialId, course, material } = a.attempt;
+    const meta = unpackQuestionMeta(a.explanation);
+    const topicLabel = meta.topic && meta.topic !== 'General' ? meta.topic : null;
+
+    if (topicLabel) {
+      const ckey = `concept:${topicLabel.toLowerCase()}`;
+      const cb = buckets.get(ckey) ?? {
+        label: topicLabel,
+        kind: 'concept' as const,
+        points: 0,
+        awarded: 0,
+        count: 0,
+        correct: 0,
+        materialId: materialId ?? undefined,
+        courseId: courseId ?? undefined,
+      };
+      cb.points += a.points;
+      cb.awarded += a.awarded;
+      cb.count += 1;
+      if (a.isCorrect) cb.correct += 1;
+      if (!cb.materialId && materialId) cb.materialId = materialId;
+      if (!cb.courseId && courseId) cb.courseId = courseId;
+      buckets.set(ckey, cb);
+    }
+
     let key: string;
     let label: string;
     let kind: 'course' | 'material';
@@ -56,10 +94,11 @@ export async function getWeakTopics(userId: string, limit = 5): Promise<WeakTopi
       continue;
     }
 
-    const bucket = buckets.get(key) ?? { label, kind, points: 0, awarded: 0, count: 0 };
+    const bucket = buckets.get(key) ?? { label, kind, points: 0, awarded: 0, count: 0, correct: 0 };
     bucket.points += a.points;
     bucket.awarded += a.awarded;
     bucket.count += 1;
+    if (a.isCorrect) bucket.correct += 1;
     buckets.set(key, bucket);
   }
 
@@ -71,9 +110,17 @@ export async function getWeakTopics(userId: string, limit = 5): Promise<WeakTopi
       kind: b.kind,
       accuracyPct: Math.round((b.awarded / b.points) * 100),
       answered: b.count,
-      correct: Math.round((b.awarded / b.points) * b.count),
+      correct: b.correct,
+      materialId: b.materialId,
+      courseId: b.courseId,
     }))
-    .sort((a, b) => a.accuracyPct - b.accuracyPct);
+    .sort((a, b) => a.accuracyPct - b.accuracyPct || b.answered - a.answered);
 
   return topics.slice(0, limit);
+}
+
+/** Concept labels only, weakest first — for adaptive sampling. */
+export async function getWeakConceptLabels(userId: string, limit = 10): Promise<string[]> {
+  const all = await getWeakTopics(userId, 20);
+  return all.filter((t) => t.kind === 'concept' && t.accuracyPct < 70).map((t) => t.label).slice(0, limit);
 }
