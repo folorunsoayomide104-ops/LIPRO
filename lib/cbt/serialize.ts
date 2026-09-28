@@ -1,4 +1,5 @@
 import type { ExamAnswer } from '@prisma/client';
+import { unpackQuestionMeta, type QuestionDifficulty } from '@/lib/question-gen';
 
 /**
  * The answer-leak boundary. Anything sent to a student mid-attempt goes through
@@ -27,6 +28,8 @@ export type StudentItem = {
   points: number;
   response: string | null;
   revealed: boolean;
+  topic?: string;
+  difficulty?: QuestionDifficulty;
   // Present only when revealed (practice mode).
   correctAnswer?: string;
   explanation?: string | null;
@@ -36,6 +39,7 @@ export type StudentItem = {
 };
 
 export function toStudentItem(item: ExamAnswer): StudentItem {
+  const meta = unpackQuestionMeta(item.explanation);
   const base: StudentItem = {
     itemId: item.id,
     orderIndex: item.orderIndex,
@@ -46,6 +50,8 @@ export function toStudentItem(item: ExamAnswer): StudentItem {
     points: item.points,
     response: item.response,
     revealed: item.revealed,
+    topic: meta.topic || undefined,
+    difficulty: meta.difficulty || undefined,
   };
 
   if (!item.revealed) return base;
@@ -53,7 +59,7 @@ export function toStudentItem(item: ExamAnswer): StudentItem {
   return {
     ...base,
     correctAnswer: item.correctAnswer,
-    explanation: item.explanation,
+    explanation: meta.explanation,
     feedback: item.feedback,
     isCorrect: item.isCorrect,
     awarded: item.awarded,
@@ -75,6 +81,7 @@ export type ReviewItem = StudentItem & {
 
 /** Full detail — only for a completed attempt's results page. */
 export function toReviewItem(item: ExamAnswer): ReviewItem {
+  const meta = unpackQuestionMeta(item.explanation);
   return {
     itemId: item.id,
     orderIndex: item.orderIndex,
@@ -85,8 +92,10 @@ export function toReviewItem(item: ExamAnswer): ReviewItem {
     points: item.points,
     response: item.response,
     revealed: item.revealed,
+    topic: meta.topic || undefined,
+    difficulty: meta.difficulty || undefined,
     correctAnswer: item.correctAnswer,
-    explanation: item.explanation,
+    explanation: meta.explanation,
     feedback: item.feedback,
     isCorrect: item.isCorrect,
     awarded: item.awarded,
