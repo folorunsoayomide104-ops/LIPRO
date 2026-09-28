@@ -13,6 +13,8 @@ export type AttemptItem = {
   points: number;
   response: string | null;
   revealed: boolean;
+  topic?: string;
+  difficulty?: 'easy' | 'medium' | 'hard';
   correctAnswer?: string;
   explanation?: string | null;
   feedback?: string | null;
@@ -54,8 +56,6 @@ export function useAttempt(attemptId: string) {
   const [saveState, setSaveState] = useState<SaveState>('idle');
   const [submitting, setSubmitting] = useState(false);
 
-  // deltaMs = local clock - server clock, so the countdown tracks real elapsed
-  // time instead of drifting with a naive client-only interval.
   const clockOffsetRef = useRef(0);
   const deadlineRef = useRef<number | null>(null);
   const dirtyRef = useRef<Map<string, string | null>>(new Map());
@@ -94,8 +94,6 @@ export function useAttempt(attemptId: string) {
     load();
   }, [load]);
 
-  // Countdown recomputed from the deadline every tick, and re-synced whenever
-  // the tab regains focus — immune to background-tab throttling.
   useEffect(() => {
     if (!deadlineRef.current) return;
     const tick = () => {
@@ -114,7 +112,6 @@ export function useAttempt(attemptId: string) {
       document.removeEventListener('visibilitychange', onVisible);
       window.removeEventListener('focus', tick);
     };
-    // Deadline only changes on load(); items/attempt updates shouldn't restart the timer.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [attempt?.deadlineAt]);
 
@@ -145,7 +142,6 @@ export function useAttempt(attemptId: string) {
       }
       setSaveState('saved');
     } catch {
-      // Put the answers back so the next flush retries them.
       for (const { itemId, response } of pending) {
         if (!dirtyRef.current.has(itemId)) dirtyRef.current.set(itemId, response);
       }
@@ -160,8 +156,6 @@ export function useAttempt(attemptId: string) {
     saveTimerRef.current = setTimeout(() => flush(), AUTOSAVE_DEBOUNCE_MS);
   }, [flush]);
 
-  // Flush on tab-hide / navigation-away so an answer typed seconds before a
-  // close isn't lost waiting on the debounce.
   useEffect(() => {
     const onHide = () => {
       if (document.visibilityState === 'hidden') flush({ keepalive: true });
@@ -189,7 +183,6 @@ export function useAttempt(attemptId: string) {
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) throw new Error(data?.error || 'Submit failed');
-      // Fire-and-forget: grading runs server-side; the results page polls it.
       fetch(`/api/cbt/attempts/${attemptId}/grade`, { method: 'POST' }).catch(() => undefined);
       router.push(`/cbt/${attemptId}/results`);
     } catch (err: any) {
