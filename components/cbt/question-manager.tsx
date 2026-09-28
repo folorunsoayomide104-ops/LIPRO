@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, Trash2, Pencil, X, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { unpackQuestionMeta } from '@/lib/question-gen';
 
 const TYPES = ['MCQ', 'TRUE_FALSE', 'FILL_BLANK', 'THEORY', 'ESSAY'] as const;
 type QType = (typeof TYPES)[number];
@@ -183,7 +184,18 @@ export function QuestionManager({ courseId, sourceId }: { courseId?: string; sou
           {questions.map((q) => (
             <div key={q.id} className="flex items-start justify-between gap-2 rounded-lg bg-studio-elevated p-2.5">
               <div className="min-w-0">
-                <div className="text-xs font-medium text-studio-primary">{q.type} · {q.points} pts</div>
+                <div className="flex flex-wrap items-center gap-1.5 text-xs font-medium text-studio-primary">
+                  <span>{q.type} · {q.points} pts</span>
+                  {(() => {
+                    const meta = unpackQuestionMeta(q.explanation);
+                    return (
+                      <>
+                        {meta.difficulty && <span className="rounded-full bg-studio-bg px-1.5 py-0.5 capitalize text-studio-muted">{meta.difficulty}</span>}
+                        {meta.topic && <span className="rounded-full bg-studio-bg px-1.5 py-0.5 text-studio-subtle max-w-[8rem] truncate">{meta.topic}</span>}
+                      </>
+                    );
+                  })()}
+                </div>
                 <div className="truncate text-sm text-studio-fg">{q.question}</div>
               </div>
               <div className="flex shrink-0 gap-1">
