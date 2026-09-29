@@ -154,6 +154,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       aiFeedback: attempt.aiFeedback,
       legacy,
       canOverride: isAdmin,
+      materialId: attempt.materialId ?? null,
+      courseId: attempt.courseId ?? null,
       student: isOwner ? null : { id: attempt.user.id, name: attempt.user.fullName },
     },
     items,
