@@ -5,13 +5,15 @@ import { getSession } from '@/lib/auth';
 import { StartExamButton } from '@/components/cbt/start-exam-button';
 import { PdfExamCreator } from '@/components/cbt/pdf-exam-creator';
 import { WeakTopicDrill } from '@/components/cbt/weak-topic-drill';
+import { DueReview } from '@/components/cbt/due-review';
 import { getWeakTopics } from '@/lib/weak-topics';
+import { getDueReviews } from '@/lib/cbt/spaced';
 
 export default async function CbtIndexPage() {
   const session = await getSession();
   if (!session) redirect('/login');
 
-  const [courses, inProgress, completed, materials, weakTopics] = await Promise.all([
+  const [courses, inProgress, completed, materials, weakTopics, dueReviews] = await Promise.all([
     prisma.course.findMany({ include: { _count: { select: { questions: true } }, lecturer: { select: { fullName: true } } }, orderBy: { createdAt: 'desc' } }),
     prisma.examSession.findMany({
       where: { userId: session.userId, status: 'in_progress' },
@@ -31,6 +33,7 @@ export default async function CbtIndexPage() {
       take: 10,
     }),
     getWeakTopics(session.userId, 8),
+    getDueReviews(session.userId, 8),
   ]);
 
   const docs = materials.map((m) => ({
@@ -85,6 +88,8 @@ export default async function CbtIndexPage() {
             </div>
           </section>
         )}
+
+        {dueReviews.some((d) => d.isDue) && <DueReview items={dueReviews} />}
 
         {weakTopics.length > 0 && <WeakTopicDrill topics={weakTopics} />}
 
