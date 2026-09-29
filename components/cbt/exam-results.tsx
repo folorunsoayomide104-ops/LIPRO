@@ -1,8 +1,11 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Check, X, Loader2, Sparkles, AlertTriangle, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { aggregateConceptMastery } from '@/lib/cbt/mastery';
+import { ResultsMastery } from '@/components/cbt/results-mastery';
+import type { ReviewItem as SerializeReviewItem } from '@/lib/cbt/serialize';
 
 type ReviewItem = {
   itemId: string;
@@ -23,6 +26,8 @@ type ReviewItem = {
   confidence: number | null;
   overridden: boolean;
   overrideNote: string | null;
+  topic?: string;
+  difficulty?: 'easy' | 'medium' | 'hard';
 };
 
 type ResultsData = {
@@ -40,6 +45,8 @@ type ResultsData = {
     aiFeedback: string | null;
     legacy: boolean;
     canOverride: boolean;
+    materialId?: string | null;
+    courseId?: string | null;
     student: { id: string; name: string } | null;
   };
   items: ReviewItem[];
@@ -57,7 +64,7 @@ export function ExamResults({ attemptId }: { attemptId: string }) {
   const [data, setData] = useState<ResultsData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const gradeTriggered = useRef(false);
-  const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const load = async () => {
     try {
@@ -100,6 +107,11 @@ export function ExamResults({ attemptId }: { attemptId: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [attemptId]);
 
+  const concepts = useMemo(() => {
+    if (!data?.items?.length) return [];
+    return aggregateConceptMastery(data.items as unknown as SerializeReviewItem[]);
+  }, [data?.items]);
+
   if (error) {
     return (
       <div className="min-h-dvh bg-studio-bg p-8">
@@ -126,8 +138,8 @@ export function ExamResults({ attemptId }: { attemptId: string }) {
 
   return (
     <div className="min-h-dvh bg-studio-bg text-studio-fg">
-      <div className="mx-auto flex w-full max-w-3xl flex-col px-4 pb-12 pt-6 md:px-8">
-        <header className="mb-8 studio-rise">
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 pb-12 pt-6 md:px-8">
+        <header className="studio-rise">
           <p className="text-xs font-medium uppercase tracking-[0.18em] text-studio-subtle">Review</p>
           <h2 className="mt-2 break-words font-studio-display text-3xl tracking-tight md:text-4xl">
             {attempt.sourceTitle} — {attempt.percentage}%
@@ -164,7 +176,18 @@ export function ExamResults({ attemptId }: { attemptId: string }) {
           </button>
         </header>
 
-        <ol className="flex flex-col gap-4">
+        {concepts.length > 0 && (
+          <div className="studio-rise studio-rise-delay-1">
+            <ResultsMastery
+              concepts={concepts}
+              materialId={attempt.materialId}
+              courseId={attempt.courseId}
+              overallPct={attempt.percentage}
+            />
+          </div>
+        )}
+
+        <ol className="flex flex-col gap-4 studio-rise studio-rise-delay-2">
           {items.map((item, i) => (
             <ReviewCard key={item.itemId} index={i} item={item} attemptId={attemptId} canOverride={attempt.canOverride} onOverridden={load} />
           ))}
@@ -215,6 +238,17 @@ function ReviewCard({
           {item.isCorrect ? 'Correct' : item.awarded > 0 ? 'Partial credit' : 'Incorrect'}
         </span>
         <span className="normal-case tracking-normal text-studio-subtle">· {item.awarded} / {item.points} pts</span>
+        {item.difficulty && (
+          <span className={cn(
+            'rounded-full px-2 py-0.5 text-[10px] font-medium capitalize normal-case tracking-normal',
+            item.difficulty === 'easy' && 'bg-emerald-500/15 text-emerald-400',
+            item.difficulty === 'medium' && 'bg-amber-500/15 text-amber-400',
+            item.difficulty === 'hard' && 'bg-rose-500/15 text-rose-400',
+          )}>{item.difficulty}</span>
+        )}
+        {item.topic && item.topic !== 'General' && (
+          <span className="max-w-[8rem] truncate rounded-full bg-studio-elevated px-2 py-0.5 text-[10px] normal-case tracking-normal text-studio-muted" title={item.topic}>{item.topic}</span>
+        )}
         {item.gradeMethod && (
           <span className="normal-case tracking-normal text-studio-subtle">· {GRADE_LABEL[item.gradeMethod] ?? item.gradeMethod}</span>
         )}
