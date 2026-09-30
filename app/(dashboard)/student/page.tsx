@@ -27,7 +27,7 @@ export default async function StudentDashboard() {
     prisma.examSession.findMany({
       where: { userId: session.userId },
       include: { course: { select: { title: true, code: true } } },
-      orderBy: { startedAt: 'desc' }, take: 14,
+      orderBy: { startedAt: 'desc' }, take: 20,
     }),
     // "Average Score" and "Best" need every scored attempt, not just the trend window.
     prisma.examSession.findMany({
@@ -60,6 +60,7 @@ export default async function StudentDashboard() {
     .map((a) => ({
       label: new Date(a.startedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
       pct: Math.round((a.score! / a.totalPoints!) * 100),
+      sub: a.course?.code || undefined,
     }));
 
   const attemptItems = recentAttempts.slice(0, 5).map((a) => ({
