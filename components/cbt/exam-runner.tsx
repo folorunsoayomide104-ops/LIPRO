@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { Clock, Send, ChevronLeft, ChevronRight, Check, LayoutGrid, Loader2, RefreshCw, LogOut, Cloud, CloudOff, Flame, Star } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAttempt, type AttemptItem } from '@/lib/cbt/use-attempt';
-import { unpackQuestionMeta } from '@/lib/question-gen';
+import { unpackQuestionMeta } from '@/lib/question-meta';
 
 const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'] as const;
 
