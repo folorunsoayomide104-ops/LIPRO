@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma';
-import { unpackQuestionMeta } from '@/lib/question-gen';
+import { unpackQuestionMeta } from '@/lib/question-meta';
 
 export type DueReview = {
   key: string;

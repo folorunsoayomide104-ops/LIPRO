@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma';
-import { unpackQuestionMeta } from '@/lib/question-gen';
+import { unpackQuestionMeta } from '@/lib/question-meta';
 
 export interface WeakTopic {
   key: string;
