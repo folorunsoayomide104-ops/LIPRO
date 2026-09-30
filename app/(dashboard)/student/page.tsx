@@ -27,12 +27,9 @@ export default async function StudentDashboard() {
     prisma.examSession.findMany({
       where: { userId: session.userId },
       include: { course: { select: { title: true, code: true } } },
-      orderBy: { startedAt: 'desc' }, take: 5,
+      orderBy: { startedAt: 'desc' }, take: 14,
     }),
-    // Separate from recentAttempts (which is capped at 5, for the trend
-    // chart and activity list): "Average Score" and "Best" need to reflect
-    // every scored attempt, not just the last 5, or the number shown
-    // wouldn't match the "across N attempts" claim in the AI insight text.
+    // "Average Score" and "Best" need every scored attempt, not just the trend window.
     prisma.examSession.findMany({
       where: { userId: session.userId, score: { not: null }, totalPoints: { not: null } },
       select: { score: true, totalPoints: true },
@@ -53,9 +50,6 @@ export default async function StudentDashboard() {
     getWeakTopics(session.userId),
   ]);
 
-  // totalPoints is nullable in the schema but guaranteed non-null by the
-  // where clause above — filter again defensively against a 0 value, which
-  // would otherwise divide by zero.
   const scoredPcts = allScoredAttempts.filter((a) => a.totalPoints).map((a) => Math.round((a.score! / a.totalPoints!) * 100));
   const avgScore = scoredPcts.length ? Math.round(scoredPcts.reduce((s, p) => s + p, 0) / scoredPcts.length) : null;
   const bestPct = scoredPcts.length ? Math.max(...scoredPcts) : null;
@@ -68,7 +62,7 @@ export default async function StudentDashboard() {
       pct: Math.round((a.score! / a.totalPoints!) * 100),
     }));
 
-  const attemptItems = recentAttempts.map((a) => ({
+  const attemptItems = recentAttempts.slice(0, 5).map((a) => ({
     id: a.id,
     code: a.course?.code ?? 'Document exam',
     date: `${new Date(a.startedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}, ${new Date(a.startedAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`,
@@ -105,7 +99,6 @@ export default async function StudentDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Top bar: month context + quick actions, matching the reference's header row */}
       <div className="enter flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
           <h1 className="heading truncate text-xl font-bold">Good to see you, {firstName}</h1>
@@ -127,20 +120,18 @@ export default async function StudentDashboard() {
         </div>
       </div>
 
-      {/* Widget grid — AI Insights / Score Overview / Average Score, matching the reference's 3-card row */}
       <section className="enter grid gap-4 lg:grid-cols-7" style={{ animationDelay: '60ms' }}>
-        <div className="card relative overflow-hidden lg:col-span-3">
+        <div className="card relative overflow-hidden lg:col-span-2">
           <InsightCarousel insights={insights} />
         </div>
-        <div className="card lg:col-span-2">
-          <OverviewChart latestPct={latestPct} deltaLatest={deltaLatest} attemptCount={attemptCount} courseCount={courseCount} trend={trend} />
+        <div className="card lg:col-span-3">
+          <OverviewChart latestPct={latestPct} deltaLatest={deltaLatest} attemptCount={attemptCount} courseCount={courseCount} trend={trend} avgScore={avgScore} />
         </div>
         <div className="card lg:col-span-2">
           <GoalGauge avgScore={avgScore} bestScore={bestPct} />
         </div>
       </section>
 
-      {/* Recent Activity / Study by Course, matching the reference's 2-card row */}
       <section className="enter grid gap-4 lg:grid-cols-3" style={{ animationDelay: '90ms' }}>
         <div className="card lg:col-span-2">
           <ActivityList attempts={attemptItems} />
@@ -150,7 +141,6 @@ export default async function StudentDashboard() {
         </div>
       </section>
 
-      {/* Weak topics */}
       <section className="enter glass relative overflow-hidden rounded-2xl p-6" style={{ animationDelay: '90ms' }}>
         <AmbientBackground variant="dots" />
         <div className="relative">
@@ -164,7 +154,6 @@ export default async function StudentDashboard() {
         </div>
       </section>
 
-      {/* Main grid */}
       <div className="grid gap-6 lg:grid-cols-3">
         <section className="enter glass relative overflow-hidden rounded-2xl p-6 lg:col-span-2" style={{ animationDelay: '100ms' }}>
           <AmbientBackground variant="mesh" />
@@ -219,7 +208,7 @@ export default async function StudentDashboard() {
               <Link href="/notifications" className="inline-flex items-center gap-1 text-xs font-semibold text-studio-primary hover:underline">See all <ArrowRight className="h-3 w-3" /></Link>
             </div>
             {notices.length === 0 ? (
-              <p className="text-sm text-studio-subtle">No notices yet — you&apos;re all caught up.</p>
+              <p className="text-sm text-studio-subtle">No notices yet — you're all caught up.</p>
             ) : (
               <div className="space-y-3">
                 {notices.map((n) => (
@@ -238,14 +227,13 @@ export default async function StudentDashboard() {
         </section>
       </div>
 
-      {/* Recent notes */}
       <section className="enter glass relative overflow-hidden rounded-2xl p-6" style={{ animationDelay: '140ms' }}>
         <AmbientBackground variant="breathe" />
         <div className="relative">
           <div className="mb-4 flex items-center justify-between">
             <div>
               <h2 className="heading text-lg font-bold">Your recent notes</h2>
-              <p className="text-sm text-studio-subtle">Notes you&apos;ve created or saved</p>
+              <p className="text-sm text-studio-subtle">Notes you've created or saved</p>
             </div>
             <Link href="/notes" className="inline-flex items-center gap-1 text-xs font-semibold text-studio-primary hover:underline">Open notes <ArrowRight className="h-3 w-3" /></Link>
           </div>
