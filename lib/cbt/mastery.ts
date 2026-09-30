@@ -1,5 +1,5 @@
 import type { ReviewItem } from '@/lib/cbt/serialize';
-import type { QuestionDifficulty } from '@/lib/question-gen';
+import type { QuestionDifficulty } from '@/lib/question-meta';
 
 export type ConceptMastery = {
   topic: string;

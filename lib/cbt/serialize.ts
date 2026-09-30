@@ -1,5 +1,5 @@
 import type { ExamAnswer } from '@prisma/client';
-import { unpackQuestionMeta, type QuestionDifficulty } from '@/lib/question-gen';
+import { unpackQuestionMeta, type QuestionDifficulty } from '@/lib/question-meta';
 
 /**
  * The answer-leak boundary. Anything sent to a student mid-attempt goes through
