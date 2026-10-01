@@ -18,6 +18,7 @@ import {
   BookOpen,
   ClipboardList,
   Sparkles,
+  Flame,
 } from 'lucide-react';
 import WeakTopics from '@/components/dashboard/weak-topics';
 import InsightCarousel from '@/components/dashboard/insight-carousel';
@@ -26,6 +27,7 @@ import GoalGauge from '@/components/dashboard/goal-gauge';
 import ActivityList from '@/components/dashboard/activity-list';
 import CourseBreakdown from '@/components/dashboard/course-breakdown';
 import { getWeakTopics } from '@/lib/weak-topics';
+import { getStudyStreak } from '@/lib/cbt/streak';
 import { cn } from '@/lib/utils';
 
 function StatCard({
@@ -67,7 +69,7 @@ export default async function StudentDashboard() {
   if (!session) redirect('/login');
   if (session.role !== 'STUDENT') redirect(`/dashboard`);
 
-  const [courses, recentAttempts, allScoredAttempts, notes, me, courseCount, attemptCount, noteCount, notices, weakTopics] =
+  const [courses, recentAttempts, allScoredAttempts, notes, me, courseCount, attemptCount, noteCount, notices, weakTopics, studyStreak] =
     await Promise.all([
       prisma.course.findMany({
         where: {
@@ -120,6 +122,7 @@ export default async function StudentDashboard() {
         take: 5,
       }),
       getWeakTopics(session.userId),
+      getStudyStreak(session.userId),
     ]);
 
   const scoredPcts = allScoredAttempts
@@ -181,6 +184,9 @@ export default async function StudentDashboard() {
       `Your average CBT score is ${avgScore}% across ${attemptCount} attempt${attemptCount === 1 ? '' : 's'}.`,
     );
   }
+  if (studyStreak > 0) {
+    insights.push(`You're on a ${studyStreak}-day study streak — keep showing up.`);
+  }
   insights.push(
     weakTopics.length
       ? `You have ${weakTopics.length} weak topic${weakTopics.length === 1 ? '' : 's'} — drill them from CBT or LIPRO AI.`
@@ -241,7 +247,7 @@ export default async function StudentDashboard() {
         </div>
       </header>
 
-      <section className="studio-rise studio-rise-delay-1 grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <section className="studio-rise studio-rise-delay-1 grid grid-cols-2 gap-3 lg:grid-cols-5">
         <StatCard
           label="Average score"
           value={avgScore !== null ? `${avgScore}%` : '—'}
@@ -259,6 +265,12 @@ export default async function StudentDashboard() {
           value={String(attemptCount)}
           hint={latestPct !== null ? `Latest ${latestPct}%` : 'Start your first'}
           icon={ClipboardList}
+        />
+        <StatCard
+          label="Study streak"
+          value={studyStreak > 0 ? `${studyStreak}d` : '—'}
+          hint={studyStreak > 0 ? 'Consecutive days with a completed CBT' : 'Complete a CBT today to start'}
+          icon={Flame}
         />
         <StatCard
           label="Revision notes"
