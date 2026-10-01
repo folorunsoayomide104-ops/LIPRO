@@ -5,6 +5,7 @@ import { Check, X, Loader2, Sparkles, AlertTriangle, Pencil } from 'lucide-react
 import { cn } from '@/lib/utils';
 import { aggregateConceptMastery } from '@/lib/cbt/mastery';
 import { ResultsMastery } from '@/components/cbt/results-mastery';
+import { GradeRetryBanner } from '@/components/cbt/grade-retry';
 import type { ReviewItem as SerializeReviewItem } from '@/lib/cbt/serialize';
 
 type ReviewItem = {
@@ -160,9 +161,9 @@ export function ExamResults({ attemptId }: { attemptId: string }) {
               <Loader2 className="h-4 w-4 shrink-0 animate-spin" /> Grading your written answers…
             </div>
           )}
-          {attempt.gradingStatus === 'degraded' && (
-            <div className="mt-4 flex items-center gap-2 rounded-lg bg-amber-500/10 px-4 py-3 text-xs text-amber-400">
-              <AlertTriangle className="h-4 w-4 shrink-0" /> Written answers were graded with a fallback estimator (AI grading was unavailable). Scores for those questions are approximate.
+          {(attempt.gradingStatus === 'degraded' || attempt.gradingStatus === 'failed') && (
+            <div className="mt-4">
+              <GradeRetryBanner attemptId={attemptId} status={attempt.gradingStatus} />
             </div>
           )}
           {attempt.aiFeedback && (
