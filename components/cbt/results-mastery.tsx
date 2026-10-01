@@ -6,10 +6,10 @@ import { Target, Loader2, TrendingDown, TrendingUp, Sparkles } from 'lucide-reac
 import { cn } from '@/lib/utils';
 import { createAttempt } from '@/lib/cbt/client';
 import type { ConceptMastery } from '@/lib/cbt/mastery';
+import type { QuestionDifficulty } from '@/lib/question-meta';
 
 export type ResultsMasteryProps = {
   concepts: ConceptMastery[];
-  /** Source to launch an adaptive drill from */
   materialId?: string | null;
   courseId?: string | null;
   overallPct: number;
@@ -27,6 +27,31 @@ function textTone(pct: number): string {
   return 'text-rose-400';
 }
 
+function aggregateDifficulty(concepts: ConceptMastery[]) {
+  const out: Record<QuestionDifficulty, { answered: number; correct: number }> = {
+    easy: { answered: 0, correct: 0 },
+    medium: { answered: 0, correct: 0 },
+    hard: { answered: 0, correct: 0 },
+  };
+  for (const c of concepts) {
+    for (const d of ['easy', 'medium', 'hard'] as const) {
+      const db = c.byDifficulty[d];
+      if (!db) continue;
+      out[d].answered += db.answered;
+      out[d].correct += db.correct;
+    }
+  }
+  return (['easy', 'medium', 'hard'] as const)
+    .map((d) => ({
+      difficulty: d,
+      ...out[d],
+      pct: out[d].answered
+        ? Math.round((out[d].correct / out[d].answered) * 100)
+        : null,
+    }))
+    .filter((x) => x.answered > 0);
+}
+
 export function ResultsMastery({ concepts, materialId, courseId, overallPct }: ResultsMasteryProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -35,6 +60,7 @@ export function ResultsMastery({ concepts, materialId, courseId, overallPct }: R
   const weak = concepts.filter((c) => c.topic !== 'General' && c.accuracyPct < 70);
   const strong = concepts.filter((c) => c.topic !== 'General' && c.accuracyPct >= 75);
   const canDrill = !!(materialId || courseId) && weak.length > 0;
+  const byDiff = aggregateDifficulty(concepts);
 
   const startDrill = async () => {
     if (!canDrill) return;
@@ -68,7 +94,10 @@ export function ResultsMastery({ concepts, materialId, courseId, overallPct }: R
           </h2>
           <p className="mt-1 text-sm text-studio-muted">
             {weak.length > 0
-              ? `You struggled most on ${weak.slice(0, 3).map((c) => c.topic).join(', ')}${weak.length > 3 ? ` +${weak.length - 3}` : ''}.`
+              ? `You struggled most on ${weak
+                  .slice(0, 3)
+                  .map((c) => c.topic)
+                  .join(', ')}${weak.length > 3 ? ` +${weak.length - 3}` : ''}.`
               : overallPct >= 75
                 ? 'Solid mastery across topics — keep the momentum.'
                 : 'Review the questions below to lock in the concepts.'}
@@ -89,14 +118,29 @@ export function ResultsMastery({ concepts, materialId, courseId, overallPct }: R
 
       {error && <p className="mt-2 text-xs text-studio-danger">{error}</p>}
 
+      {byDiff.length > 0 && (
+        <div className="mt-5 grid grid-cols-3 gap-2">
+          {byDiff.map((d) => (
+            <div key={d.difficulty} className="rounded-xl bg-studio-elevated px-3 py-3 text-center shadow-studio-border">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-studio-subtle">
+                {d.difficulty}
+              </p>
+              <p className={cn('tnum mt-1 font-studio-display text-xl', textTone(d.pct ?? 0))}>
+                {d.pct !== null ? `${d.pct}%` : '—'}
+              </p>
+              <p className="mt-0.5 text-[11px] text-studio-subtle">
+                {d.correct}/{d.answered}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="mt-5 flex flex-col gap-3">
         {concepts.map((c) => (
-          <div
-            key={c.topic}
-            className="rounded-lg bg-studio-elevated px-4 py-3"
-          >
+          <div key={c.topic} className="rounded-lg bg-studio-elevated px-4 py-3">
             <div className="flex items-center justify-between gap-3">
-              <div className="min-w-0 flex items-center gap-2">
+              <div className="flex min-w-0 items-center gap-2">
                 {c.accuracyPct < 50 ? (
                   <TrendingDown className="h-3.5 w-3.5 shrink-0 text-rose-400" />
                 ) : c.accuracyPct >= 75 ? (
