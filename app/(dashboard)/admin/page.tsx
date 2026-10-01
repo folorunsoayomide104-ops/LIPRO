@@ -19,6 +19,8 @@ import {
   UserPlus,
   TrendingUp,
   Layers,
+  BarChart3,
+  AlertTriangle,
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 
@@ -102,6 +104,8 @@ export default async function AdminDashboard() {
     cbtCompleted,
     cbtThisWeek,
     recentSessions,
+    materialsNoQuestions,
+    coursesNoQuestions,
   ] = await Promise.all([
     prisma.user.count({ where: { role: 'STUDENT' } }),
     prisma.user.count({ where: { role: 'ADMIN' } }),
@@ -143,6 +147,8 @@ export default async function AdminDashboard() {
         course: { select: { code: true, title: true } },
       },
     }),
+    prisma.material.count({ where: { questions: { none: {} } } }),
+    prisma.course.count({ where: { questions: { none: {} } } }),
   ]);
 
   const walletSum = totalWallet._sum.walletBalance ?? 0;
@@ -221,7 +227,7 @@ export default async function AdminDashboard() {
           <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-studio-subtle">Shortcuts</p>
           <h2 className="mt-1 font-studio-display text-xl tracking-tight text-studio-fg">Quick actions</h2>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           <ActionCard
             title="Students"
             description="Search accounts, review profiles, and monitor engagement."
@@ -239,6 +245,12 @@ export default async function AdminDashboard() {
             description="Push a message to student dashboards and notice feeds."
             href="/admin/announcements"
             icon={Megaphone}
+          />
+          <ActionCard
+            title="CBT analytics"
+            description="Attempts, scores by course, and platform weak topics."
+            href="/admin/analytics"
+            icon={BarChart3}
           />
           <ActionCard
             title="CBT overview"
@@ -352,7 +364,13 @@ export default async function AdminDashboard() {
               <tbody>
                 {recentUsers.map((u) => (
                   <tr key={u.id} className="border-b border-studio-border/70 last:border-0">
-                    <td className="py-2.5 pr-3 font-medium text-studio-fg">{u.fullName}</td>
+                    <td className="py-2.5 pr-3 font-medium text-studio-fg">
+                      {u.role === 'STUDENT' ? (
+                        <Link href={`/admin/students/${u.id}`} className="hover:text-studio-primary hover:underline">{u.fullName}</Link>
+                      ) : (
+                        u.fullName
+                      )}
+                    </td>
                     <td className="py-2.5 pr-3 text-studio-muted">{u.email}</td>
                     <td className="py-2.5 pr-3">
                       <Badge tone={u.role === 'ADMIN' ? 'amber' : 'purple'}>{u.role}</Badge>
@@ -372,6 +390,26 @@ export default async function AdminDashboard() {
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      </section>
+
+      <section className="studio-rise rounded-2xl bg-studio-surface p-5 shadow-studio-border sm:p-6">
+        <div className="mb-3 flex items-center gap-2">
+          <AlertTriangle className="h-4 w-4 text-amber-400" />
+          <h2 className="font-studio-display text-xl tracking-tight text-studio-fg">Content health</h2>
+        </div>
+        <p className="mb-4 text-sm text-studio-muted">Gaps that block students from starting CBT sessions.</p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="rounded-xl bg-studio-elevated px-4 py-3">
+            <p className="text-xs uppercase tracking-wide text-studio-subtle">Materials with 0 questions</p>
+            <p className="tnum mt-1 text-2xl font-semibold text-studio-fg">{materialsNoQuestions}</p>
+            <Link href="/courses" className="mt-2 inline-flex text-xs font-semibold text-studio-primary hover:underline">Generate questions →</Link>
+          </div>
+          <div className="rounded-xl bg-studio-elevated px-4 py-3">
+            <p className="text-xs uppercase tracking-wide text-studio-subtle">Courses with 0 questions</p>
+            <p className="tnum mt-1 text-2xl font-semibold text-studio-fg">{coursesNoQuestions}</p>
+            <Link href="/courses" className="mt-2 inline-flex text-xs font-semibold text-studio-primary hover:underline">Add questions →</Link>
           </div>
         </div>
       </section>
