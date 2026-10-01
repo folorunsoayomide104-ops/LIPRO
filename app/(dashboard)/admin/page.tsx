@@ -21,8 +21,11 @@ import {
   Layers,
   BarChart3,
   AlertTriangle,
+  ExternalLink,
+  Link2,
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
+import { AdminInviteCopy } from '@/components/admin/invite-copy';
 
 function StatCard({
   label,
@@ -88,6 +91,7 @@ export default async function AdminDashboard() {
 
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://lipro-game-developer1.vercel.app';
 
   const [
     students,
@@ -106,6 +110,7 @@ export default async function AdminDashboard() {
     recentSessions,
     materialsNoQuestions,
     coursesNoQuestions,
+    inviteCourses,
   ] = await Promise.all([
     prisma.user.count({ where: { role: 'STUDENT' } }),
     prisma.user.count({ where: { role: 'ADMIN' } }),
@@ -149,6 +154,18 @@ export default async function AdminDashboard() {
     }),
     prisma.material.count({ where: { questions: { none: {} } } }),
     prisma.course.count({ where: { questions: { none: {} } } }),
+    prisma.course.findMany({
+      orderBy: { updatedAt: 'desc' },
+      take: 12,
+      select: {
+        id: true,
+        code: true,
+        title: true,
+        faculty: true,
+        level: true,
+        _count: { select: { questions: true } },
+      },
+    }),
   ]);
 
   const walletSum = totalWallet._sum.walletBalance ?? 0;
@@ -227,7 +244,7 @@ export default async function AdminDashboard() {
           <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-studio-subtle">Shortcuts</p>
           <h2 className="mt-1 font-studio-display text-xl tracking-tight text-studio-fg">Quick actions</h2>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           <ActionCard
             title="Students"
             description="Search accounts, review profiles, and monitor engagement."
@@ -253,12 +270,84 @@ export default async function AdminDashboard() {
             icon={BarChart3}
           />
           <ActionCard
+            title="Wallet"
+            description="Balances, paid plans, and subscription overview."
+            href="/admin/wallet"
+            icon={Wallet}
+          />
+          <ActionCard
             title="CBT overview"
             description="Open the CBT area to inspect practice and exam flows."
             href="/cbt"
             icon={Brain}
           />
         </div>
+      </section>
+
+      {/* CBT pack invites — admin only */}
+      <section className="studio-rise rounded-2xl bg-studio-surface p-5 shadow-studio-border sm:p-6">
+        <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-studio-subtle">Share</p>
+            <h2 className="mt-1 flex items-center gap-2 font-studio-display text-xl tracking-tight text-studio-fg">
+              <Link2 className="h-4 w-4 text-studio-primary" />
+              CBT pack invites
+            </h2>
+            <p className="mt-1 text-sm text-studio-muted">
+              Copy a link for WhatsApp or class groups. Students log in and start practice or a full pack.
+            </p>
+          </div>
+          <Link
+            href="/courses"
+            className="inline-flex items-center gap-1 text-xs font-semibold text-studio-primary hover:underline"
+          >
+            Manage courses <ArrowRight className="h-3 w-3" />
+          </Link>
+        </div>
+
+        {inviteCourses.length === 0 ? (
+          <p className="rounded-xl border border-dashed border-studio-border-strong px-4 py-8 text-center text-sm text-studio-subtle">
+            No courses yet — create one to generate invite links.
+          </p>
+        ) : (
+          <ul className="space-y-2">
+            {inviteCourses.map((c) => {
+              const invite = `${baseUrl}/invite/course/${c.id}`;
+              return (
+                <li
+                  key={c.id}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-studio-elevated px-3.5 py-3"
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-studio-fg">
+                      <span className="text-studio-primary">{c.code}</span>
+                      <span className="text-studio-muted"> · </span>
+                      {c.title}
+                    </p>
+                    <p className="mt-0.5 text-xs text-studio-subtle">
+                      {c.faculty} · L{c.level} · {c._count.questions} questions
+                    </p>
+                    <p className="mt-1 break-all text-[11px] text-studio-subtle">{invite}</p>
+                  </div>
+                  <div className="flex shrink-0 flex-wrap items-center gap-2">
+                    <Badge tone={c._count.questions > 0 ? 'purple' : 'amber'}>
+                      {c._count.questions} Qs
+                    </Badge>
+                    <AdminInviteCopy url={invite} />
+                    <a
+                      href={invite}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex h-8 items-center gap-1 rounded-full bg-studio-surface px-3 text-xs font-semibold text-studio-primary shadow-studio-border"
+                    >
+                      <ExternalLink className="h-3 w-3" /> Open
+                    </a>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </section>
 
       <section className="studio-rise studio-rise-delay-3 grid gap-4 lg:grid-cols-5">
