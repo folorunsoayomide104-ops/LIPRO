@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { guard } from '@/lib/api-guard';
+import { logAdminAudit } from '@/lib/admin/audit';
 
 export async function GET() {
-  const { ok, response } = await guard('ADMIN');
-  if (!ok) return response!;
+  const { ok, user, response } = await guard('ADMIN');
+  if (!ok || !user) return response!;
 
   const students = await prisma.user.findMany({
     where: { role: 'STUDENT' },
@@ -67,6 +68,14 @@ export async function GET() {
         .join(','),
     ),
   ];
+
+  await logAdminAudit({
+    actorUserId: user.userId,
+    actorEmail: user.email,
+    action: 'export_students',
+    detail: `Exported ${students.length} student rows as CSV`,
+    broadcast: true,
+  });
 
   const csv = lines.join('\n');
   return new NextResponse(csv, {
