@@ -47,9 +47,6 @@ export default async function AdminStudentsPage({
     ];
   }
 
-  // Distinct filter options come from the full student population, not the
-  // current filtered result — otherwise picking one filter would shrink the
-  // choices available in the others.
   const [
     faculties,
     departments,
@@ -75,9 +72,6 @@ export default async function AdminStudentsPage({
         subscriptionTier: true, subscriptionExpiry: true, lastLoginAt: true, createdAt: true,
       },
     }),
-    // Small catalogue (confirmed elsewhere in this codebase) — fetching every
-    // course's facet fields and counting in JS avoids a per-row query for
-    // "how many courses match this student's faculty/department/level/semester."
     prisma.course.findMany({ select: { faculty: true, department: true, level: true, semester: true } }),
   ]);
 
@@ -87,24 +81,12 @@ export default async function AdminStudentsPage({
     courseCounts.set(key, (courseCounts.get(key) || 0) + 1);
   }
 
-  // "Last activity" — the most recent thing a student actually did, not
-  // just when they last authenticated. lastLoginAt alone understates a
-  // student who logged in once and then spent hours studying. Computed as
-  // the max across every timestamped, per-user action already tracked
-  // elsewhere in the schema — no new write-heavy instrumentation needed.
-  // Four grouped queries scoped to just this page's students (not one
-  // query per row), then merged in JS.
   const studentIds = students.map((s) => s.id);
   const [examActivity, noteActivity, flashcardActivity, aiActivity, subscriptionPayments] = await Promise.all([
     prisma.examSession.groupBy({ by: ['userId'], where: { userId: { in: studentIds } }, _max: { startedAt: true } }),
     prisma.note.groupBy({ by: ['userId'], where: { userId: { in: studentIds } }, _max: { updatedAt: true } }),
     prisma.flashcard.groupBy({ by: ['userId'], where: { userId: { in: studentIds }, lastReviewedAt: { not: null } }, _max: { lastReviewedAt: true } }),
     prisma.aiConversation.groupBy({ by: ['userId'], where: { userId: { in: studentIds } }, _max: { updatedAt: true } }),
-    // DEBIT WalletTxn rows are subscription payments (both the live Paystack
-    // webhook and the demo-mode fallback in /api/paystack/initialize write
-    // them this way — CREDIT is wallet funding, a different thing). Fetched
-    // as full rows rather than a groupBy aggregate because we want each
-    // student's most recent payment amount, not just a sum.
     prisma.walletTxn.findMany({
       where: { userId: { in: studentIds }, type: 'DEBIT' },
       orderBy: { createdAt: 'desc' },
@@ -140,14 +122,22 @@ export default async function AdminStudentsPage({
 
   return (
     <div className="space-y-6">
-      <div>
-        <Link href="/admin" className="inline-flex items-center gap-1 text-sm font-medium text-studio-subtle hover:underline dark:text-studio-subtle">
-          <ArrowLeft className="h-3.5 w-3.5" /> Back to Admin
-        </Link>
-        <h1 className="mt-2 text-2xl font-bold tracking-tight">Students</h1>
-        <p className="text-sm text-studio-subtle">
-          {total} student{total === 1 ? '' : 's'} match the current filters
-        </p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <Link href="/admin" className="inline-flex items-center gap-1 text-sm font-medium text-studio-subtle hover:underline dark:text-studio-subtle">
+            <ArrowLeft className="h-3.5 w-3.5" /> Back to Admin
+          </Link>
+          <h1 className="mt-2 text-2xl font-bold tracking-tight">Students</h1>
+          <p className="text-sm text-studio-subtle">
+            {total} student{total === 1 ? '' : 's'} match the current filters
+          </p>
+        </div>
+        <a
+          href="/api/admin/students/export"
+          className="inline-flex items-center gap-1.5 rounded-full bg-studio-elevated px-3.5 py-2 text-xs font-semibold text-studio-muted shadow-studio-border hover:text-studio-fg"
+        >
+          Export CSV
+        </a>
       </div>
 
       <Card>
@@ -187,7 +177,7 @@ export default async function AdminStudentsPage({
                   return (
                     <tr key={s.id} className="border-b border-studio-border last:border-0">
                       <td className="px-4 py-3">
-                        <div className="font-medium">{s.fullName}</div>
+                        <Link href={`/admin/students/${s.id}`} className="font-medium text-studio-fg hover:text-studio-primary hover:underline">{s.fullName}</Link>
                         <div className="text-xs text-studio-subtle">{s.email}</div>
                       </td>
                       <td className="px-2 py-3 text-studio-subtle">{s.matricNumber}</td>
