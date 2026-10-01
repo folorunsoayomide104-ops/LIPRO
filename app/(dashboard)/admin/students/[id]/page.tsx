@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { ArrowLeft, User, Brain, BookOpen, Clock } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { getWeakTopics } from '@/lib/weak-topics';
+import { SubscriptionAdminForm } from '@/components/admin/subscription-form';
 
 export default async function AdminStudentDetailPage({
   params,
@@ -123,6 +124,10 @@ export default async function AdminStudentDetailPage({
           </div>
         ))}
       </section>
+
+      <div className="studio-rise">
+        <SubscriptionAdminForm userId={user.id} currentTier={user.subscriptionTier} />
+      </div>
 
       <p className="studio-rise text-xs text-studio-subtle">
         <Clock className="mr-1 inline h-3 w-3" />
