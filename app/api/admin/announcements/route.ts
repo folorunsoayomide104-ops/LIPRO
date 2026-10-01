@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { guard } from '@/lib/api-guard';
+import { logAdminAudit } from '@/lib/admin/audit';
 
 export async function POST(req: Request) {
-  const { ok, response } = await guard('ADMIN');
-  if (!ok) return response!;
+  const { ok, user, response } = await guard('ADMIN');
+  if (!ok || !user) return response!;
 
   const body = await req.json().catch(() => null);
   if (!body) return NextResponse.json({ error: 'Invalid body' }, { status: 400 });
@@ -27,6 +28,14 @@ export async function POST(req: Request) {
 
   await prisma.notification.createMany({
     data: students.map((s) => ({ userId: s.id, type: 'ANNOUNCEMENT', title, message })),
+  });
+
+  await logAdminAudit({
+    actorUserId: user.userId,
+    actorEmail: user.email,
+    action: 'announcement',
+    detail: `Sent to ${students.length} students · "${title.slice(0, 80)}"`,
+    broadcast: true,
   });
 
   return NextResponse.json({ ok: true, sentTo: students.length });
