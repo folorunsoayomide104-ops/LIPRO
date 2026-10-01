@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
 import { StartExamButton } from '@/components/cbt/start-exam-button';
+import { CoursePackButton } from '@/components/cbt/course-pack-button';
 import { PdfExamCreator } from '@/components/cbt/pdf-exam-creator';
 import { WeakTopicDrill } from '@/components/cbt/weak-topic-drill';
 import { DueReview } from '@/components/cbt/due-review';
@@ -126,7 +127,7 @@ export default async function CbtIndexPage() {
         <section className="min-w-0 rounded-xl bg-studio-surface p-4 shadow-studio-border sm:p-5 studio-rise studio-rise-delay-3">
           <p className="text-xs font-medium uppercase tracking-[0.16em] text-studio-subtle">From a course</p>
           <h2 className="mt-1 font-studio-display text-xl tracking-tight text-studio-fg">Start a session from a course</h2>
-          <p className="mt-1 text-sm text-studio-muted">Pick a course, choose practice or exam mode, and set the number of questions.</p>
+          <p className="mt-1 text-sm text-studio-muted">Pick a course, choose practice or exam mode, or launch a full mixed pack.</p>
           <div className="mt-4 flex flex-col gap-2">
             {courses.map((c) => (
               <div key={c.id} className="rounded-lg bg-studio-elevated px-4 py-3">
@@ -135,7 +136,10 @@ export default async function CbtIndexPage() {
                     <div className="truncate text-sm font-medium text-studio-fg">{c.code} · {c.title}</div>
                     <div className="truncate text-xs text-studio-subtle">{c._count.questions} questions · By {c.lecturer.fullName}</div>
                   </div>
-                  <div className="w-full sm:w-auto sm:shrink-0"><StartExamButton courseId={c.id} typeCounts={typeCountsByCourse.get(c.id)} /></div>
+                  <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:items-end">
+                    <StartExamButton courseId={c.id} typeCounts={typeCountsByCourse.get(c.id)} />
+                    <CoursePackButton courseId={c.id} questionCount={c._count.questions} />
+                  </div>
                 </div>
               </div>
             ))}
